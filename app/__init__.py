@@ -85,20 +85,24 @@ def create_app(config_name=None):
              # Localhost Development: Default to Master Org if no subdomain
              tenant = Organization.query.get(1)
         else:
-            # Root Domain (bentcrankshaft.com)
-            # Special Case: Allow Impersonation
-            
-            # If a Super Admin is properly impersonating another org, let them seeing that org's context.
-            if session.get('impersonation_origin_org'):
-                 # Trust the session's target org
-                 target_id = session.get('organization_id')
-                 tenant = Organization.query.get(target_id)
-            else:
-                # otherwise, FORCE context to Master Organization (ID 1)
-                print("DEBUG: DEFAULTING TO MASTER ORG (ID 1)", flush=True)
-                # Fallback to ID 1, or first available org if ID 1 is missing
-                tenant = Organization.query.get(1) or Organization.query.first()
-                print(f"DEBUG: Fallback tenant found: {tenant.name if tenant else 'None'}", flush=True)
+            # Check for custom domain mapping (e.g., ncpowerequipment.com)
+            tenant = Organization.query.filter_by(custom_domain=header_host).first()
+
+            if not tenant:
+                # Root Domain (bentcrankshaft.com) or other unmapped domain
+                # Special Case: Allow Impersonation
+
+                # If a Super Admin is properly impersonating another org, let them seeing that org's context.
+                if session.get('impersonation_origin_org'):
+                     # Trust the session's target org
+                     target_id = session.get('organization_id')
+                     tenant = Organization.query.get(target_id)
+                else:
+                    # otherwise, FORCE context to Master Organization (ID 1)
+                    print("DEBUG: DEFAULTING TO MASTER ORG (ID 1)", flush=True)
+                    # Fallback to ID 1, or first available org if ID 1 is missing
+                    tenant = Organization.query.get(1) or Organization.query.first()
+                    print(f"DEBUG: Fallback tenant found: {tenant.name if tenant else 'None'}", flush=True)
 
         # 2. Reconcile with Session
         session_org_id = session.get('organization_id')

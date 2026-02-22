@@ -14,7 +14,8 @@ class Organization(db.Model):
     
     # Marketing Interface / SaaS Fields
     slug = db.Column(db.String(50), unique=True, index=True) # Identifying subdomain
-    
+    custom_domain = db.Column(db.String(255), unique=True, index=True, nullable=True) # Custom domain mapping (e.g., ncpowerequipment.com)
+
     # Integrations
     ari_dealer_id = db.Column(db.String(50))
     pos_provider = db.Column(db.String(50), default='none')
