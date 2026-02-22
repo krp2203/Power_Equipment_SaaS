@@ -19,22 +19,23 @@ export default function AdvertisementModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto"
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-2xl w-full max-w-[90vw] h-auto overflow-hidden my-auto relative"
+        className="bg-white rounded-lg shadow-2xl w-full max-w-[95vw] relative"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxHeight: '90vh',
+          maxHeight: '95vh',
           display: 'flex',
           flexDirection: 'column',
+          overflowY: 'auto',
         }}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-900 text-white rounded-full p-2 transition-colors shadow-lg"
+          className="sticky top-4 right-4 z-20 bg-gray-800 hover:bg-gray-900 text-white rounded-full p-2 transition-colors shadow-lg ml-auto mr-4"
           aria-label="Close modal"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -46,8 +47,9 @@ export default function AdvertisementModal({
         <div
           className="bg-gray-900 flex items-center justify-center overflow-hidden"
           style={{
-            flex: '1 1 auto',
-            maxHeight: '60vh',
+            width: '100%',
+            aspectRatio: '16 / 9',
+            maxHeight: '70vh',
             minHeight: '300px',
           }}
         >
@@ -68,13 +70,9 @@ export default function AdvertisementModal({
           )}
         </div>
 
-        {/* Content - Scrollable if needed */}
+        {/* Content - Always visible below media */}
         <div
-          className="p-6 bg-white overflow-y-auto"
-          style={{
-            flex: '0 1 auto',
-            maxHeight: '30vh',
-          }}
+          className="p-6 bg-white flex-shrink-0"
         >
           <h2 className="text-2xl font-bold mb-2">{advertisement.title}</h2>
           <p className="text-gray-600 mb-4">{advertisement.description}</p>
