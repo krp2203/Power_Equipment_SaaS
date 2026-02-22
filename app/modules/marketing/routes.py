@@ -461,7 +461,6 @@ def complete_chunk_upload():
 
         # Create ScheduledPost for banner if selected
         if post_to_banner:
-            from datetime import datetime
             scheduled_post = ScheduledPost(
                 organization_id=org.id,
                 media_content_id=media_content.id,
