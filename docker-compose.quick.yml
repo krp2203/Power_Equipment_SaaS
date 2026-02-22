@@ -35,6 +35,24 @@ services:
       - db
       - redis
 
+  beat:
+    image: python:3.11-slim
+    restart: unless-stopped
+    working_dir: /app
+    command: sh -c "apt-get update && apt-get install -y imagemagick && pip install -q --no-cache-dir -r requirements.txt && celery -A celery_worker.celery beat --loglevel=info"
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - FLASK_CONFIG=prod
+      - DB_URI=postgresql://user:password@db:5432/dealer_dashboard
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+    depends_on:
+      - db
+      - redis
+
   web:
     image: python:3.11-slim
     restart: unless-stopped
