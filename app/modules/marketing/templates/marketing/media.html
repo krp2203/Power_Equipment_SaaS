@@ -557,6 +557,15 @@ async function uploadFileInChunks(file) {
         formData.append('post_to_instagram', instagramCheckbox ? instagramCheckbox.checked : false);
         formData.append('post_to_banner', bannerCheckbox ? bannerCheckbox.checked : false);
 
+        // Include scheduled date/time if scheduling for later
+        const scheduleLaterRadio = document.getElementById('schedule_later');
+        if (scheduleLaterRadio && scheduleLaterRadio.checked) {
+            const scheduledDate = document.getElementById('scheduled_date')?.value;
+            const scheduledTime = document.getElementById('scheduled_time')?.value;
+            if (scheduledDate) formData.append('scheduled_date', scheduledDate);
+            if (scheduledTime) formData.append('scheduled_time', scheduledTime);
+        }
+
         // Include thumbnail if we generated one (for videos)
         if (generatedThumbnailBlob) {
             formData.append('thumbnail', generatedThumbnailBlob, 'thumbnail.jpg');
@@ -576,8 +585,14 @@ async function uploadFileInChunks(file) {
         uploadProgressBar.classList.remove('progress-bar-striped', 'progress-bar-animated');
         uploadProgressBar.style.backgroundColor = '#28a745';
 
+        // Check if this was scheduled for later
+        const scheduleLater = document.getElementById('schedule_later')?.checked;
+        const successMessage = scheduleLater
+            ? 'File uploaded successfully and scheduled for later posting!'
+            : 'File uploaded successfully and queued for posting!';
+
         setTimeout(() => {
-            alert('File uploaded successfully and queued for posting!');
+            alert(successMessage);
             window.location.reload();
         }, 1500);
 

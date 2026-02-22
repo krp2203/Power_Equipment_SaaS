@@ -323,9 +323,24 @@ def complete_chunk_upload():
             post_to_instagram = request.form.get('post_to_instagram') == 'true'
             post_to_banner = request.form.get('post_to_banner') == 'true'
             thumbnail_file = request.files.get('thumbnail')
+            scheduled_date = request.form.get('scheduled_date')
+            scheduled_time = request.form.get('scheduled_time')
+
+        # Parse scheduled date/time if provided
+        scheduled_post_time = None
+        if request.is_json:
+            scheduled_date = request.json.get('scheduled_date')
+            scheduled_time = request.json.get('scheduled_time')
+
+        if scheduled_date and scheduled_time:
+            try:
+                scheduled_post_time = datetime.strptime(f"{scheduled_date} {scheduled_time}", '%Y-%m-%d %H:%M')
+            except ValueError:
+                current_app.logger.warning(f"Invalid scheduled date/time format: {scheduled_date} {scheduled_time}")
+                scheduled_post_time = None
 
         # Debug logging
-        current_app.logger.info(f"Complete chunk upload - title: {title}, post_to_facebook: {post_to_facebook}, post_to_instagram: {post_to_instagram}, post_to_banner: {post_to_banner}")
+        current_app.logger.info(f"Complete chunk upload - title: {title}, post_to_facebook: {post_to_facebook}, post_to_instagram: {post_to_instagram}, post_to_banner: {post_to_banner}, scheduled_post_time: {scheduled_post_time}")
 
         org = g.current_org
         if not org:
@@ -390,8 +405,12 @@ def complete_chunk_upload():
             return jsonify({'error': 'Please select at least one destination'}), 400
 
         # Determine initial status and whether to post now
-        initial_status = 'posted' if (post_to_facebook or post_to_instagram or post_to_banner) else 'draft'
-        post_now = (post_to_facebook or post_to_instagram)
+        if scheduled_post_time:
+            initial_status = 'scheduled'
+            post_now = False
+        else:
+            initial_status = 'posted' if (post_to_facebook or post_to_instagram or post_to_banner) else 'draft'
+            post_now = (post_to_facebook or post_to_instagram)
 
         # Create MediaContent record
         media_content = MediaContent(
@@ -405,6 +424,7 @@ def complete_chunk_upload():
             post_to_facebook=post_to_facebook,
             post_to_instagram=post_to_instagram,
             post_to_banner=post_to_banner,
+            scheduled_post_time=scheduled_post_time,
             status=initial_status
         )
 
