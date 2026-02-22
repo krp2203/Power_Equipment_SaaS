@@ -106,9 +106,27 @@ def delete_part(id):
 @inventory_bp.route('/units')
 @login_required
 def manage():
-    # Move Whole Goods to /units
-    units = Unit.query.filter_by(organization_id=g.current_org.id, is_inventory=True).order_by(Unit.id.desc()).all()
-    return render_template('inventory/manage.html', units=units)
+    sort = request.args.get('sort', 'id')
+    order = request.args.get('order', 'desc')
+    
+    query = Unit.query.filter_by(organization_id=g.current_org.id, is_inventory=True)
+    
+    # Sorting logic
+    if sort == 'manufacturer':
+        query = query.order_by(Unit.manufacturer.asc() if order == 'asc' else Unit.manufacturer.desc())
+    elif sort == 'model':
+        query = query.order_by(Unit.model_number.asc() if order == 'asc' else Unit.model_number.desc())
+    elif sort == 'type':
+        query = query.order_by(Unit.type.asc() if order == 'asc' else Unit.type.desc())
+    elif sort == 'price':
+        query = query.order_by(Unit.price.asc() if order == 'asc' else Unit.price.desc())
+    elif sort == 'year':
+        query = query.order_by(Unit.year.asc() if order == 'asc' else Unit.year.desc())
+    else:
+        query = query.order_by(Unit.id.desc())
+        
+    units = query.all()
+    return render_template('inventory/manage.html', units=units, current_sort=sort, current_order=order)
 
 @inventory_bp.route('/add', methods=['GET', 'POST'])
 @login_required
@@ -119,7 +137,8 @@ def add():
             organization_id=g.current_org.id,
             manufacturer=form.manufacturer.data,
             model_number=form.model_number.data,
-            serial_number=form.serial_number.data,
+            type=form.type.data,
+            serial_number=form.serial_number.data if form.condition.data != 'New' and form.serial_number.data else None,
             year=form.year.data,
             condition=form.condition.data,
             price=form.price.data,
@@ -175,7 +194,8 @@ def edit(id):
     if form.validate_on_submit():
         unit.manufacturer = form.manufacturer.data
         unit.model_number = form.model_number.data
-        unit.serial_number = form.serial_number.data
+        unit.type = form.type.data
+        unit.serial_number = form.serial_number.data if form.condition.data != 'New' and form.serial_number.data else None
         unit.year = form.year.data
         unit.condition = form.condition.data
         unit.price = form.price.data

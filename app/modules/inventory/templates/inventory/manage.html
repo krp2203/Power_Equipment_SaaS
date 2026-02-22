@@ -20,8 +20,38 @@
                 <thead class="bg-light">
                     <tr>
                         <th class="ps-4">Image</th>
-                        <th>Unit Details</th>
-                        <th>Price</th>
+                        <th>
+                            <a href="{{ url_for('inventory.manage', sort='manufacturer', order='asc' if current_sort == 'manufacturer' and current_order == 'desc' else 'desc') }}"
+                                class="text-dark text-decoration-none">
+                                Manufacturer {% if current_sort == 'manufacturer' %}<i
+                                    class="bi bi-sort-{{ 'alpha-down' if current_order == 'asc' else 'alpha-up' }}"></i>{%
+                                endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('inventory.manage', sort='model', order='asc' if current_sort == 'model' and current_order == 'desc' else 'desc') }}"
+                                class="text-dark text-decoration-none">
+                                Model {% if current_sort == 'model' %}<i
+                                    class="bi bi-sort-{{ 'alpha-down' if current_order == 'asc' else 'alpha-up' }}"></i>{%
+                                endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('inventory.manage', sort='type', order='asc' if current_sort == 'type' and current_order == 'desc' else 'desc') }}"
+                                class="text-dark text-decoration-none">
+                                Type {% if current_sort == 'type' %}<i
+                                    class="bi bi-sort-{{ 'alpha-down' if current_order == 'asc' else 'alpha-up' }}"></i>{%
+                                endif %}
+                            </a>
+                        </th>
+                        <th>
+                            <a href="{{ url_for('inventory.manage', sort='price', order='asc' if current_sort == 'price' and current_order == 'desc' else 'desc') }}"
+                                class="text-dark text-decoration-none">
+                                Price {% if current_sort == 'price' %}<i
+                                    class="bi bi-sort-{{ 'numeric-down' if current_order == 'asc' else 'numeric-up' }}"></i>{%
+                                endif %}
+                            </a>
+                        </th>
                         <th>Status</th>
                         <th>Web</th>
                         <th class="text-end pe-4">Actions</th>
@@ -50,6 +80,9 @@
                             <strong>{{ unit.year or '' }} {{ unit.manufacturer }} {{ unit.model_number }}</strong>
                             <br>
                             <small class="text-muted">{{ unit.serial_number or 'No Serial' }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-light text-dark border">{{ unit.type or 'Untyped' }}</span>
                         </td>
                         <td>${{ unit.price }}</td>
                         <td>

@@ -153,12 +153,35 @@ def get_site_info():
 def get_inventory():
     from app.core.models import Unit, UnitImage
     
-    # Fetch units marked as inventory and displayable
-    # Filter by current organization is automatic via tenancy, but explicit check is good
     if not g.current_org:
         return jsonify([])
         
-    units = Unit.query.filter_by(organization_id=g.current_org.id, is_inventory=True, display_on_web=True).all()
+    # Filters
+    manufacturer = request.args.get('manufacturer')
+    unit_type = request.args.get('type')
+    sort = request.args.get('sort', 'id')
+    order = request.args.get('order', 'desc')
+    
+    query = Unit.query.filter_by(organization_id=g.current_org.id, is_inventory=True, display_on_web=True)
+    
+    if manufacturer:
+        query = query.filter(Unit.manufacturer == manufacturer)
+    if unit_type:
+        query = query.filter(Unit.type == unit_type)
+        
+    # Sorting
+    if sort == 'price':
+        query = query.order_by(Unit.price.asc() if order == 'asc' else Unit.price.desc())
+    elif sort == 'manufacturer':
+        query = query.order_by(Unit.manufacturer.asc() if order == 'asc' else Unit.manufacturer.desc())
+    elif sort == 'type':
+        query = query.order_by(Unit.type.asc() if order == 'asc' else Unit.type.desc())
+    elif sort == 'year':
+        query = query.order_by(Unit.year.asc() if order == 'asc' else Unit.year.desc())
+    else:
+        query = query.order_by(Unit.id.desc())
+        
+    units = query.all()
     
     results = []
     for unit in units:
@@ -173,15 +196,44 @@ def get_inventory():
         results.append({
             "id": unit.id,
             "name": f"{unit.manufacturer or ''} {unit.model_number or ''}".strip(),
+            "manufacturer": unit.manufacturer,
+            "model": unit.model_number,
+            "type": unit.type,
             "price": float(unit.price) if unit.price else 0.0,
-            "stock": 1, # Whole goods are usually 1 unique item
+            "stock": 1,
             "status": unit.status,
             "image": image_url,
             "description": unit.description,
-            "condition": unit.condition or "New"
+            "condition": unit.condition or "New",
+            "year": unit.year
         })
         
     return jsonify(results)
+
+@api_bp.route('/v1/inventory/filters', methods=['GET'])
+def get_inventory_filters():
+    from app.core.models import Unit
+    
+    if not g.current_org:
+        return jsonify({"manufacturers": [], "types": []})
+        
+    # Get unique manufacturers and types that are currently in inventory
+    manufacturers = db.session.query(Unit.manufacturer).filter_by(
+        organization_id=g.current_org.id, 
+        is_inventory=True, 
+        display_on_web=True
+    ).distinct().all()
+    
+    types = db.session.query(Unit.type).filter_by(
+        organization_id=g.current_org.id, 
+        is_inventory=True, 
+        display_on_web=True
+    ).distinct().all()
+    
+    return jsonify({
+        "manufacturers": sorted([m[0] for m in manufacturers if m[0]]),
+        "types": sorted([t[0] for t in types if t[0]])
+    })
 
 @api_bp.route('/v1/parts', methods=['GET'])
 def get_parts():

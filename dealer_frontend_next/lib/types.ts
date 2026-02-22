@@ -51,6 +51,7 @@ export interface InventoryItem {
     year?: number;
     condition?: string;
     unit_hours?: string;
+    type?: string;
 }
 
 export interface PartItem {

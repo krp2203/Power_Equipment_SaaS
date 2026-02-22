@@ -135,6 +135,7 @@ class Unit(db.Model):
     owner_phone = db.Column(db.String(50))
     owner_email = db.Column(db.String(100))
     unit_hours = db.Column(db.String(50))
+    type = db.Column(db.String(50)) # e.g. Mower, Chainsaw, Blower
     
     # Marketing / Inventory Flags
     is_owned = db.Column(db.Boolean, default=False)
@@ -152,9 +153,9 @@ class Unit(db.Model):
     description = db.Column(db.Text)
     is_inventory = db.Column(db.Boolean, default=False)
     
-    __table_args__ = (
-        UniqueConstraint('serial_number', 'organization_id', name='_serial_org_uc'),
-    )
+    # __table_args__ = (
+    #     UniqueConstraint('serial_number', 'organization_id', name='_serial_org_uc'),
+    # )
 
 class UnitImage(db.Model):
     id = db.Column(db.Integer, primary_key=True)

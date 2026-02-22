@@ -12,18 +12,22 @@
                     {{ form.hidden_tag() }}
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">{{ form.manufacturer.label }}</label>
                             {{ form.manufacturer(class="form-control") }}
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <label class="form-label">{{ form.model_number.label }}</label>
                             {{ form.model_number(class="form-control") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">{{ form.type.label }}</label>
+                            {{ form.type(class="form-control", placeholder="e.g. Mower, Blower") }}
                         </div>
                     </div>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-6" id="serial-number-container">
                             <label class="form-label">{{ form.serial_number.label }}</label>
                             {{ form.serial_number(class="form-control") }}
                         </div>
@@ -36,7 +40,7 @@
                     <div class="row mb-3">
                         <div class="col-md-4">
                             <label class="form-label">{{ form.condition.label }}</label>
-                            {{ form.condition(class="form-select") }}
+                            {{ form.condition(class="form-select", id="condition-select") }}
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">{{ form.price.label }}</label>
@@ -88,4 +92,28 @@
         </div>
     </div>
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const conditionSelect = document.getElementById('condition-select');
+        const serialContainer = document.getElementById('serial-number-container');
+        const serialInput = serialContainer.querySelector('input');
+
+        function toggleSerialField() {
+            if (conditionSelect.value === 'New') {
+                serialContainer.style.display = 'none';
+                // Optionally clear the value when hiding
+                // serialInput.value = ''; 
+            } else {
+                serialContainer.style.display = 'block';
+            }
+        }
+
+        // Initial check
+        toggleSerialField();
+
+        // Listen for changes
+        conditionSelect.addEventListener('change', toggleSerialField);
+    });
+</script>
 {% endblock %}
