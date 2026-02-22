@@ -41,9 +41,9 @@ export default async function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-16 md:py-24">
-        <div className="container mx-auto px-4 relative min-h-[400px] md:min-h-[500px] flex items-center">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full items-center">
+      <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-8 md:py-12">
+        <div className="container mx-auto px-4 relative min-h-[280px] md:min-h-[320px] flex items-center">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full items-center">
             {/* Logo (Left Side) */}
             {config.theme.hero_show_logo && config.theme.logoUrl && (
               <div className="flex justify-center md:justify-start items-center order-first md:order-none">
@@ -51,7 +51,7 @@ export default async function Home() {
                   <img
                     src={config.theme.logoUrl}
                     alt={config.name}
-                    className="h-64 md:h-80 w-auto object-contain bg-white/5 p-6 rounded-xl backdrop-blur-sm shadow-2xl hover:shadow-2xl transition-shadow"
+                    className="h-48 md:h-56 w-auto object-contain bg-white/5 p-4 rounded-lg backdrop-blur-sm shadow-lg hover:shadow-lg transition-shadow"
                   />
                 </div>
               </div>
@@ -59,10 +59,10 @@ export default async function Home() {
 
             {/* Content (Right Side / Center if no logo) */}
             <div className="flex flex-col items-center md:items-start text-center md:text-left z-10">
-              <h1 className="text-5xl md:text-7xl font-bold mb-6 drop-shadow-lg leading-tight">
+              <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg leading-tight">
                 {heroTitle}
               </h1>
-              <p className="text-xl md:text-2xl mb-10 text-gray-200 drop-shadow-md">
+              <p className="text-lg md:text-xl mb-6 text-gray-200 drop-shadow-md">
                 {heroTagline}
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start w-full">

@@ -48,7 +48,7 @@ export default function AdvertisementCarousel({
   return (
     <>
       {/* Advertisement Carousel - Single Ad at a Time */}
-      <div className="w-full bg-gray-100 py-12 px-4">
+      <div className="w-full bg-gray-100 py-16 px-4">
         <div className="container mx-auto flex justify-center relative">
           {/* Left Arrow */}
           {advertisements.length > 1 && (
@@ -64,7 +64,7 @@ export default function AdvertisementCarousel({
           )}
 
           {/* Current Ad - Centered */}
-          <div className="flex justify-center max-w-4xl">
+          <div className="flex justify-center max-w-5xl">
             <button
               onClick={() => handleThumbnailClick(currentAd)}
               className="overflow-hidden rounded-lg hover:shadow-lg transition-shadow"
@@ -72,7 +72,7 @@ export default function AdvertisementCarousel({
               <img
                 src={currentAd.thumbnail || currentAd.image}
                 alt={currentAd.title}
-                className="h-80 w-auto object-cover hover:opacity-80 transition-opacity"
+                className="h-96 w-auto object-cover hover:opacity-80 transition-opacity"
               />
             </button>
           </div>
