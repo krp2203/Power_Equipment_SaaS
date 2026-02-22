@@ -18,27 +18,31 @@ export async function getDealerConfig(): Promise<DealerConfig> {
 
     // Map root domain to Demo Dealer organization (slug: demo)
     let targetHost = host;
+    let slug = '';
+
+    // Determine slug based on the host
     if (host === 'bentcrankshaft.com' || host === 'www.bentcrankshaft.com') {
-        targetHost = 'demo.bentcrankshaft.com';
+        slug = 'demo'; // Root domain is Demo Dealer
+        // Keep targetHost as bentcrankshaft.com so API responses use correct host
     } else if (host.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/)) {
         // If accessing via IP (local dev), pretend to be localhost so Backend loads Org 1 (Demo Dealer)
+        slug = '';
         targetHost = 'localhost';
+    } else {
+        // Extract slug from host (e.g., 'kens-mowers.bentcrankshaft.com' -> 'kens-mowers')
+        const hostParts = host.split('.');
+        if (hostParts.length > 1 && !host.includes('localhost')) {
+            slug = hostParts[0]; // First part is the slug
+        }
     }
 
     try {
-        // Extract slug from targetHost (e.g., 'demo.bentcrankshaft.com' -> 'demo')
-        const hostParts = targetHost.split('.');
-        let slug = '';
-        if (hostParts.length > 1 && !targetHost.includes('localhost')) {
-            slug = hostParts[0]; // First part is the slug
-        }
-
         const res = await fetch(`${API_BASE}/site-info${slug ? `?slug=${slug}` : ''}`, {
             cache: 'no-store',
             headers: {
                 'Cookie': cookieHeader,
                 'X-Forwarded-Host': targetHost,
-                'Host': targetHost // Ensure Flask sees the original host if possible
+                'Host': targetHost // Pass the actual host so API uses correct domain
             }
         });
         if (!res.ok) throw new Error('Failed to fetch config');
