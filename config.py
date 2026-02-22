@@ -32,7 +32,7 @@ class Config:
     MAIL_SENDER = os.environ.get('MAIL_SENDER')
     
     # Uploads
-    GCS_BUCKET = os.environ.get('GCS_BUCKET')
+    gcs_bucket = os.environ.get('GCS_BUCKET')  # Renamed to gcs_bucket for Celery compatibility
     MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB for video uploads
 
     # Facebook
