@@ -1,0 +1,101 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+instance/
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Celery
+celery-beat-schedule
+celerybeat-schedule
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Static files uploads and temp
+app/static/uploads/
+app/static/uploads/temp/
+
+# Misc
+.venv/
+.pytest_cache/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+node_modules/
+.next/
+out/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test files created during dev
+test_*.txt
+test_*.py
+BOB_WAS_HERE.txt
+create_test_file.sh
+check_site.py
+cleanup_org.py
+diag_db.py
+final_password_fix.py
+fix_master_org_slug.py
+inspect_db.py
+seed_dev_db.py
+
+# Sample/upload directories
+Samples/
+migrations/

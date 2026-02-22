@@ -1,0 +1,1945 @@
+{% extends "_base.html" %}
+
+
+{% block title %}Case #{{ case.id }}{% endblock %}
+
+{% block head_styles %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tributejs/dist/tribute.css" />
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<!-- Trix Editor for rich text notes -->
+<link rel="stylesheet" type="text/css" href="https://unpkg.com/trix@2.0.0/dist/trix.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@yaireo/tagify/dist/tagify.css">
+<style>
+    .timeline {
+        list-style: none;
+        padding: 0;
+        position: relative;
+    }
+
+    .timeline:before {
+        content: '';
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 2px;
+        background: #e9ecef;
+        left: 1.5rem;
+    }
+
+    .timeline-item {
+        display: flex;
+        gap: 1.5rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .timeline-icon {
+        z-index: 1;
+        width: 3rem;
+        height: 3rem;
+        border-radius: 50%;
+        background: #0d6efd;
+        color: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+    }
+
+    .timeline-content {
+        flex: 1;
+    }
+
+    .btn-xs {
+        --bs-btn-padding-y: .1rem;
+        --bs-btn-padding-x: .4rem;
+        --bs-btn-font-size: .75rem;
+    }
+
+    .reply-indent-reset {
+        /* This class counteracts 2 levels of parent padding (3.0rem) */
+        /* and the indentation of the reply arrow/gap (~2.5rem) */
+        /* to align the text with the original comment. */
+        margin-left: -5.5rem;
+        padding-left: 0 !important;
+    }
+
+    .btn-glowing {
+        animation: glowing-success 1.5s infinite;
+    }
+
+    @keyframes glowing-success {
+        0% {
+            box-shadow: 0 0 -5px #198754;
+        }
+
+        40% {
+            box-shadow: 0 0 20px #198754;
+        }
+
+        60% {
+            box-shadow: 0 0 20px #198754;
+        }
+
+        100% {
+            box-shadow: 0 0 -5px #198754;
+        }
+    }
+
+    /* Trix editor styling override */
+    trix-editor {
+        min-height: 120px;
+        background-color: white;
+        border-radius: 0.375rem;
+    }
+
+    /* Constrain the size of images dropped directly into the Trix editor */
+    .trix-content figure img {
+        max-width: 200px;
+        max-height: 200px;
+        height: auto;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Notification Permission Banner -->
+    <div id="notification-permission-banner" class="alert alert-info alert-dismissible fade show" role="alert"
+        style="display: none;">
+        Get notified about case updates!
+        <button type="button" class="btn btn-primary btn-sm" id="enable-notifications-btn">Enable Notifications</button>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        {% if from_dealer_id %}
+        <a href="{{ url_for('view_dealer', dealer_id=from_dealer_id) }}" class="btn btn-secondary btn-sm">← Back to
+            Dealer Details</a>
+        {% else %}
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm">← Back to Dashboard</a>
+        {% endif %}
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+        role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <!-- Left Column: Case Details & Notes -->
+        <div class="col-lg-8">
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">Case #{{ case.id }}</h4>
+                    <div class="text-end">
+                        {% if not case.is_visit %}
+                        <form action="{{ url_for('escalate_case', case_id=case.id) }}" method="POST" class="mb-1"
+                            onsubmit="return confirm('Are you sure you want to escalate this case to a visit?');">
+                            <button type="submit" class="btn btn-warning btn-sm">Escalate to On-Site Visit</button>
+                        </form>
+                        {% endif %}
+                        <span class="badge 
+                            {% if case.status in ['New', 'Needs Scheduling'] %} bg-primary
+                            {% elif case.status in ['In Progress', 'Parts Ordered'] %} bg-warning text-dark
+                            {% elif case.status in ['Waiting on Dealer'] %} bg-secondary
+                            {% elif case.status in ['Resolved', 'Completed'] %} bg-success
+                            {% else %} bg-dark
+                            {% endif %} fs-6">
+                            {{ case.status }}
+                        </span>
+                    </div>
+                    <div class="text-end text-muted small mt-1">
+                        <div>Created: <span class="local-datetime"
+                                data-timestamp="{{ case.creation_timestamp.isoformat() }}Z">{{
+                                case.creation_timestamp.strftime('%b %d, %Y') }}</span></div>
+                        {% if case.closed_date %}
+                        <div>
+                            Closed: <span class="local-datetime" data-timestamp="{{ case.closed_date.isoformat() }}Z">{{
+                                case.closed_date.strftime('%b %d, %Y') }}</span>
+                        </div>
+                        {% endif %}
+                        {% if case.reopened_date %}
+                        <div class="text-danger">Reopened: <span class="local-datetime"
+                                data-timestamp="{{ case.reopened_date.isoformat() }}Z">{{
+                                case.reopened_date.strftime('%b %d, %Y') }}</span></div>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    {% if case.is_visit and case.appointment_date %}
+                    <div class="alert alert-info d-flex justify-content-between align-items-center">
+                        <span><strong>Scheduled Visit Date:</strong> {{ visit_data.formatted_date }}</span>
+                        <div>
+                            {% set subject = "Field Visit: " + (case.dealer.name if case.dealer else 'N/A') %}
+                            {% set details = "Case ID: " + case.id|string + "\nReference: " + (case.reference or '') %}
+                            <div class="btn-group">
+                                {% if visit_data.gcal_url %}<a href="{{ visit_data.gcal_url }}"
+                                    class="btn btn-success btn-sm" target="_blank"><i class="bi bi-google"></i>
+                                    Google</a>{% endif %}
+                                {% if visit_data.outlook_url %}<a href="{{ visit_data.outlook_url }}"
+                                    class="btn btn-primary btn-sm" target="_blank"><i class="bi bi-microsoft"></i>
+                                    Outlook</a>{% endif %}
+                                {% if visit_data.ics_url %}<a href="{{ visit_data.ics_url }}"
+                                    class="btn btn-secondary btn-sm"><i class="bi bi-calendar-event"></i> Desktop</a>{%
+                                endif %}
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#scheduleVisitModal"><i class="bi bi-pencil"></i> Edit</button>
+                        </div>
+                    </div>
+                    {% elif case.is_visit and case.status == 'Needs Scheduling' %}
+                    <div class="alert alert-warning d-flex justify-content-between align-items-center">
+                        <span><strong>Visit needs to be scheduled</strong></span>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal"
+                            data-bs-target="#scheduleVisitModal">
+                            <i class="bi bi-calendar-plus"></i> Schedule Visit
+                        </button>
+                    </div>
+                    {% endif %}
+
+                    {% if follow_up_data.formatted_date %}
+                    <div class="alert alert-warning d-flex justify-content-between align-items-center"
+                        id="follow-up-display">
+                        <span><strong>Follow-up Date:</strong> {{ follow_up_data.formatted_date }}</span>
+                        <div>
+                            <div class="btn-group">
+                                {% if follow_up_data.gcal_url %}<a href="{{ follow_up_data.gcal_url }}"
+                                    class="btn btn-success btn-sm" target="_blank"><i class="bi bi-google"></i>
+                                    Google</a>{% endif %}
+                                {% if follow_up_data.outlook_url %}<a href="{{ follow_up_data.outlook_url }}"
+                                    class="btn btn-primary btn-sm" target="_blank"><i class="bi bi-microsoft"></i>
+                                    Outlook</a>{% endif %}
+                                {% if follow_up_data.ics_url %}<a href="{{ follow_up_data.ics_url }}"
+                                    class="btn btn-secondary btn-sm"><i class="bi bi-calendar-event"></i> Desktop</a>{%
+                                endif %}
+                            </div>
+                            <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal"
+                                data-bs-target="#setFollowUpModal"><i class="bi bi-pencil"></i> Edit</button>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-light d-flex justify-content-between align-items-center"
+                        id="follow-up-display">
+                        <span><strong>Follow-up:</strong> No follow-up date set</span>
+                        <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal"
+                            data-bs-target="#setFollowUpModal">
+                            <i class="bi bi-calendar-plus"></i> Set Follow-up
+                        </button>
+                    </div>
+                    {% endif %}
+
+                    <form action="{{ url_for('update_case', case_id=case.id) }}" method="POST">
+                        <input type="hidden" name="is_visit" value="{{ 'true' if case.is_visit else 'false' }}">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Dealer:</label>
+                                <div class="input-group">
+                                    <select class="form-select" name="dealer_id">
+                                        <option value="None">-- Select a Dealer --</option>
+                                        {% for d in all_dealers %}<option value="{{ d.id }}" {% if case.dealer and
+                                            d.id==case.dealer.id %}selected{% endif %}>{{ d.name }}</option>{% endfor %}
+                                    </select>
+                                    {% if case.dealer %}
+                                    <a href="https://www.google.com/maps/search/?api=1&query={{ case.dealer.address|urlencode }}"
+                                        class="btn btn-outline-primary" target="_blank" title="Navigate to Dealer">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="caller_name" class="form-label">Caller Name:</label>
+                                <input type="text" class="form-control" id="caller_name" name="caller_name"
+                                    value="{{ case.caller_name or '' }}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="status" class="form-label">Status:</label>
+                                <select class="form-select" id="status" name="status">
+                                    {% if case.is_visit %}
+                                    <option {% if case.status=='New' %}selected{% endif %}>New</option>
+                                    <option {% if case.status=='Needs Scheduling' %}selected{% endif %}>Needs Scheduling
+                                    </option>
+                                    <option {% if case.status=='Scheduled' %}selected{% endif %}>Scheduled</option>
+                                    <option {% if case.status=='Parts Ordered' %}selected{% endif %}>Parts Ordered
+                                    </option>
+                                    <option {% if case.status=='Follow Up' %}selected{% endif %}>Follow Up</option>
+                                    <option {% if case.status=='Completed' %}selected{% endif %}>Completed</option>
+                                    {% elif case.case_type == 'Internal Repair' %}
+                                    <option {% if case.status=='New' %}selected{% endif %}>New</option>
+                                    <option {% if case.status=='In Progress' %}selected{% endif %}>In Progress</option>
+                                    <option {% if case.status=='Awaiting Parts' %}selected{% endif %}>Awaiting Parts
+                                    </option>
+                                    <option {% if case.status=='Follow Up' %}selected{% endif %}>Follow Up</option>
+                                    <option {% if case.status=='Completed' %}selected{% endif %}>Completed</option>
+                                    {% else %}
+                                    <option {% if case.status=='New' %}selected{% endif %}>New</option>
+                                    <option {% if case.status=='In Progress' %}selected{% endif %}>In Progress</option>
+                                    <option {% if case.status=='Waiting on Dealer' %}selected{% endif %}>Waiting on
+                                        Dealer</option>
+                                    <option {% if case.status=='Follow Up' %}selected{% endif %}>Follow Up</option>
+                                    <option {% if case.status=='Resolved' %}selected{% endif %}>Resolved</option>
+                                    {% endif %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="assigned_to" class="form-label">Assigned To:</label>
+                                <select class="form-select" id="assigned_to" name="assigned_to">
+                                    <option value="None">Unassigned</option>
+                                    {% for user in users %}<option value="{{ user.username }}" {% if
+                                        user.username==case.assigned_to %}selected{% endif %}>{{ user.username }}
+                                    </option>{% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reference" class="form-label">Reference/Subject:</label>
+                            <!-- Trix Editor for Reference/Subject -->
+                            <input id="reference_input" type="hidden" name="reference"
+                                value="{{ case.reference or '' }}">
+                            <trix-editor id="reference_editor" input="reference_input" class="mentionable-trix"
+                                placeholder="Enter case reference or subject details...">
+                            </trix-editor>
+                        </div>
+                        <!-- Tags -->
+                        <div class="row mb-2">
+                            <label for="case-tags" class="col-sm-3 col-form-label fw-bold">Tags</label>
+                            <div class="col-sm-9">
+                                <input name="tags" id="case-tags" class="form-control"
+                                    value='{{ case_tags_json | safe }}'>
+                                <div class="form-text">
+                                    Add tags to categorize this case (e.g., engine-stall, hydraulic-leak). Press Enter
+                                    to add a new tag.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end">
+                            <div id="save-status" class="text-muted me-3" style="display: none;">
+                                <i class="bi bi-check-circle text-success"></i> Saved
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Case Timeline & Notes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="bg-light border rounded p-3 mb-4">
+                        <form action="{{ url_for('add_note', case_id=case.id) }}" method="POST"
+                            enctype="multipart/form-data" id="new-note-form">
+                            <div class="mb-3" style="position: relative;">
+                                <label for="new_note" class="form-label fw-bold">Add a new note</label>
+                                <!-- Trix Editor for New Notes -->
+                                <input id="new_note_input" type="hidden" name="new_note">
+                                <trix-editor id="new_note_editor" input="new_note_input" class="mentionable-trix"
+                                    placeholder="Type a note, @mention a user, or paste/drag files here!">
+                                </trix-editor>
+
+                                <div id="note-upload-feedback" class="form-text text-success"></div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="attachment" class="form-label">Attach files (optional)</label>
+                                <input class="form-control" type="file" id="attachment" name="attachment"
+                                    accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" multiple>
+                                <div id="attachment-upload-feedback" class="form-text"></div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" value="on" id="notify_users"
+                                        name="notify_users">
+                                    <label class="form-check-label" for="notify_users">
+                                        Notify Users via Email
+                                    </label>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Add Note &amp; Upload Files</button>
+                                <a href="#timeline-bottom" class="btn btn-sm btn-outline-secondary">Jump to Oldest <i
+                                        class="bi bi-arrow-down"></i></a>
+                            </div>
+                        </form>
+                    </div>
+                    <hr>
+                    {% macro render_note_body(note, case) %}
+                    {# This macro renders the content and actions for a single note. #}
+                    {# Use an iframe to completely isolate potentially broken HTML from the note content #}
+                    <div class="note-content text-break">{{ note.rendered_html | safe }}</div>
+                    <small class="text-muted">{{ note.user or 'System' }} on <span class="local-datetime"
+                            title="{{ note.timestamp.isoformat() }}Z"
+                            data-timestamp="{{ note.timestamp.isoformat() }}Z">{{ note.timestamp.strftime('%Y-%m-%d
+                            %H:%M') }} UTC</span></small>
+                    {% endmacro %}
+
+                    {% macro render_replies(notes, case) %}
+                    {# This macro renders a flat list of replies for the collapsible container. #}
+                    {% for reply in notes|sort(attribute='timestamp') %}
+                    <div class="d-flex gap-3 mt-3 pt-3 border-top">
+                        <div class="text-primary pt-1"><i class="bi bi-arrow-return-right"></i></div>
+                        <div class="flex-grow-1">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="w-100">{{ render_note_body(reply, case) }}</div>
+                                <div class="dropdown ms-2">
+                                    <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown"><i
+                                            class="bi bi-three-dots-vertical"></i></button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        <li><button class="dropdown-item" data-bs-toggle="modal"
+                                                data-bs-target="#editNoteModal-{{ reply.id }}">Edit</button></li>
+                                        <li>
+                                            <form
+                                                action="{{ url_for('delete_note', case_id=case.id, note_id=reply.id) }}"
+                                                method="POST" onsubmit="return confirm('Are you sure?');"><button
+                                                    type="submit" class="dropdown-item text-danger">Delete</button>
+                                            </form>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
+                            {% if reply.replies.count() > 0 %}
+                            {{ render_replies(reply.replies, case) }} {# Recurse to show children #}
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endfor %}
+                    {% endmacro %}
+
+                    <ul class="timeline">
+                        {% set timeline_items = (case.notes|selectattr("parent_id", "equalto", none)|list +
+                        standalone_attachments)|sort(attribute='timestamp', reverse=True) %}
+                        {% for item in timeline_items %}
+                        {% if item.text is defined %}
+                        {# --- It is a Note --- #}
+                        {% set note = item %}
+                        <li class="timeline-item">
+                            <div class="timeline-icon"><i class="bi bi-chat-left-text"></i></div>
+                            <div class="timeline-content">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="w-100">{{ render_note_body(note, case) }}</div>
+                                    <div class="dropdown ms-2">
+                                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown"><i
+                                                class="bi bi-three-dots-vertical"></i></button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><button class="dropdown-item" data-bs-toggle="modal"
+                                                    data-bs-target="#editNoteModal-{{ note.id }}">Edit</button></li>
+                                            <li>
+                                                <form
+                                                    action="{{ url_for('delete_note', case_id=case.id, note_id=note.id) }}"
+                                                    method="POST" onsubmit="return confirm('Are you sure?');"><button
+                                                        type="submit" class="dropdown-item text-danger">Delete</button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <!-- Reply Button (now outside the main note body rendering) -->
+                                <div class="mt-2">
+                                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                                        data-bs-toggle="modal" data-bs-target="#replyNoteModal-{{ note.id }}">
+                                        <i class="bi bi-reply"></i> Reply
+                                    </button>
+                                </div>
+
+                                {% if note.replies.count() > 0 %}
+                                <div class="mt-2">
+                                    <a class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-toggle="collapse"
+                                        href="#collapse-thread-{{ note.id }}" role="button">
+                                        <i class="bi bi-diagram-3"></i>
+                                        View {{ note.replies.count() }} replies
+                                    </a>
+                                </div>
+                                <div class="collapse mt-2" id="collapse-thread-{{ note.id }}">
+                                    <div class="p-3 bg-light rounded-2">
+                                        {{ render_replies(note.replies, case) }}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </li>
+                        {% else %}
+                        {# --- It is a Standalone Attachment --- #}
+                        {% set attachment = item %}
+                        <li class="timeline-item">
+                            <div class="timeline-icon"><i class="bi {{ attachment.icon_class }}"></i></div>
+                            <div class="timeline-content">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <i class="bi {{ attachment.icon_class }} me-2"></i>
+                                            <a href="{{ attachment.file_url }}" target="_blank"><strong>{{
+                                                    attachment.original_filename }}</strong></a>
+                                        </div>
+                                        {% if attachment.file_type == 'image' %}
+                                        <div class="mb-2">
+                                            <a href="{{ attachment.file_url }}" target="_blank">
+                                                <img src="{{ attachment.file_url }}"
+                                                    alt="{{ attachment.original_filename }}" class="img-thumbnail"
+                                                    style="max-width: 200px; max-height: 200px;">
+                                            </a>
+                                        </div>
+                                        {% endif %}
+                                        <small class="text-muted">File uploaded on <span class="local-datetime"
+                                                title="{{ attachment.timestamp.isoformat() }}Z"
+                                                data-timestamp="{{ attachment.timestamp.isoformat() }}Z">{{
+                                                attachment.timestamp.strftime('%Y-%m-%d %H:%M') }}
+                                                UTC</span></small>
+                                    </div>
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-light" type="button" data-bs-toggle="dropdown"><i
+                                                class="bi bi-three-dots-vertical"></i></button>
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li><a class="dropdown-item" href="{{ attachment.file_url }}"
+                                                    target="_blank">Open File</a></li>
+                                            <li>
+                                                <form
+                                                    action="{{ url_for('delete_attachment', case_id=case.id, attachment_id=attachment.id) }}"
+                                                    method="POST" onsubmit="return confirm('Are you sure?');">
+                                                    <button type="submit"
+                                                        class="dropdown-item text-danger">Delete</button>
+                                                </form>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        <li id="timeline-bottom"></li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Unit & Dealer Info -->
+        <div class="col-lg-4">
+            {% if case.case_type == 'Internal Repair' %}
+            {# --- NEW UI FOR INTERNAL REPAIR CASES --- #}
+
+            <!-- Repair Cost Summary Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-calculator me-2"></i>Repair Cost Summary</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <span>Parts Cost:</span>
+                        <strong>{{ case.total_parts_cost | currency }}</strong>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span>Labor Cost:</span>
+                        <strong>{{ case.total_labor_cost | currency }}</strong>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between fs-5">
+                        <strong>Total Repair Cost:</strong>
+                        <strong class="text-danger">{{ case.total_repair_cost | currency }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Parts & Labor Management Card -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <ul class="nav nav-tabs card-header-tabs" id="repair-tabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="parts-tab" data-bs-toggle="tab"
+                                data-bs-target="#parts-tab-pane" type="button" role="tab">Parts Used</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="labor-tab" data-bs-toggle="tab"
+                                data-bs-target="#labor-tab-pane" type="button" role="tab">Labor Log</button>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body tab-content" id="repair-tabs-content">
+                    <!-- Parts Tab -->
+                    <div class="tab-pane fade show active" id="parts-tab-pane" role="tabpanel">
+                        <!-- New Dynamic Part Search -->
+                        <div class="mb-3 p-2 border rounded bg-light position-relative">
+                            <input type="text" id="part-search-input" class="form-control"
+                                placeholder="Type Part Number to search...">
+                            <div id="part-search-results" class="list-group position-absolute w-100"
+                                style="z-index: 1000; display: none; max-height: 300px; overflow-y: auto;">
+                                <!-- Search results will be injected here by JavaScript -->
+                                <!-- "No results" message will also be injected here -->
+                            </div>
+                        </div>
+
+                        <!-- Hidden form for adding the selected part -->
+                        <form id="add-part-form" action="{{ url_for('add_part_to_case', case_id=case.id) }}"
+                            method="POST" style="display: none;">
+                            <input type="hidden" name="part_manufacturer" id="selected-part-manufacturer">
+                            <input type="hidden" name="part_number" id="selected-part-number">
+                            <input type="hidden" name="quantity" value="1">
+                        </form>
+                        <ul class="list-group list-group-flush">
+                            {% for part in case.parts_used|sort(attribute='timestamp', reverse=True) %}
+                            <li class="list-group-item px-0">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        {% if part.part_number.startswith('MISC:') %}
+                                        <strong>{{ part.part_number[6:] }}</strong> <span
+                                            class="badge bg-secondary">Misc</span> (x<span
+                                            id="qty-display-{{ part.id }}">{{ part.quantity }}</span>)
+                                        {% else %}
+                                        <strong>{{ part.part_number }}</strong> (x<span
+                                            id="qty-display-{{ part.id }}">{{ part.quantity }}</span>)
+                                        {% endif %}
+                                        <br>
+                                        <small class="text-muted fst-italic">{{ part.description_at_time_of_use
+                                            }}</small>
+                                        <br>
+                                        <small class="text-muted">{{ (part.quantity * part.cost_at_time_of_use) |
+                                            currency }} at {{ part.cost_at_time_of_use | currency }} each</small>
+                                    </div>
+                                    <div class="d-flex gap-2">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary"
+                                            onclick="toggleEditPart('{{ part.id }}')" title="Edit Quantity"><i
+                                                class="bi bi-pencil"></i></button>
+                                        <form
+                                            action="{{ url_for('delete_part_from_case', case_id=case.id, part_used_id=part.id) }}"
+                                            method="POST" onsubmit="return confirm('Delete this part entry?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger"
+                                                title="Delete Part Entry"><i class="bi bi-x-lg"></i></button>
+                                        </form>
+                                    </div>
+                                </div>
+                                <!-- Inline Edit Form -->
+                                <div id="edit-part-form-{{ part.id }}" class="mt-2" style="display: none;">
+                                    <form
+                                        action="{{ url_for('update_part_quantity', case_id=case.id, part_used_id=part.id) }}"
+                                        method="POST" class="d-flex align-items-center gap-2">
+                                        <div class="input-group input-group-sm" style="max-width: 200px;">
+                                            <span class="input-group-text">Qty</span>
+                                            <input type="number" name="quantity" class="form-control"
+                                                value="{{ part.quantity }}" min="1" required>
+                                        </div>
+                                        <button type="submit" class="btn btn-sm btn-success">Save</button>
+                                        <button type="button" class="btn btn-sm btn-secondary"
+                                            onclick="toggleEditPart('{{ part.id }}')">Cancel</button>
+                                    </form>
+                                </div>
+                            </li>
+                            {% else %}
+                            <li class="list-group-item px-0 text-muted">No parts have been added to this repair.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <!-- Labor Tab -->
+                    <div class="tab-pane fade" id="labor-tab-pane" role="tabpanel">
+                        <form action="{{ url_for('add_labor_to_case', case_id=case.id) }}" method="POST" class="mb-3">
+                            <div class="row g-2">
+                                <div class="col-4">
+                                    <input type="number" name="hours_spent" class="form-control" placeholder="Hours"
+                                        step="0.1" min="0.1" required>
+                                </div>
+                                <div class="col-8">
+                                    <input type="text" name="description" class="form-control"
+                                        placeholder="Brief description of work...">
+                                </div>
+                            </div>
+                            <div class="d-grid mt-2">
+                                <button class="btn btn-primary" type="submit">Log Labor</button>
+                            </div>
+                        </form>
+                        <ul class="list-group list-group-flush">
+                            {% for entry in case.labor_entries|sort(attribute='timestamp', reverse=True) %}
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0">
+                                <div>
+                                    <strong>{{ entry.hours_spent }} hrs</strong> by {{ entry.user.username }}
+                                    <br>
+                                    <small class="text-muted">{{ (entry.hours_spent * entry.rate_at_time_of_log) |
+                                        currency }} at {{ entry.rate_at_time_of_log | currency }}/hr</small>
+                                    {% if entry.description %}<p class="mb-0 fst-italic">"{{ entry.description }}"</p>{%
+                                    endif %}
+                                </div>
+                                <form
+                                    action="{{ url_for('delete_labor_from_case', case_id=case.id, labor_entry_id=entry.id) }}"
+                                    method="POST" onsubmit="return confirm('Delete this labor entry?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        title="Delete Labor Entry"><i class="bi bi-x-lg"></i></button>
+                                </form>
+                            </li>
+                            {% else %}
+                            <li class="list-group-item px-0 text-muted">No labor has been logged for this repair.</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            {% else %}
+            {# --- ORIGINAL UI FOR STANDARD SUPPORT CASES --- #}
+
+            <!-- Knowledge Base Search -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-book-half me-2"></i>Knowledge Base</h5>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" id="kb-search-input" class="form-control" placeholder="Search documents...">
+                        <button class="btn btn-outline-secondary" type="button" id="kb-search-btn"><i
+                                class="bi bi-search"></i></button>
+                    </div>
+                    <div id="kb-results-container">
+                        <p class="text-muted small">Enter a model number, keyword, or error code to find relevant
+                            documents.</p>
+                    </div>
+                    <div id="kb-loading-spinner" class="text-center" style="display: none;">
+                        <div class="spinner-border spinner-border-sm" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dealer Information -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Dealer Information</h5>
+                </div>
+                <div class="card-body" id="dealer-info-card-body">
+                    {% if case.dealer %}
+                    <p><strong>Name:</strong> <a href="{{ url_for('view_dealer', dealer_id=case.dealer.id) }}">{{
+                            case.dealer.name }}</a></p>
+                    <p><strong>Address:</strong> {{ case.dealer.address or 'N/A' }}</p>
+                    <p><strong>Manufacturers:</strong> {{ case.dealer.manufacturers or 'N/A' }}</p>
+                    <hr>
+                    <h6>Contacts:</h6>
+                    {% for contact in case.dealer.contacts %}
+                    <p>
+                        {{ contact.name or 'N/A' }} ({{ contact.role or 'Contact' }})<br />
+                        <i class="bi bi-telephone"></i>
+                        {% if contact.phone %}
+                        <a href="tel:{{ contact.phone }}">{{ contact.phone }}</a>
+                        {% else %}
+                        N/A
+                        {% endif %}
+                        <br />
+                        <i class="bi bi-envelope"></i> {{ contact.email or 'N/A' }}
+                    </p>
+                    {% else %}
+                    <p class="text-muted">No contacts listed.</p>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-muted">No dealer assigned to this case.</p>
+                    <form action="{{ url_for('add_dealer_from_case', case_id=case.id) }}" method="POST">
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="new_dealer_name"
+                                placeholder="Enter New Dealer Name" required>
+                            <button type="submit" class="btn btn-primary">Create & Assign</button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% endif %}
+
+            <!-- Unit Information (Unified for all case types) -->
+            <div class="card mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Unit Information</h5>
+                </div>
+                <div id="unit-info-form" class="card-body">
+                    {% if case.unit %}
+                    <div class="d-flex justify-content-end mb-3">
+                        <a href="{{ url_for('edit_unit', case_id=case.id, serial_number=case.unit.serial_number) }}"
+                            class="btn btn-primary btn-sm">Edit Unit Details</a>
+                        <form action="{{ url_for('remove_unit_from_case', case_id=case.id) }}" method="POST"
+                            onsubmit="return confirm('Are you sure you want to remove this unit from the case?');"
+                            class="d-inline ms-2">
+                            <button type="submit" class="btn btn-danger btn-sm">Remove Unit</button>
+                        </form>
+                    </div>
+                    <p><strong>Serial #:</strong> {{ case.unit.serial_number }}</p>
+                    <p><strong>Model #:</strong> {{ case.unit.model_number or 'N/A' }}</p>
+                    <p><strong>Manufacturer:</strong> {{ case.unit.manufacturer or 'N/A' }}</p>
+                    <p>
+                        <strong>Unit Hours:</strong>
+                        <span id="unit-hours-display">{{ case.unit.unit_hours or 'N/A' }}</span>
+                        <button class="btn btn-outline-secondary btn-xs ms-2" id="edit-unit-hours-btn"
+                            title="Edit Hours"><i class="bi bi-pencil"></i></button>
+                    </p>
+                    <div id="edit-unit-hours-form" class="mt-2" style="display: none;">
+                        <div class="input-group input-group-sm">
+                            <input type="text" class="form-control" id="unit-hours-input"
+                                value="{{ case.unit.unit_hours or '' }}">
+                            <button class="btn btn-success" id="save-unit-hours-btn">Save</button>
+                            <button class="btn btn-secondary" id="cancel-unit-hours-btn">Cancel</button>
+                        </div>
+                        <div id="unit-hours-save-status" class="form-text"></div>
+                    </div>
+                    <hr>
+                    <p class="mb-1"><strong>Owner:</strong> {{ case.unit.owner_name or 'N/A' }}</p>
+                    <p class="mb-1"><strong>Company:</strong> {{ case.unit.owner_company or 'N/A' }}</p>
+                    <div class="mb-1">
+                        <strong>Address:</strong>
+                        <div class="input-group input-group-sm">
+                            <span class="form-control form-control-sm bg-light">{{ case.unit.owner_address or 'N/A'
+                                }}</span>
+                            {% if case.unit.owner_address %}
+                            <a href="https://www.google.com/maps/search/?api=1&query={{ case.unit.owner_address|urlencode }}"
+                                class="btn btn-outline-secondary" target="_blank" title="View on Map"><i
+                                    class="bi bi-geo-alt-fill"></i></a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="mb-1">
+                        <strong>Phone:</strong>
+                        <div class="input-group input-group-sm">
+                            <span class="form-control form-control-sm bg-light">{{ case.unit.owner_phone or 'N/A'
+                                }}</span>
+                            {% if case.unit.owner_phone %}<a href="tel:{{ case.unit.owner_phone }}"
+                                class="btn btn-outline-secondary" title="Call Owner"><i
+                                    class="bi bi-telephone-outbound"></i></a>{% endif %}
+                        </div>
+                    </div>
+                    {% else %}
+                    <p class="text-muted">No unit is attached to this case. Enter a serial number to find an existing
+                        unit or add a new one.</p>
+                    <form action="{{ url_for('edit_unit', case_id=case.id) }}" method="GET">
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="serial_number"
+                                placeholder="Enter Unit Serial Number" required>
+                            <button class="btn btn-primary" type="submit">Find or Add Unit</button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Actions -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Actions</h5>
+                </div>
+                <div class="card-body d-grid gap-2">
+                    {% if case.case_type != 'Internal Repair' %}
+                    <form action="{{ url_for('convert_to_internal_repair', case_id=case.id) }}" method="POST"
+                        onsubmit="return confirm('Are you sure you want to convert this to an Internal Repair case? This will enable cost tracking and cannot be undone.');">
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-secondary"><i class="bi bi-tools"></i> Convert to
+                                Internal Repair</button>
+                        </div>
+                    </form>
+                    <hr>
+                    {% endif %}
+
+                    {% if reply_to_address %}
+                    <div class="mb-2">
+                        <label for="reply-to-email" class="form-label small text-muted">Case Reply-To Email</label>
+                        <div class="input-group">
+                            <input type="text" id="reply-to-email" class="form-control form-control-sm"
+                                value="{{ reply_to_address }}" readonly>
+                            <button class="btn btn-outline-secondary btn-sm" type="button" id="copy-reply-to-btn"
+                                title="Copy to Clipboard">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                        <div class="form-text small">Share this address to allow others to comment on this case via
+                            email.</div>
+                    </div>
+                    <hr>
+                    {% endif %}
+                    <button class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#mergeCaseModal"><i
+                            class="bi bi-union"></i> Merge Another Case Into This One</button>
+                    <button class="btn btn-info" data-bs-toggle="modal" data-bs-target="#sendSummaryModal"><i
+                            class="bi bi-envelope-paper"></i> Send Case Summary</button>
+                    <form action="{{ url_for('delete_case', case_id=case.id) }}" method="POST"
+                        onsubmit="return confirm('Are you sure you want to permanently delete this case?');">
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-danger"><i class="bi bi-trash"></i> Delete
+                                Case</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Merge Case Modal -->
+<div class="modal fade" id="mergeCaseModal" tabindex="-1" aria-labelledby="mergeCaseModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="merge-case-form" action="{{ url_for('merge_case', master_case_id=case.id) }}" method="POST"
+                onsubmit="return confirm('Are you sure you want to merge the selected case into this one? This action cannot be undone.');">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="mergeCaseModalLabel">Merge Case Into #{{ case.id }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Search for the case you want to merge into this one. All notes, attachments, and tags from the
+                        selected case will be moved here, and the selected case will be marked as "Merged".</p>
+                    <div class="mb-3">
+                        <label for="merge-search-input" class="form-label">Search for Case (by ID, Subject, or
+                            Dealer)</label>
+                        <input type="text" id="merge-search-input" class="form-control"
+                            placeholder="e.g., 12345, engine issue, Scag...">
+                    </div>
+                    <div id="merge-search-results" class="list-group" style="max-height: 300px; overflow-y: auto;">
+                        <!-- Search results will appear here -->
+                    </div>
+                    <hr>
+                    <div id="selected-case-to-merge" class="d-none">
+                        <h6>Case to Merge:</h6>
+                        <div class="alert alert-warning">
+                            <strong>Case #<span id="selected-case-id"></span>:</strong>
+                            <span id="selected-case-reference"></span>
+                            (<span id="selected-case-dealer"></span>)
+                        </div>
+                        <input type="hidden" name="source_case_id" id="source_case_id_input" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" id="merge-submit-btn" class="btn btn-primary" disabled>Merge Case</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Add Manual/Misc Part Modal -->
+<div class="modal fade" id="addManualPartModal" tabindex="-1" aria-labelledby="addManualPartModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form action="{{ url_for('add_manual_part_to_case', case_id=case.id) }}" method="POST">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addManualPartModalLabel">Add New Part or Miscellaneous Item</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Use this form to add a new part to the master price list, or to add a one-off
+                        miscellaneous item like oil or shop supplies.</p>
+
+                    <div class="alert alert-info small">
+                        <strong>For a new inventoried part:</strong> Fill out Manufacturer, Part Number, Description,
+                        and Cost.<br>
+                        <strong>For a miscellaneous item:</strong> Leave Manufacturer and Part Number blank. Fill out
+                        Description and Cost.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="manual_part_manufacturer" class="form-label">Part Manufacturer
+                                (Optional)</label>
+                            <select id="manual_part_manufacturer" name="manual_part_manufacturer" class="form-select">
+                                <option value="">-- Select or Leave Blank --</option>
+                                {% for manu in part_manufacturers %}
+                                <option value="{{ manu }}">{{ manu }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="manual_part_number" class="form-label">Part Number (Optional)</label>
+                            <input type="text" id="manual_part_number" name="manual_part_number" class="form-control">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="manual_description" class="form-label">Description (Required)</label>
+                        <input type="text" id="manual_description" name="manual_description" class="form-control"
+                            required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="manual_cost" class="form-label">Unit Cost (Required)</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" id="manual_cost" name="manual_cost" class="form-control"
+                                    step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="manual_quantity" class="form-label">Quantity</label>
+                            <input type="number" id="manual_quantity" name="manual_quantity" class="form-control"
+                                value="1" min="1" required>
+                        </div>
+                    </div>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add to Case</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modals -->
+<!-- Send Case Summary Modal -->
+<div class="modal fade" id="sendSummaryModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Send Case Summary</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>You can copy the text below, or enter recipient emails to send the summary directly from the system.
+                </p>
+                <textarea id="summary-text" class="form-control" rows="15" readonly>
+Case ID: {{ case.id }}
+Status: {{ case.status }}
+Created: {{ case.creation_timestamp.strftime('%Y-%m-%d %H:%M') }} UTC
+Assigned To: {{ case.assigned_to or 'Unassigned' }}
+Dealer: {{ case.dealer.name if case.dealer else 'N/A' }}
+Caller: {{ case.caller_name or 'N/A' }}
+
+Issue/Reference:
+{{ (case.reference or 'N/A') | html_to_plaintext }}
+{% if unit and unit.serial_number != 'Unit record not found' %}
+
+--- Unit & Owner Information ---
+Manufacturer: {{ unit.manufacturer or 'N/A' }}
+Model: {{ unit.model_number or 'N/A' }}
+Serial #: {{ unit.serial_number or 'N/A' }}
+{% if unit.unit_hours %}Unit Hours: {{ unit.unit_hours }}{% endif %}
+{% if unit.engine_model %}Engine Model: {{ unit.engine_model }}{% endif %}
+{% if unit.engine_serial %}Engine Serial: {{ unit.engine_serial }}{% endif %}
+
+{% if unit.owner_name %}Owner Name: {{ unit.owner_name }}{% endif %}
+{% if unit.owner_company %}Owner Company: {{ unit.owner_company }}{% endif %}
+{% if unit.owner_address %}Owner Address: {{ unit.owner_address }}{% endif %}
+{% if unit.owner_phone %}Owner Phone: {{ unit.owner_phone }}{% endif %}
+{% if unit.owner_email %}Owner Email: {{ unit.owner_email }}{% endif %}
+{% endif %}
+{% if case.case_type == 'Internal Repair' %}
+--- Cost Summary ---
+Parts Cost: ${{ "%.2f"|format(case.total_parts_cost) }}
+Labor Cost: ${{ "%.2f"|format(case.total_labor_cost) }}
+Total Repair Cost: ${{ "%.2f"|format(case.total_repair_cost) }}
+
+--- Parts Used Breakdown ---
+{% for part in case.parts_used %}
+- {{ part.part_number }} (x{{ part.quantity }}) - {{ part.description_at_time_of_use }}: ${{ "%.2f"|format(part.quantity * part.cost_at_time_of_use) }}
+{% else %}
+No parts used.
+{% endfor %}
+{% endif %}
+--- Notes ---
+{% for note in case.notes|sort(attribute='timestamp') %}
+- {{ note.timestamp.strftime('%Y-%m-%d %H:%M') }} UTC ({{note.user or 'System'}}): {{ note.text | html_to_plaintext }}
+{% endfor %}
+                </textarea>
+                <button id="copy-summary-btn" class="btn btn-secondary btn-sm mt-2">Copy to Clipboard</button>
+                <hr>
+                <form action="{{ url_for('send_summary', case_id=case.id) }}" method="POST">
+                    <div class="mb-3">
+                        <label for="recipient_email" class="form-label">Recipient Email Address(es)</label>
+                        <input type="text" class="form-control" id="recipient_email" name="recipient_email"
+                            placeholder="email1@example.com, email2@example.com"
+                            value="{{ case.dealer.contacts[0].email if case.dealer and case.dealer.contacts else '' }}"
+                            required>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Send Email Summary</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Visit Modal -->
+<div class="modal fade" id="scheduleVisitModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Schedule On-Site Visit</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('schedule_visit', case_id=case.id) }}" method="POST">
+                <div class="modal-body">
+                    <label for="appointment_date" class="form-label">Appointment Date</label>
+                    <input type="date" class="form-control" id="appointment_date" name="appointment_date"
+                        value="{{ case.appointment_date or '' }}" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Schedule</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Set Follow-up Modal -->
+<div class="modal fade" id="setFollowUpModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Set Follow-up Date</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="follow-up-form" action="{{ url_for('set_follow_up', case_id=case.id) }}" method="POST">
+                <div class="modal-body">
+                    <label for="follow_up_date" class="form-label">Follow-up Date & Time</label>
+                    <input type="text" class="form-control" id="follow_up_date" name="follow_up_date"
+                        value="{{ case.follow_up_date or '' }}" required placeholder="Select date and time...">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Set Date</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Note Modals -->
+{% for note in case.notes %}
+<div class="modal fade" id="editNoteModal-{{ note.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Note</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('edit_note', case_id=case.id, note_id=note.id) }}" method="POST">
+                <div class="modal-body">
+                    <!-- Trix Editor for Editing Notes -->
+                    <input id="edit-note-input-{{ note.id }}" type="hidden" name="edited_note_text"
+                        value="{{ note.text | e }}">
+                    <trix-editor id="edit-note-editor-{{ note.id }}" input="edit-note-input-{{ note.id }}"
+                        class="mentionable-trix" placeholder="Edit your note...">
+                    </trix-editor>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Reply Note Modals (New) -->
+{% for note in case.notes %}
+<div class="modal fade" id="replyNoteModal-{{ note.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reply to {{ note.user }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="{{ url_for('add_note', case_id=case.id) }}" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="parent_note_id" value="{{ note.id }}">
+                    {% set external_reply_email = '' %}
+                    {% if note.user and note.user.startswith("External Reply (") and note.user.endswith(")") %}
+                    {% set external_reply_email = note.user[16:-1] %}
+                    {% endif %}
+                    <input id="reply-note-input-{{ note.id }}" type="hidden" name="new_note"
+                        value="{% if external_reply_email %}<div>@{{ external_reply_email }}</div><div><br></div>{% endif %}">
+                    <trix-editor id="reply-note-editor-{{ note.id }}" input="reply-note-input-{{ note.id }}"
+                        class="mentionable-trix" placeholder="Write a reply..."></trix-editor>
+                </div>
+                <div class="modal-footer justify-content-between">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="on" id="notify_users_reply_{{ note.id }}"
+                            name="notify_users" checked>
+                        <label class="form-check-label" for="notify_users_reply_{{ note.id }}">
+                            Notify Users
+                        </label>
+                    </div>
+                    <div>
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Post Reply</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+<!-- Mention suggestions box - single element for the whole page -->
+<div id="mention-suggestions" class="list-group"
+    style="display: none; position: absolute; z-index: 2000; max-height: 200px; overflow-y: auto;"></div>
+
+{% endblock %}
+
+{% block body_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tributejs/dist/tribute.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://cdn.jsdelivr.net/npm/@yaireo/tagify"></script>
+<!-- Trix Editor for rich text notes -->
+<script type="text/javascript" src="https://unpkg.com/trix@2.0.0/dist/trix.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/heic2any/0.2.0/heic2any.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- CONFIGURATION & ELEMENT SELECTION ---
+        const caseId = "{{ case.id }}";
+        const allUsers = [{% for user in users %}"{{ user.username }}", {% endfor %}];
+    const noteEditor = document.getElementById('new_note_editor');
+    const noteUploadFeedback = document.getElementById('note-upload-feedback');
+    const attachmentInput = document.getElementById('attachment');
+    const attachmentFeedback = document.getElementById('attachment-upload-feedback');
+    const caseForm = document.querySelector('form[action*="/update"]');
+    const unitForm = document.querySelector('#unit-info-form form');
+    const unitSaveStatusEl = document.getElementById('unit-save-status');
+    const saveUnitButton = document.getElementById('save-unit-changes-button');
+    let unsavedChanges = { case: false, unit: false };
+    const NOTIFICATION_POLL_INTERVAL = 20000; // 20 seconds
+
+    // --- NEW: Dynamic Part Search Logic ---
+    const partSearchInput = document.getElementById('part-search-input');
+    const partSearchResults = document.getElementById('part-search-results');
+    const addPartForm = document.getElementById('add-part-form');
+    let searchTimeout;
+
+    if (partSearchInput) {
+        partSearchInput.addEventListener('input', () => {
+            clearTimeout(searchTimeout);
+            const query = partSearchInput.value.trim();
+
+            if (query.length < 2) {
+                partSearchResults.style.display = 'none';
+                return;
+            }
+
+            searchTimeout = setTimeout(() => {
+                fetch(`{{ url_for('api_search_parts') }}?query=${encodeURIComponent(query)}`)
+                    .then(response => response.json())
+                    .then(parts => {
+                        partSearchResults.innerHTML = '';
+                        if (parts.length > 0) {
+                            parts.forEach(part => {
+                                const item = document.createElement('div');
+                                // item.href = '#'; // Removed href
+                                item.className = 'list-group-item list-group-item-action';
+                                item.innerHTML = `
+                                    <strong>${part.part_number}</strong> - ${part.manufacturer}
+                                    <br><small class="text-muted">${part.description || 'No description'}</small>
+                                `;
+                                // --- NEW: Add quantity input and button ---
+                                item.innerHTML = `
+                                    <div>
+                                        <strong>${part.part_number}</strong> - ${part.manufacturer}
+                                        <br><small class="text-muted">${part.description || 'No description'}</small>
+                                    </div>
+                                    <div class="input-group input-group-sm" style="width: 120px;">
+                                        <input type="number" class="form-control" value="1" min="1" placeholder="Qty">
+                                        <button class="btn btn-primary">Add</button>
+                                    </div>
+                                `;
+                                item.classList.add('d-flex', 'justify-content-between', 'align-items-center');
+
+                                item.addEventListener('click', (e) => {
+                                    // Allow interaction with input
+                                    if (e.target.tagName === 'INPUT') {
+                                        return;
+                                    }
+
+                                    const button = e.target.closest('button');
+                                    if (button) {
+                                        e.preventDefault(); // Prevent default only for button if needed (though it's a button type=submit usually, but here it's inside a div)
+                                        const quantityInput = item.querySelector('input[type="number"]');
+                                        document.getElementById('selected-part-manufacturer').value = part.manufacturer;
+                                        document.getElementById('selected-part-number').value = part.part_number;
+                                        document.querySelector('#add-part-form input[name="quantity"]').value = quantityInput.value;
+                                        addPartForm.submit();
+                                    }
+                                });
+                                partSearchResults.appendChild(item);
+                            });
+                            partSearchResults.style.display = 'block';
+                        } else {
+                            // --- NEW: Show "Add New" button if no results ---
+                            partSearchResults.innerHTML = `
+                                <div class="list-group-item text-muted text-center">
+                                    No parts found for "${query}".
+                                    <hr class="my-2">
+                                    <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#addManualPartModal">Add New Part or Misc. Item</button>
+                                </div>
+                            `;
+                            partSearchResults.style.display = 'block';
+                        }
+                    });
+            }, 300); // Debounce for 300ms
+        });
+
+        // Hide results when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!partSearchInput.contains(e.target) && !partSearchResults.contains(e.target)) {
+                partSearchResults.style.display = 'none';
+            }
+        });
+    }
+
+    // --- "Add New Manufacturer" Logic for Unit Info Card ---
+    const unitManufacturerSelect = document.getElementById('unit-manufacturer');
+    const unitNewManufacturerInput = document.getElementById('unit-new-manufacturer');
+
+    if (unitManufacturerSelect && unitNewManufacturerInput) {
+        unitManufacturerSelect.addEventListener('change', function () {
+            if (this.value === '__add_new__') {
+                unitNewManufacturerInput.style.display = 'block';
+                unitNewManufacturerInput.setAttribute('required', 'required');
+                unitNewManufacturerInput.focus();
+            } else {
+                unitNewManufacturerInput.style.display = 'none';
+                unitNewManufacturerInput.removeAttribute('required');
+                unitNewManufacturerInput.value = '';
+            }
+        });
+
+        // When submitting, if "Add New" is selected, the backend will check for `new_manufacturer`.
+        // We need to ensure the main `manufacturer` select value is handled correctly.
+        // The backend logic will need to be updated to prioritize `new_manufacturer` if present.
+        // This will be handled in the `_update_unit_from_form` and `add_case` functions.
+    }
+
+    // --- NEW: Unsaved Changes Prompt for Unit Form ---
+    if (unitForm) {
+        let hasUnsavedUnitChanges = false;
+
+        unitForm.querySelectorAll('input, select, textarea').forEach(el => {
+            el.addEventListener('input', () => {
+                if (!hasUnsavedUnitChanges) {
+                    hasUnsavedUnitChanges = true;
+                    if (saveUnitButton) saveUnitButton.classList.add('btn-glowing');
+                    if (unitSaveStatusEl) unitSaveStatusEl.innerHTML = '<i class="bi bi-pencil-fill text-warning"></i> Unsaved changes...';
+                }
+            });
+        });
+
+        // When the form is submitted, reset the flag so the warning doesn't show.
+        unitForm.addEventListener('submit', () => {
+            hasUnsavedUnitChanges = false;
+            if (saveUnitButton) saveUnitButton.classList.remove('btn-glowing');
+            if (unitSaveStatusEl) unitSaveStatusEl.innerHTML = ''; // Clear status
+            // The flash message from the server will confirm save
+        });
+
+        window.addEventListener('beforeunload', (e) => {
+            if (hasUnsavedUnitChanges) e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+        });
+    }
+
+    // --- NEW: Inline Edit for Unit Hours ---
+    const editHoursBtn = document.getElementById('edit-unit-hours-btn');
+    if (editHoursBtn) {
+        const unitId = "{{ case.unit.id if case.unit else '' }}";
+        const displaySpan = document.getElementById('unit-hours-display');
+        const editForm = document.getElementById('edit-unit-hours-form');
+        const inputField = document.getElementById('unit-hours-input');
+        const saveBtn = document.getElementById('save-unit-hours-btn');
+        const cancelBtn = document.getElementById('cancel-unit-hours-btn');
+        const statusEl = document.getElementById('unit-hours-save-status');
+
+        const showForm = () => {
+            displaySpan.style.display = 'none';
+            editHoursBtn.style.display = 'none';
+            editForm.style.display = 'block';
+            inputField.focus();
+        };
+
+        const hideForm = () => {
+            displaySpan.style.display = 'inline';
+            editHoursBtn.style.display = 'inline-block';
+            editForm.style.display = 'none';
+            statusEl.textContent = '';
+        };
+
+        editHoursBtn.addEventListener('click', showForm);
+        cancelBtn.addEventListener('click', hideForm);
+
+        saveBtn.addEventListener('click', () => {
+            const newHours = inputField.value;
+            statusEl.textContent = 'Saving...';
+            fetch(`/unit/${unitId}/update_hours`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ unit_hours: newHours })
+            })
+                .then(res => res.json())
+                .then(data => {
+                    if (!data.success) throw new Error(data.error || 'Save failed');
+                    displaySpan.textContent = data.new_hours || 'N/A';
+                    hideForm();
+                }).catch(err => statusEl.textContent = `Error: ${err.message}`);
+        });
+    }
+    // --- Tagify Initialization ---
+    const tagInput = document.querySelector('#case-tags');
+    if (tagInput) {
+        const allTagsWhitelist = {{ all_tags_json | safe
+    }};
+    const tagify = new Tagify(tagInput, {
+        whitelist: allTagsWhitelist,
+        dropdown: {
+            maxItems: 15,
+            classname: "tags-look",
+            enabled: 1, // 1 means show suggestions on the second character
+            closeOnSelect: false
+        }
+    });
+
+    // --- Save Tags on Change ---
+    const saveTags = () => {
+        const tags = tagify.value.map(tag => tag.value);
+        fetch(`{{ url_for('update_case_tags', case_id=case.id) }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ tags: tags })
+        })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) console.log('Tags saved successfully.');
+            })
+            .catch(error => console.error('Error saving tags:', error));
+    };
+    tagify.on('add', saveTags).on('remove', saveTags);
+    }
+
+
+    // --- HELPER FUNCTIONS ---
+    const insertAtCursor = (textarea, text) => {
+        const start = textarea.selectionStart, end = textarea.selectionEnd;
+        textarea.value = textarea.value.substring(0, start) + text + textarea.value.substring(end);
+        textarea.selectionStart = textarea.selectionEnd = start + text.length;
+        textarea.focus();
+    };
+
+    const showStatusMessage = (element, message, isError = false, duration = 3000) => {
+        if (!element) return;
+        element.innerHTML = isError
+            ? `<i class="bi bi-exclamation-triangle-fill text-danger"></i> ${message}`
+            : `<i class="bi bi-check-circle text-success"></i> ${message}`;
+        element.style.display = 'block';
+        setTimeout(() => { element.style.display = 'none'; }, duration);
+    };
+
+    if (noteEditor) {
+        noteEditor.addEventListener('paste', e => {
+            // Add pasted files to the file input
+            if (e.clipboardData.files.length > 0) attachmentInput.files = e.clipboardData.files;
+        });
+        noteEditor.addEventListener('dragover', e => { e.preventDefault(); e.currentTarget.classList.add('trix-active'); });
+        noteEditor.addEventListener('dragleave', e => e.currentTarget.classList.remove('trix-active'));
+        noteEditor.addEventListener('drop', e => {
+            e.preventDefault();
+            e.currentTarget.classList.remove('trix-active');
+            // --- MODIFIED: Add dropped files to the file input instead of uploading immediately ---
+            if (e.dataTransfer.files.length > 0) {
+                // Create a new DataTransfer object to merge existing and new files
+                const dataTransfer = new DataTransfer();
+                // Add existing files from the input
+                for (const file of attachmentInput.files) {
+                    dataTransfer.items.add(file);
+                }
+                // Add newly dropped files
+                for (const file of e.dataTransfer.files) {
+                    dataTransfer.items.add(file);
+                }
+                // Set the merged list as the new value for the file input
+                attachmentInput.files = dataTransfer.files;
+            }
+        });
+    }
+
+    if (attachmentInput) {
+        attachmentInput.addEventListener('change', async (e) => {
+            const files = Array.from(e.target.files);
+            const heicFiles = files.filter(f => f.name.toLowerCase().endsWith('.heic') || f.name.toLowerCase().endsWith('.heif'));
+            if (heicFiles.length === 0) return;
+
+            if (typeof heic2any === 'undefined') {
+                attachmentFeedback.textContent = 'HEIC conversion library not loaded. Uploading original files...';
+                return;
+            }
+
+            attachmentFeedback.textContent = `Converting ${heicFiles.length} HEIC file(s)...`;
+            const dataTransfer = new DataTransfer();
+            const conversionPromises = files.map(async (file) => {
+                if (heicFiles.includes(file)) {
+                    try {
+                        const convertedBlob = await heic2any({ blob: file, toType: 'image/jpeg', quality: 0.8 });
+                        return new File([convertedBlob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), { type: 'image/jpeg' });
+                    } catch (err) {
+                        return file; // Return original on failure
+                    }
+                }
+                return file;
+            });
+
+            const newFiles = await Promise.all(conversionPromises);
+            newFiles.forEach(file => dataTransfer.items.add(file));
+            e.target.files = dataTransfer.files;
+            attachmentFeedback.textContent = `Conversion complete. Ready to upload.`;
+        });
+    }
+
+    // --- FEATURE: AUTO-SAVE ---
+    const setupAutoSave = (form, statusEl, flagName) => {
+        const saveStatusEl = document.getElementById('save-status');
+        if (!form || !statusEl) return;
+        let saveTimeout;
+
+        const elementsToWatch = form.querySelectorAll('input, select, textarea, trix-editor');
+
+        elementsToWatch.forEach(el => {
+            el.addEventListener('input', () => {
+                unsavedChanges[flagName] = true;
+                clearTimeout(saveTimeout);
+                statusEl.innerHTML = '<i class="bi bi-pencil-fill text-warning"></i> Unsaved changes...';
+                statusEl.style.display = 'block';
+
+                saveTimeout = setTimeout(() => {
+                    if (!unsavedChanges[flagName]) return;
+                    const formData = new FormData(form);
+                    fetch(form.action + '?ajax=true', { method: 'POST', body: formData })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (!data.success) throw new Error(data.error || 'Save failed');
+                            let statusText = 'Changes saved';
+                            if (data.notification) statusText += ` &nbsp; | &nbsp; <i class="bi bi-envelope-check text-primary"></i> ${data.notification}`;
+                            showStatusMessage(statusEl, statusText, false, data.notification ? 5000 : 2000);
+                            unsavedChanges[flagName] = false;
+                        })
+                        .catch(err => showStatusMessage(statusEl, err.message, true));
+                }, 2000);
+            });
+            // Trix editors use 'trix-change' instead of 'input'
+            if (el.tagName === 'TRIX-EDITOR') {
+                el.addEventListener('trix-change', () => el.dispatchEvent(new Event('input')));
+            }
+        });
+    };
+    setupAutoSave(caseForm, document.getElementById('save-status'), 'case');
+
+    // --- FEATURE: NOTIFICATIONS (POLLING & BANNERS) ---
+    const showBrowserNotification = (title, options) => {
+        if (Notification.permission === "granted" && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+            navigator.serviceWorker.controller.postMessage({
+                type: 'SHOW_NOTIFICATION',
+                payload: { title, options }
+            });
+        }
+    };
+
+    const pollForNotifications = () => {
+        fetch('/check_notifications')
+            .then(res => res.ok ? res.json() : Promise.reject('Network error'))
+            .then(notifications => {
+                notifications.forEach((notification, index) => {
+                    setTimeout(() => {
+                        let url = '#';
+                        if (notification.case_id) url = `/case/${notification.case_id}`;
+                        else if (notification.dealer_note_id) url = `/dealer/${notification.dealer_id}#note-${notification.dealer_note_id}`;
+
+                        showBrowserNotification("New Update", {
+                            body: notification.message,
+                            tag: `notification-${notification.id}`,
+                            data: { url: url }
+                        });
+                    }, index * 300);
+                });
+            })
+            .catch(error => console.error('Error polling for notifications:', error));
+    };
+
+    const setupNotificationBanner = () => {
+        const banner = document.getElementById('notification-permission-banner');
+        const enableBtn = document.getElementById('enable-notifications-btn');
+        if (!("Notification" in window) || !banner || !enableBtn) return;
+
+        if (Notification.permission === 'default') {
+            banner.style.display = 'flex';
+        }
+        enableBtn.addEventListener('click', () => {
+            Notification.requestPermission().then(() => {
+                const bannerInstance = bootstrap.Alert.getOrCreateInstance(banner);
+                if (bannerInstance) bannerInstance.close();
+            });
+        });
+    };
+    setupNotificationBanner();
+    setInterval(pollForNotifications, NOTIFICATION_POLL_INTERVAL);
+    pollForNotifications(); // Initial check
+
+    // --- OTHER UI INITIALIZATIONS ---
+    // Copy summary button
+    document.getElementById('copy-summary-btn')?.addEventListener('click', (e) => {
+        document.getElementById('summary-text').select();
+        document.execCommand('copy');
+        e.target.textContent = 'Copied!';
+        setTimeout(() => { e.target.textContent = 'Copy to Clipboard'; }, 2000);
+    });
+
+    // Copy reply-to button
+    document.getElementById('copy-reply-to-btn')?.addEventListener('click', (e) => {
+        const input = document.getElementById('reply-to-email');
+        const button = e.currentTarget;
+        const originalIcon = button.innerHTML; // Capture original icon immediately
+
+        const showSuccess = () => {
+            button.innerHTML = '<i class="bi bi-check-lg text-success"></i>';
+            button.title = 'Copied!';
+            setTimeout(() => {
+                button.innerHTML = '<i class="bi bi-clipboard"></i>';
+                button.title = 'Copy to Clipboard';
+            }, 2000);
+        };
+
+        // Try the modern API first (Works on HTTPS / Localhost)
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(input.value).then(showSuccess).catch(err => {
+                console.warn('Clipboard API failed, falling back to legacy copy:', err);
+                fallbackCopy();
+            });
+        } else {
+            // Fallback for HTTP / Older Browsers
+            fallbackCopy();
+        }
+
+        function fallbackCopy() {
+            try {
+                input.select();
+                input.setSelectionRange(0, 99999); // For mobile
+                const successful = document.execCommand('copy');
+                if (successful) showSuccess();
+                else console.error('Fallback copy failed.');
+                // Deselect
+                window.getSelection().removeAllRanges();
+                input.blur();
+            } catch (err) {
+                console.error('Fallback copy error:', err);
+            }
+        }
+    });
+
+    // Flatpickr for follow-up date
+    flatpickr("#follow_up_date", {
+        enableTime: true,
+        dateFormat: "Y-m-d\\TH:i",
+    });
+
+    // Follow-up form AJAX submission
+    document.getElementById('follow-up-form')?.addEventListener('submit', function (e) {
+        e.preventDefault();
+        const form = e.target;
+        const formData = new FormData(form);
+        const modal = bootstrap.Modal.getInstance(document.getElementById('setFollowUpModal'));
+
+        fetch(form.action, { method: 'POST', body: formData, headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(res => res.json())
+            .then(data => {
+                if (!data.success) throw new Error(data.error || 'Failed to set date.');
+
+                const display = document.getElementById('follow-up-display');
+                let calendarButtons = '<div class="btn-group">';
+                if (data.gcal_url) {
+                    calendarButtons += `<a href="${data.gcal_url}" class="btn btn-success btn-sm" target="_blank"><i class="bi bi-google"></i> Google</a>`;
+                }
+                if (data.outlook_url) { // Add check for outlook_url
+                    calendarButtons += `<a href="${data.outlook_url}" class="btn btn-primary btn-sm" target="_blank"><i class="bi bi-microsoft"></i> Outlook</a>`;
+                }
+                if (data.ics_url) {
+                    calendarButtons += `<a href="${data.ics_url}" class="btn btn-secondary btn-sm"><i class="bi bi-calendar-event"></i> Desktop</a>`;
+                }
+                calendarButtons += '</div>';
+                display.innerHTML = `<span><strong>Follow-up Date:</strong> ${data.formatted_date}</span><div>${calendarButtons} <button class="btn btn-outline-secondary btn-sm" data-bs-toggle="modal" data-bs-target="#setFollowUpModal"><i class="bi bi-pencil"></i> Edit</button></div>`;
+                display.className = 'alert alert-warning d-flex justify-content-between align-items-center';
+
+                showBrowserNotification("Follow-up Set!", { body: `Reminder for: ${data.formatted_date}` });
+                if (modal) modal.hide();
+            })
+            .catch(err => alert(err.message));
+    });
+
+    // Format timestamps on this page using the global function from _base.html
+    formatTimestamps();
+
+    // --- FEATURE: TRANSIENT NOTIFICATIONS (from server flash) ---
+    {% with messages = get_flashed_messages(with_categories = true) %}
+    {% for category, message in messages %}
+    {% if category == 'transient_notification' %}
+    try {
+        const notificationData = JSON.parse({{ message | tojson }});
+    setTimeout(() => {
+        let url = '#';
+        if (notificationData.case_id) url = `/case/${notificationData.case_id}`;
+        else if (notificationData.dealer_id) url = `/dealer/${notificationData.dealer_id}#note-${notificationData.note_id}`;
+
+        showBrowserNotification("New Update", {
+            body: notificationData.message,
+            tag: `notification-${notificationData.id}`,
+            data: { url: url }
+        });
+    }, 500);
+                } catch (e) { console.error("Failed to parse transient notification:", e); }
+    {% endif %}
+    {% endfor %}
+    {% endwith %}
+
+    // --- FEATURE: @MENTION AUTOCOMPLETE ---
+    const mentionUsers = JSON.parse('{{ mention_data|safe }}');
+    const mentionSuggestionsContainer = document.getElementById('mention-suggestions');
+    const allMentionableTextareas = document.querySelectorAll('.mentionable-trix');
+
+    if (allMentionableTextareas.length > 0 && mentionSuggestionsContainer) {
+        const hideSuggestions = () => {
+            mentionSuggestionsContainer.style.display = 'none';
+        };
+
+        const showSuggestions = (textarea, query) => {
+            const filteredUsers = mentionUsers.filter(u => u.key.toLowerCase().includes(query.toLowerCase()));
+
+            mentionSuggestionsContainer.innerHTML = '';
+            if (filteredUsers.length > 0) {
+                filteredUsers.forEach(user => {
+                    const item = document.createElement('a');
+                    item.href = '#';
+                    item.className = 'list-group-item list-group-item-action py-1';
+                    item.textContent = user.key; // Show "First Last (username)"
+                    item.onmousedown = (e) => {
+                        e.preventDefault(); // Prevent editor from losing focus
+                        const editor = textarea.editor;
+                        const currentText = editor.getDocument().toString();
+                        const mentionPosition = currentText.lastIndexOf('@');
+                        editor.setSelectedRange([mentionPosition, editor.getSelectedRange()[1]]);
+                        editor.insertString(`@${user.value} `);
+                        hideSuggestions();
+                        editor.focus();
+                    };
+                    mentionSuggestionsContainer.appendChild(item);
+                });
+
+                const rect = textarea.getBoundingClientRect();
+                mentionSuggestionsContainer.style.top = `${window.scrollY + rect.bottom}px`;
+                mentionSuggestionsContainer.style.left = `${window.scrollX + rect.left}px`;
+                mentionSuggestionsContainer.style.width = `${rect.width}px`;
+                mentionSuggestionsContainer.style.display = 'block';
+            } else {
+                hideSuggestions();
+            }
+        };
+
+        allMentionableTextareas.forEach(textarea => {
+            textarea.addEventListener('trix-change', (e) => {
+                const editor = e.target.editor;
+                const text = editor.getDocument().toString();
+                const cursorPos = editor.getSelectedRange()[0];
+                const textBeforeCursor = text.slice(0, cursorPos);
+                const mentionMatch = textBeforeCursor.match(/@([\w\s\.]*)$/);
+                if (mentionMatch) {
+                    showSuggestions(e.target, mentionMatch[1]);
+                } else {
+                    hideSuggestions();
+                }
+            });
+            textarea.addEventListener('blur', () => setTimeout(hideSuggestions, 200));
+        });
+    }
+
+    // --- FEATURE: DYNAMIC DEALER INFO CARD ---
+    const dealerSelect = document.querySelector('select[name="dealer_id"]');
+    const dealerInfoCardBody = document.getElementById('dealer-info-card-body');
+
+    if (dealerSelect && dealerInfoCardBody) {
+        const updateDealerInfoCard = (data) => {
+            let contactsHtml = '';
+            if (data.contacts && data.contacts.length > 0) {
+                data.contacts.forEach(c => {
+                    contactsHtml += `
+                        <p class="mb-2">
+                            ${c.name || 'N/A'} (${c.role || 'Contact'})<br />
+                            <i class="bi bi-telephone"></i> 
+                            ${c.phone ? `<a href="tel:${c.phone}">${c.phone}</a>` : 'N/A'}
+                            <br />
+                            <i class="bi bi-envelope"></i> ${c.email || 'N/A'}
+                        </p>
+                    `;
+                });
+            } else {
+                contactsHtml = '<p class="text-muted">No contacts listed.</p>';
+            }
+
+            dealerInfoCardBody.innerHTML = `
+                <p><strong>Name:</strong> <a href="${data.view_url}">${data.name}</a></p>
+                <p><strong>Address:</strong> ${data.address || 'N/A'}</p>
+                <p><strong>Manufacturers:</strong> ${data.manufacturers || 'N/A'}</p>
+                <hr>
+                <h6>Contacts:</h6>
+                ${contactsHtml}
+            `;
+        };
+
+        dealerSelect.addEventListener('change', (e) => {
+            const dealerId = e.target.value;
+            if (dealerId && dealerId !== 'None') {
+                fetch(`/get_dealer_info/${dealerId}`).then(res => res.json()).then(updateDealerInfoCard).catch(console.error);
+            } else {
+                dealerInfoCardBody.innerHTML = '<p class="text-muted">No dealer assigned to this case.</p>';
+            }
+        });
+    }
+
+    // --- FEATURE: AUTO-FOCUS ON REPLY TEXTAREA ---
+    // Listen for when any Bootstrap collapse element is shown
+    const timeline = document.querySelector('.timeline');
+    if (timeline) {
+        timeline.addEventListener('shown.bs.collapse', function (event) {
+            // Find the textarea inside the newly shown element and focus it
+            const replyEditor = event.target.querySelector('trix-editor');
+            if (replyEditor) {
+                replyEditor.focus();
+            }
+        });
+    }
+
+    // --- FEATURE: KNOWLEDGE BASE SEARCH ---
+    const kbSearchInput = document.getElementById('kb-search-input');
+    const kbSearchBtn = document.getElementById('kb-search-btn');
+    const kbResultsContainer = document.getElementById('kb-results-container');
+    const kbLoadingSpinner = document.getElementById('kb-loading-spinner');
+    let kbSearchTimeout;
+
+    const performKbSearch = () => {
+        const query = kbSearchInput.value.trim();
+        if (query.length < 2) {
+            kbResultsContainer.innerHTML = '<p class="text-muted small">Enter at least 2 characters to search.</p>';
+            return;
+        }
+
+        kbLoadingSpinner.style.display = 'block';
+        kbResultsContainer.innerHTML = '';
+
+        fetch("{{ url_for('search_knowledge_base') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query })
+        })
+            .then(res => res.json())
+            .then(data => {
+                kbLoadingSpinner.style.display = 'none';
+                if (data.error) {
+                    kbResultsContainer.innerHTML = `<div class="alert alert-danger py-2">${data.error}</div>`;
+                    return;
+                }
+                if (data.results && data.results.length > 0) {
+                    const list = document.createElement('ul');
+                    list.className = 'list-group list-group-flush';
+                    data.results.forEach(item => {
+                        const listItem = document.createElement('li');
+                        listItem.className = 'list-group-item d-flex justify-content-between align-items-center py-2';
+                        listItem.innerHTML = `
+                        <a href="${item.url}" target="_blank" title="${item.name}">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            ${item.name.length > 35 ? item.name.substring(0, 35) + '...' : item.name}
+                        </a>
+                        <a href="${item.url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i></a>
+                    `;
+                        list.appendChild(listItem);
+                    });
+                    kbResultsContainer.appendChild(list);
+                } else {
+                    kbResultsContainer.innerHTML = '<p class="text-muted small">No matching documents found.</p>';
+                }
+            })
+            .catch(err => {
+                kbLoadingSpinner.style.display = 'none';
+                kbResultsContainer.innerHTML = '<p class="text-danger small">Error searching knowledge base.</p>';
+                console.error(err);
+            });
+    };
+
+    if (kbSearchBtn) kbSearchBtn.addEventListener('click', performKbSearch);
+    if (kbSearchInput) {
+        kbSearchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performKbSearch();
+        });
+    }
+});
+
+    // --- FEATURE: EDIT PART TOGGLE ---
+    // Moved outside to ensure global access and avoid issues if DOMContentLoaded fails
+    window.toggleEditPart = function (partId) {
+        const form = document.getElementById(`edit-part-form-${partId}`);
+        if (form) {
+            form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        }
+    };
+
+    // --- Merge Case Modal Logic ---
+    document.addEventListener('DOMContentLoaded', function () {
+        const mergeSearchInput = document.getElementById('merge-search-input');
+        const mergeSearchResults = document.getElementById('merge-search-results');
+        const selectedCaseDisplay = document.getElementById('selected-case-to-merge');
+        const selectedCaseIdSpan = document.getElementById('selected-case-id');
+        const selectedCaseRefSpan = document.getElementById('selected-case-reference');
+        const selectedCaseDealerSpan = document.getElementById('selected-case-dealer');
+        const sourceCaseIdInput = document.getElementById('source_case_id_input');
+        const mergeSubmitBtn = document.getElementById('merge-submit-btn');
+        let mergeSearchTimeout;
+
+        if (mergeSearchInput) {
+            mergeSearchInput.addEventListener('input', () => {
+                clearTimeout(mergeSearchTimeout);
+                const query = mergeSearchInput.value.trim();
+
+                if (query.length < 1) {
+                    mergeSearchResults.innerHTML = '';
+                    return;
+                }
+
+                mergeSearchTimeout = setTimeout(() => {
+                    const excludeId = "{{ case.id }}";
+                    fetch(`{{ url_for('api_search_cases_for_merge') }}?query=${encodeURIComponent(query)}&exclude_id=${excludeId}`)
+                        .then(response => response.json())
+                        .then(cases => {
+                            mergeSearchResults.innerHTML = '';
+                            if (cases.length > 0) {
+                                cases.forEach(c => {
+                                    const item = document.createElement('a');
+                                    item.href = '#';
+                                    item.className = 'list-group-item list-group-item-action';
+                                    item.innerHTML = `<strong>#${c.id}</strong>: ${c.reference} <small class="text-muted">(${c.dealer_name})</small>`;
+                                    item.addEventListener('click', (e) => {
+                                        e.preventDefault();
+                                        selectedCaseIdSpan.textContent = c.id;
+                                        selectedCaseRefSpan.textContent = c.reference;
+                                        selectedCaseDealerSpan.textContent = c.dealer_name;
+                                        sourceCaseIdInput.value = c.id;
+                                        selectedCaseDisplay.classList.remove('d-none');
+                                        mergeSubmitBtn.disabled = false;
+                                        mergeSearchResults.innerHTML = '';
+                                        mergeSearchInput.value = '';
+                                    });
+                                    mergeSearchResults.appendChild(item);
+                                });
+                            } else {
+                                mergeSearchResults.innerHTML = '<div class="list-group-item text-muted">No matching cases found.</div>';
+                            }
+                        });
+                }, 300);
+            });
+        }
+    });
+</script>
+{% endblock %}

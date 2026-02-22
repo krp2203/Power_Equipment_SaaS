@@ -1,0 +1,75 @@
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    command: sh -c "pip install gevent && gunicorn -c gunicorn.conf.py run:app"
+    volumes:
+      - .:/app
+    ports:
+      - "8005:5000"
+    env_file:
+      - .env
+    environment:
+      - FLASK_CONFIG=prod
+      - SQUARE_ACCESS_TOKEN=${SQUARE_ACCESS_TOKEN}
+      - SQUARE_APP_ID=${SQUARE_APP_ID}
+      - SQUARE_LOCATION_ID=${SQUARE_LOCATION_ID}
+      - SQUARE_ENVIRONMENT=${SQUARE_ENVIRONMENT}
+    depends_on:
+      - db
+      - redis
+
+  worker:
+    build: .
+    restart: unless-stopped
+    command: celery -A celery_worker.celery worker --loglevel=info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - FLASK_CONFIG=prod
+    depends_on:
+      - db
+      - redis
+
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: dealer_dashboard
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts:/docker-entrypoint-initdb.d
+    ports:
+      - "5435:5432"
+
+  frontend:
+    image: node:20
+    restart: unless-stopped
+    working_dir: /app
+    volumes:
+      - ./dealer_frontend_next:/app
+    ports:
+      - "3005:3000"
+    command: sh -c "npm run build && npm run start"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=/api/v1
+    depends_on:
+      - web
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+
+networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "1400"

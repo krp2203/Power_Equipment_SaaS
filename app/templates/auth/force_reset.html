@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}Set Your Permanent Password{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow-sm border-warning">
+            <div class="card-header bg-warning text-dark py-3 text-center">
+                <h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Account Setup</h5>
+            </div>
+            <div class="card-body p-4">
+                <p class="text-muted small mb-4">
+                    For your security, please update the temporary password provided by your administrator to a
+                    permanent one.
+                </p>
+
+                <form method="POST">
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        <label class="form-label">Temporary Password</label>
+                        {{ form.current_password(class="form-control", placeholder="Enter the temp password") }}
+                        {% if form.current_password.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.current_password.errors %}{{ error }}{% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">New Permanent Password</label>
+                        {{ form.new_password(class="form-control", placeholder="Minimum 6 characters") }}
+                        {% if form.new_password.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.new_password.errors %}{{ error }}{% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label">Confirm New Password</label>
+                        {{ form.confirm_password(class="form-control", placeholder="Repeat new password") }}
+                        {% if form.confirm_password.errors %}
+                        <div class="text-danger small mt-1">
+                            {% for error in form.confirm_password.errors %}{{ error }}{% endfor %}
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-warning fw-bold py-2">
+                            Set Password & Continue
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('auth.logout') }}" class="text-muted small text-decoration-none">
+                <i class="bi bi-box-arrow-left me-1"></i> Cancel and Logout
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

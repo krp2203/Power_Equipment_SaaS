@@ -1,0 +1,207 @@
+🚀 Launching Next.js with Webpack...
+▲ Next.js 16.1.1 (webpack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.86.210:3000
+
+✓ Starting...
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+✓ Ready in 7.3s
+○ Compiling / ...
+Request timed out after 3000ms
+
+Retrying 1/3...
+Request timed out after 3000ms
+
+Retrying 2/3...
+Request timed out after 3000ms
+
+Retrying 3/3...
+Error: Request timed out after 3000ms
+    at ignore-listed frames
+⨯ Failed to download `Inter` from Google Fonts. Using fallback font instead.
+
+Failed to fetch `Inter` from Google Fonts.}
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: Error: getaddrinfo ENOTFOUND web
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'web'
+  }
+}
+Likely network issue. API_BASE: http://web:5000/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: Error: getaddrinfo ENOTFOUND web
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'web'
+  }
+}
+Likely network issue. API_BASE: http://web:5000/api/v1
+ GET / 200 in 38.1s (compile: 27.5s, proxy.ts: 175ms, render: 10.4s)
+⚠ Cross origin request detected from 100.111.94.35 to /_next/* resource. In a future major version of Next.js, you will need to explicitly configure "allowedDevOrigins" in next.config to allow this.
+Read more: https://nextjs.org/docs/app/api-reference/config/next-config-js/allowedDevOrigins
+API Fetch Error: TypeError: fetch failed
+    at async getDealerConfig (lib/api.ts:29:21)
+    at async ContactPage (app/contact/page.tsx:4:20)
+  27 |
+  28 |     try {
+> 29 |         const res = await fetch(`${API_BASE}/site-info`, {
+     |                     ^
+  30 |             cache: 'no-store',
+  31 |             headers: {
+  32 |                 'Cookie': cookieHeader, {
+  [cause]: Error: getaddrinfo ENOTFOUND web
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'web'
+  }
+}
+Likely network issue. API_BASE: http://web:5000/api/v1
+ GET /contact 200 in 11.0s (compile: 845ms, proxy.ts: 28ms, render: 10.2s)
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: Error: getaddrinfo ENOTFOUND web
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'web'
+  }
+}
+Likely network issue. API_BASE: http://web:5000/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: Error: getaddrinfo ENOTFOUND web
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'web'
+  }
+}
+Likely network issue. API_BASE: http://web:5000/api/v1
+ GET /contact 200 in 10.1s (compile: 4ms, proxy.ts: 8ms, render: 10.1s)
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: Error: getaddrinfo ENOTFOUND web
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'web'
+  }
+}
+Likely network issue. API_BASE: http://web:5000/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: Error: getaddrinfo ENOTFOUND web
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'web'
+  }
+}
+Likely network issue. API_BASE: http://web:5000/api/v1
+ GET /contact 200 in 10.3s (compile: 6ms, proxy.ts: 17ms, render: 10.2s)
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: Error: getaddrinfo ENOTFOUND web
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'web'
+  }
+}
+Likely network issue. API_BASE: http://web:5000/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: Error: getaddrinfo ENOTFOUND web
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'web'
+  }
+}
+Likely network issue. API_BASE: http://web:5000/api/v1
+ GET /contact 200 in 10.5s (compile: 4ms, proxy.ts: 7ms, render: 10.5s)
+ GET /inventory 200 in 1027ms (compile: 968ms, proxy.ts: 7ms, render: 53ms)
+(node:12107) [DEP0060] DeprecationWarning: The `util._extend` API is deprecated. Please use Object.assign() instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+Failed to proxy http://web:5000/api/v1/inventory Error: getaddrinfo ENOTFOUND web
+    at ignore-listed frames {
+  errno: -3008,
+  code: 'ENOTFOUND',
+  syscall: 'getaddrinfo',
+  hostname: 'web'
+}
+Error: getaddrinfo ENOTFOUND web
+    at ignore-listed frames {
+  errno: -3008,
+  code: 'ENOTFOUND',
+  syscall: 'getaddrinfo',
+  hostname: 'web'
+}
+○ Compiling /_error ...
+Failed to proxy http://web:5000/api/v1/inventory Error: getaddrinfo ENOTFOUND web
+    at ignore-listed frames {
+  errno: -3008,
+  code: 'ENOTFOUND',
+  syscall: 'getaddrinfo',
+  hostname: 'web'
+}
+Error: getaddrinfo ENOTFOUND web
+    at ignore-listed frames {
+  errno: -3008,
+  code: 'ENOTFOUND',
+  syscall: 'getaddrinfo',
+  hostname: 'web'
+}
+API Fetch Error: TypeError: fetch failed
+    at async getDealerConfig (lib/api.ts:29:21)
+    at async RootLayout (app/layout.tsx:27:40)
+  27 |
+  28 |     try {
+> 29 |         const res = await fetch(`${API_BASE}/site-info`, {
+     |                     ^
+  30 |             cache: 'no-store',
+  31 |             headers: {
+  32 |                 'Cookie': cookieHeader, {
+  [cause]: Error: getaddrinfo ENOTFOUND web
+      at ignore-listed frames {
+    errno: -3008,
+    code: 'ENOTFOUND',
+    syscall: 'getaddrinfo',
+    hostname: 'web'
+  }
+}
+Likely network issue. API_BASE: http://web:5000/api/v1
+ GET /inventory 200 in 11.9s (compile: 1743ms, proxy.ts: 38ms, render: 10.2s)
+API Fetch Error: TypeError: fetch failed
+    at async getDealerConfig (lib/api.ts:29:21)
+    at async RootLayout (app/layout.tsx:27:40)
+  27 |
+  28 |     try {
+> 29 |         const res = await fetch(`${API_BASE}/site-info`, {
+     |                     ^
+  30 |             cache: 'no-store',
+  31 |             headers: {
+  32 |                 'Cookie': cookieHeader, {
+  [cause]: Error [ConnectTimeoutError]: Connect Timeout Error (attempted address: web:5000, timeout: 10000ms)
+      at ignore-listed frames {
+    code: 'UND_ERR_CONNECT_TIMEOUT'
+  }
+}
+Likely network issue. API_BASE: http://web:5000/api/v1
+ GET /inventory 200 in 10.5s (compile: 6ms, proxy.ts: 8ms, render: 10.5s)
+[?25h

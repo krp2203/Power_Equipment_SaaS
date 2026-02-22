@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Manage Dealers | {{ g.current_org.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">Dealers</h2>
+        <p class="text-muted">Manage your dealer network.</p>
+    </div>
+    <a href="{{ url_for('dealers.add') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Add Dealer
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <!-- Search -->
+        <form method="GET" action="{{ url_for('dealers.index') }}" class="mb-4">
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control border-start-0 bg-light"
+                    placeholder="Search dealers by name..." value="{{ search_term }}">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Address</th>
+                        <th>Manufacturers</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dealer in dealers %}
+                    <tr>
+                        <td>
+                            <a href="{{ url_for('dealers.view', dealer_id=dealer.id) }}"
+                                class="fw-bold text-decoration-none">{{ dealer.name }}</a>
+                            {% if dealer.dealer_dba %}
+                            <br><small class="text-muted">{{ dealer.dealer_dba }}</small>
+                            {% endif %}
+                        </td>
+                        <td>{{ dealer.address or 'N/A' }}</td>
+                        <td>
+                            {% if dealer.manufacturers %}
+                            {% for brand in dealer.manufacturers.split(',') %}
+                            <span class="badge bg-secondary opacity-75 fw-normal">{{ brand }}</span>
+                            {% endfor %}
+                            {% else %}
+                            <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <a href="{{ url_for('dealers.view', dealer_id=dealer.id) }}"
+                                class="btn btn-sm btn-outline-primary">View</a>
+                            <a href="{{ url_for('dealers.edit', dealer_id=dealer.id) }}"
+                                class="btn btn-sm btn-outline-secondary">Edit</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center py-5 text-muted">
+                            <i class="bi bi-shop fs-1 d-block mb-3 opacity-50"></i>
+                            No dealers found. <a href="{{ url_for('dealers.add') }}">Add your first dealer</a>.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

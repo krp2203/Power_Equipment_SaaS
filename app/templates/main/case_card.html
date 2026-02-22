@@ -1,0 +1,35 @@
+<div class="card mb-2 border-start border-4 border-primary">
+    <div class="card-body p-2">
+        <div class="d-flex justify-content-between align-items-start">
+            <div>
+                <h6 class="card-title mb-1 fw-bold">
+                    #{{ case.id }}
+                    <span class="text-muted fw-normal ms-1">
+                        {{ case.dealer.name if case.dealer else 'No Dealer' }}
+                    </span>
+                </h6>
+                <p class="card-text small text-muted mb-1 text-truncate-2">
+                    {{ (case.reference or 'No Details') | plaintext }}
+                </p>
+
+                {% if case.status == 'Follow Up' and case.formatted_follow_up_date %}
+                <p class="card-text text-warning small mb-1">
+                    <i class="bi bi-clock"></i> {{ case.formatted_follow_up_date }}
+                </p>
+                {% endif %}
+
+                <div class="d-flex text-muted small gap-2 mt-1">
+                    <span>Created: {{ case.creation_timestamp.strftime('%b %d') }}</span>
+                    <span>•</span>
+                    <span>{{ case.assigned_to or 'Unassigned' }}</span>
+                </div>
+            </div>
+
+            <!-- Quick Action -->
+            <div>
+                <a href="{{ url_for('cases.view', case_id=case.id) }}" class="btn btn-sm btn-outline-secondary"
+                    title="View Case"><i class="bi bi-chevron-right"></i></a>
+            </div>
+        </div>
+    </div>
+</div>

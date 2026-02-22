@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Site Manager - Super Admin{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="bi bi-diagram-3 me-2"></i>Site Manager</h1>
+            <p class="text-muted">Manage all dealer sites and configurations.</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('super_admin.add_tenant') }}" class="btn btn-success">
+                <i class="bi bi-plus-lg me-1"></i> Add New Site
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover table-striped mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th scope="col" class="pl-4">ID</th>
+                            <th scope="col">Organization Name</th>
+                            <th scope="col">Modules</th>
+                            <th scope="col">Created</th>
+                            <th scope="col" class="text-end pr-4">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for org in orgs %}
+                        <tr>
+                            <td class="pl-4"><strong>#{{ org.id }}</strong></td>
+                            <td>
+                                {{ org.name }}
+                                {% if org.id == 1 %}
+                                <span class="badge bg-primary ms-2">Master</span>
+                                {% endif %}
+                                {% if not org.is_active %}
+                                <span class="badge bg-danger ms-2">Inactive</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if org.modules.ari %}<span class="badge bg-info text-dark">ARI</span>{% endif %}
+                                {% if org.modules.pos and org.modules.pos != 'none' %}<span
+                                    class="badge bg-secondary">{{ org.modules.pos|upper }}</span>{% endif %}
+                            </td>
+                            <td>{{ org.created_at.strftime('%Y-%m-%d') if org.created_at else 'N/A' }}</td>
+                            <td class="text-end pr-4">
+                                <div class="btn-group">
+                                    {% if org.id != g.current_org_id %}
+                                    <a href="{{ url_for('super_admin.impersonate', org_id=org.id) }}"
+                                        class="btn btn-sm btn-outline-warning" title="Switch Dashboard">
+                                        <i class="bi bi-eye"></i> Manage
+                                    </a>
+                                    {% if org.id != 1 %}
+                                    <form action="{{ url_for('super_admin.toggle_active', org_id=org.id) }}"
+                                        method="POST" style="display:inline;"
+                                        onsubmit="return confirm('Are you sure you want to {% if org.is_active %}deactivate{% else %}activate{% endif %} this site?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                        <button type="submit"
+                                            class="btn btn-sm {% if org.is_active %}btn-outline-danger{% else %}btn-outline-success{% endif %}">
+                                            {% if org.is_active %}
+                                            <i class="bi bi-pause-circle"></i> Deactivate
+                                            {% else %}
+                                            <i class="bi bi-play-circle"></i> Activate
+                                            {% endif %}
+                                        </button>
+                                    </form>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="text-muted small">Current</span>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5 text-muted">No sites found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

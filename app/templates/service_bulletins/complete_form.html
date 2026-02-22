@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% block title %}Record Completion | {{ g.current_org.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('service_bulletins.view', sb_id=sb.id) }}"
+        class="text-decoration-none text-muted mb-2 d-inline-block">
+        <i class="bi bi-arrow-left"></i> Back to Bulletin
+    </a>
+    <div class="d-flex align-items-center">
+        <i class="bi bi-check-circle-fill text-success me-2 fs-3"></i>
+        <h1 class="h2 mb-0">Record Service Bulletin Completion</h1>
+    </div>
+    <div class="text-muted small">SB-{{ sb.sb_number }}: {{ sb.title }}</div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent fw-bold py-3">Unit Information</div>
+            <div class="card-body">
+                <form action="{{ url_for('service_bulletins.complete', sb_id=sb.id) }}" method="POST">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
+                            <label class="form-label fw-bold small">Serial Number(s) *</label>
+                            <textarea name="serial_numbers" class="form-control" rows="4"
+                                placeholder="Enter one or multiple serial numbers (separated by commas or newlines)..."
+                                required></textarea>
+                            <div class="form-text">You can batch process multiple units at once.</div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Model Name (Optional)</label>
+                            <input type="text" name="model_name" class="form-control"
+                                placeholder="e.g. STTII-72V-38CH-EFI">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold small">Status *</label>
+                            <select class="form-select" disabled>
+                                <option selected>Completed</option>
+                            </select>
+                            <div class="form-text">Automatically set to Completed upon recording.</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small">Notes</label>
+                        <textarea name="notes" class="form-control" rows="3"
+                            placeholder="Enter any relevant notes about the inspection or repair..."></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success px-4" id="submitBtn">
+                            <span id="btnText"><i class="bi bi-check-lg me-1"></i> Record Completion</span>
+                            <span id="btnSpinner" class="spinner-border spinner-border-sm d-none" role="status"
+                                aria-hidden="true"></span>
+                        </button>
+                        <a href="{{ url_for('service_bulletins.view', sb_id=sb.id) }}"
+                            class="btn btn-outline-secondary px-4">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card border-0 shadow-sm bg-warning bg-opacity-10 border-start border-warning border-4">
+            <div class="card-header bg-warning py-2 fw-bold">Bulletin Details</div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="text-muted small d-block">SB Number</label>
+                    <span class="fw-bold">{{ sb.sb_number }}</span>
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted small d-block">Issue Date</label>
+                    <span class="fw-bold">{{ sb.issue_date.strftime('%B % d % Y') }}</span>
+                </div>
+                <div class="mb-3">
+                    <label class="text-muted small d-block">Warranty Code</label>
+                    <span class="fw-bold">{{ sb.warranty_code or '-' }}</span>
+                </div>
+                <div class="mb-4">
+                    <label class="text-muted small d-block">Labor Hours</label>
+                    <span class="fw-bold">{{ sb.labor_hours or '-' }}</span>
+                </div>
+
+                {% if sb.pdf_filename %}
+                <a href="{{ url_for('static', filename='uploads/bulletins/' ~ g.current_org_id ~ '/' ~ sb.pdf_filename) }}"
+                    target="_blank" class="btn btn-outline-primary w-100 btn-sm">
+                    <i class="bi bi-file-pdf me-1"></i> View PDF
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const serialInput = document.querySelector('textarea[name="serial_numbers"]');
+        const modelInput = document.querySelector('input[name="model_name"]');
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        const btnSpinner = document.getElementById('btnSpinner');
+        const form = document.querySelector('form');
+
+        let debounceTimer;
+
+        serialInput.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            const value = this.value.trim();
+
+            // Only auto-fill if it's exactly one serial number
+            if (!value || value.includes(',') || value.includes('\n')) {
+                return;
+            }
+
+            debounceTimer = setTimeout(() => {
+                fetch(`{{ url_for('service_bulletins.check_serial_api', sb_id=sb.id) }}?serial=${encodeURIComponent(value)}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.match && data.model_name) {
+                            modelInput.value = data.model_name;
+                            // Optional visual feedback
+                            modelInput.classList.add('is-valid');
+                            setTimeout(() => modelInput.classList.remove('is-valid'), 2000);
+                        }
+                    })
+                    .catch(err => console.error('Error fetching model:', err));
+            }, 500);
+        });
+
+        form.addEventListener('submit', function () {
+            submitBtn.disabled = true;
+            // Keep the text same but add spinner
+            btnSpinner.classList.remove('d-none');
+            btnText.innerHTML = '<i class="bi bi-check-lg me-1"></i> Saving...';
+        });
+    });
+</script>
+{% endblock %}

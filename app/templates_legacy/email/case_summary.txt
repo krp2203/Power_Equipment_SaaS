@@ -1,0 +1,64 @@
+{{ subject }}
+=======================================
+
+CASE DETAILS
+---------------------------------------
+Case ID: #{{ case.id }}
+Status: {{ case.status }}
+Created: {{ case.creation_timestamp.strftime('%Y-%m-%d %H:%M') }} UTC
+Assigned To: {{ case.assigned_to or 'Unassigned' }}
+Dealer: {{ case.dealer.name if case.dealer else 'N/A' }}
+Caller: {{ case.caller_name or 'N/A' }}
+
+{% if case.unit %}
+UNIT & OWNER INFORMATION
+---------------------------------------
+Manufacturer: {{ case.unit.manufacturer or 'N/A' }}
+Model: {{ case.unit.model_number or 'N/A' }}
+Serial #: {{ case.unit.serial_number or 'N/A' }}
+{% if case.unit.unit_hours %}Unit Hours: {{ case.unit.unit_hours }}{% endif %}
+{% if case.unit.engine_model %}Engine Model: {{ case.unit.engine_model }}{% endif %}
+{% if case.unit.engine_serial %}Engine Serial: {{ case.unit.engine_serial }}{% endif %}
+
+{% if case.unit.owner_name %}Owner Name: {{ case.unit.owner_name }}{% endif %}
+{% if case.unit.owner_company %}Owner Company: {{ case.unit.owner_company }}{% endif %}
+{% if case.unit.owner_address %}Owner Address: {{ case.unit.owner_address }}{% endif %}
+{% if case.unit.owner_phone %}Owner Phone: {{ case.unit.owner_phone }}{% endif %}
+{% if case.unit.owner_email %}Owner Email: {{ case.unit.owner_email }}{% endif %}
+{% endif %}
+
+{% if case.case_type == 'Internal Repair' %}
+COST SUMMARY
+---------------------------------------
+Parts Cost: {{ case.total_parts_cost | currency }}
+Labor Cost: {{ case.total_labor_cost | currency }}
+Total Repair Cost: {{ case.total_repair_cost | currency }}
+
+Parts Used Breakdown:
+{% for part in case.parts_used %}
+- {{ part.part_number }} (x{{ part.quantity }}) - {{ part.description_at_time_of_use }}: {{ (part.quantity * part.cost_at_time_of_use) | currency }}
+{% else %}
+No parts used.
+{% endfor %}
+{% endif %}
+
+NOTES
+---------------------------------------
+{% for note in case.notes|sort(attribute='timestamp') %}
+{{ note.user or 'System' }} on {{ note.timestamp.strftime('%Y-%m-%d %H:%M') }} UTC
+{{ note.text | plaintext }}
+
+---------------------------------------
+{% else %}
+No notes for this case.
+{% endfor %}
+
+
+View the full case in the dashboard:
+{{ case_url }}
+
+
+This is an automated message from the KPM Tech Support Dashboard.
+{% if reply_enabled %}
+You can reply directly to this email to add a comment to the case.
+{% endif %}

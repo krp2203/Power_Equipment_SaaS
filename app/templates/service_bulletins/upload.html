@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Upload Service Bulletin | {{ g.current_org.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="mb-4">
+            <a href="{{ url_for('service_bulletins.index') }}"
+                class="text-decoration-none text-muted mb-2 d-inline-block"><i class="bi bi-arrow-left"></i> Back to
+                Bulletins</a>
+            <h2>Upload Service Bulletin</h2>
+            <p class="text-muted">Upload a PDF bulletin to automatically extract model and serial range information.</p>
+        </div>
+
+        <div class="card border-0 shadow-sm">
+            <div class="card-body p-4">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-4">
+                        <label class="form-label fw-bold">Bulletin PDF</label>
+                        <input class="form-control form-control-lg" type="file" name="pdf_file" accept=".pdf" required>
+                        <div class="form-text">Ensure the PDF is text-readable (not a scanned image) for auto-parsing to
+                            work.</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="auto_parse" id="autoParse" checked>
+                            <label class="form-check-label" for="autoParse">
+                                Automatically attempt to parse Models & Serial Ranges
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-grid justify-content-end">
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-upload me-2"></i> Upload & Process
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+
+        .header {
+            background-color: #f8f9fa;
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .field-row {
+            border-bottom: 1px solid #eee;
+            padding: 8px 0;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .value {
+            margin-left: 10px;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 0.8em;
+            color: #777;
+            text-align: center;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>Check Sheet Report</h2>
+            <p><strong>List:</strong> {{ template.title }}</p>
+            <p><strong>Submitted By:</strong> {{ user.username }}</p>
+            <p><strong>Date:</strong> {{ submission.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Submission Details</div>
+            {% for key, value in data.items() %}
+            <div class="field-row">
+                <span class="label">{{ key }}:</span>
+                <span class="value">{{ value }}</span>
+                {% if warranty_notes.get(key) %}
+                <div style="margin-left: 20px; color: #d9534f; font-weight: bold;">
+                    WARNING: {{ warranty_notes[key] }}
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        {% if parts_data %}
+        <div class="section">
+            <div class="section-title">Parts Required / Used</div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <tr style="background-color: #eee;">
+                    <th style="padding: 5px; border: 1px solid #ddd;">Part #</th>
+                    <th style="padding: 5px; border: 1px solid #ddd;">Qty</th>
+                    <th style="padding: 5px; border: 1px solid #ddd;">Description</th>
+                </tr>
+                {% for part in parts_data %}
+                <tr>
+                    <td style="padding: 5px; border: 1px solid #ddd;">{{ part.part_number }}</td>
+                    <td style="padding: 5px; border: 1px solid #ddd;">{{ part.qty }}</td>
+                    <td style="padding: 5px; border: 1px solid #ddd;">{{ part.description }}</td>
+                </tr>
+                {% endfor %}
+            </table>
+        </div>
+        {% endif %}
+
+        <div class="section"
+            style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border: 1px solid #ddd; text-align: center;">
+            {% if case_id %}
+            <p style="color: #28a745; font-weight: bold; font-size: 1.1em;">
+                ✅ Linked to Internal Case #{{ case_id }}
+            </p>
+            {% else %}
+            <p style="margin-bottom: 15px;">Does this submission require further repair action or parts ordering?</p>
+            <a href="{{ url_for('create_case_from_submission', submission_id=submission.id, _external=True) }}"
+                style="display: inline-block; padding: 10px 20px; background-color: #0d6efd; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;">
+                Create Internal Repair Case
+            </a>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p>This report was generated automatically by the Dealer Dashboard.</p>
+        </div>
+    </div>
+</body>
+
+</html>

@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% block title %}Unit Details | {{ g.current_org.name }}{% endblock %}
+
+{% block content %}
+<div class="container-md" style="max-width: 900px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a href="{{ url_for('units.index') }}" class="text-decoration-none text-muted mb-1 d-block small"><i
+                    class="bi bi-arrow-left"></i> Back to Units</a>
+            <h2 class="mb-0">
+                {{ unit.manufacturer }} {{ unit.model_number }}
+                <span class="text-muted fs-4 ms-2">#{{ unit.serial_number }}</span>
+            </h2>
+        </div>
+        <div>
+            <button class="btn btn-success" disabled title="Coming soon with Cases module">
+                <i class="bi bi-file-earmark-plus"></i> Open New Case
+            </button>
+        </div>
+    </div>
+
+    <!-- Edit Form (Always properly viewable/editable for now) -->
+    <form method="POST" id="unitEditForm" action="{{ url_for('units.view', unit_id=unit.id) }}">
+        <div class="row g-4">
+            <!-- Left: Specs -->
+            <div class="col-lg-7">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-transparent fw-bold py-3">Equipment Specifications</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted text-uppercase">Serial Number</label>
+                                <input type="text" name="serial_number" class="form-control fw-bold"
+                                    value="{{ unit.serial_number }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted text-uppercase">Manufacturer</label>
+                                <input class="form-control" list="manufacturerOptions" name="manufacturer"
+                                    value="{{ unit.manufacturer or '' }}">
+                                <datalist id="manufacturerOptions">
+                                    {% for mfg in manufacturers %}
+                                    <option value="{{ mfg }}">
+                                        {% endfor %}
+                                </datalist>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted text-uppercase">Model Number</label>
+                                <input type="text" name="model_number" class="form-control"
+                                    value="{{ unit.model_number or '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted text-uppercase">Hours</label>
+                                <input type="text" name="unit_hours" class="form-control"
+                                    value="{{ unit.unit_hours or '' }}">
+                            </div>
+                            <div class="col-12 border-top my-2"></div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted text-uppercase">Engine Model</label>
+                                <input type="text" name="engine_model" class="form-control"
+                                    value="{{ unit.engine_model or '' }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small text-muted text-uppercase">Engine Serial</label>
+                                <input type="text" name="engine_serial" class="form-control"
+                                    value="{{ unit.engine_serial or '' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Owner -->
+            <div class="col-lg-5">
+                <div class="card border-0 shadow-sm h-100">
+                    <div class="card-header bg-transparent fw-bold py-3">Owner Information</div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label small text-muted text-uppercase">Owner Name</label>
+                                <input type="text" name="owner_name" class="form-control"
+                                    value="{{ unit.owner_name or '' }}">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small text-muted text-uppercase">Company</label>
+                                <input type="text" name="owner_company" class="form-control"
+                                    value="{{ unit.owner_company or '' }}">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small text-muted text-uppercase">Phone</label>
+                                <input type="tel" name="owner_phone" class="form-control"
+                                    value="{{ unit.owner_phone or '' }}">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small text-muted text-uppercase">Email</label>
+                                <input type="email" name="owner_email" class="form-control"
+                                    value="{{ unit.owner_email or '' }}">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label small text-muted text-uppercase">Address</label>
+                                <input type="text" name="owner_address" class="form-control"
+                                    value="{{ unit.owner_address or '' }}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-end mt-4">
+            <button type="submit" class="btn btn-primary px-4 fw-bold">Save Changes</button>
+        </div>
+    </form>
+
+    <!-- Marketing & Sales Section -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-transparent fw-bold py-3 d-flex justify-content-between align-items-center">
+            <span>Marketing & Inventory</span>
+            {% if unit.is_inventory %}
+            <span class="badge bg-info text-dark">Active Inventory</span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label small text-muted text-uppercase">Price</label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input type="number" step="0.01" name="price" form="unitEditForm" class="form-control" value="{{ unit.price or '' }}" placeholder="0.00">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small text-muted text-uppercase">Condition</label>
+                    <select name="condition" form="unitEditForm" class="form-select">
+                        <option value="New" {% if unit.condition == 'New' %}selected{% endif %}>New</option>
+                        <option value="Used" {% if unit.condition == 'Used' %}selected{% endif %}>Used</option>
+                    </select>
+                </div>
+                <div class="col-md-6 d-flex align-items-end gap-2">
+                    <div class="form-check form-switch mb-2 me-3">
+                        <input class="form-check-input" type="checkbox" name="is_inventory" form="unitEditForm" id="isInventory" {% if unit.is_inventory %}checked{% endif %}>
+                        <label class="form-check-label small fw-bold" for="isInventory">Show in Inventory</label>
+                    </div>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" name="display_on_web" form="unitEditForm" id="displayWeb" {% if unit.display_on_web %}checked{% endif %}>
+                        <label class="form-check-label small fw-bold" for="displayWeb">Public on Website</label>
+                    </div>
+                </div>
+                <div class="col-12">
+                    <label class="form-label small text-muted text-uppercase">Public Description</label>
+                    <textarea name="description" form="unitEditForm" class="form-control" rows="3" placeholder="Enter the sales description for the website and Facebook...">{{ unit.description or '' }}</textarea>
+                </div>
+            </div>
+
+            {% if g.current_org.modules.get('facebook') %}
+                {% if g.current_org.facebook_page_id %}
+                <div class="mt-4 p-3 border rounded bg-light">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1"><i class="bi bi-facebook text-primary me-2"></i>Facebook Integration</h6>
+                            <p class="text-muted small mb-0">Post this unit directly to your dealer page.</p>
+                        </div>
+                        <button type="button" class="btn btn-outline-primary fw-bold" id="btnPostFacebook" 
+                                onclick="postToFacebook({{ unit.id }})"
+                                {% if not unit.is_inventory %}disabled title="Save as inventory first"{% endif %}>
+                            <i class="bi bi-share me-1"></i> Post to Facebook
+                        </button>
+                    </div>
+                </div>
+                {% else %}
+                <div class="mt-4 p-3 border rounded bg-light text-center">
+                    <p class="text-muted small mb-0">
+                        <i class="bi bi-info-circle me-1"></i> 
+                        Facebook integration not connected. <a href="{{ url_for('settings.organization') }}">Connect now</a> to post inventory.
+                    </p>
+                </div>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+    function postToFacebook(unitId) {
+        const btn = document.getElementById('btnPostFacebook');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Posting...';
+
+        fetch(`/units/${unitId}/facebook_post`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('Successfully posted to Facebook! ID: ' + data.post_id);
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to communicate with the server.');
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        });
+    }
+    </script>
+
+    <!-- History Placeholder -->
+    <div class="card border-0 shadow-sm mt-4">
+        <div class="card-header bg-transparent fw-bold py-3">Service History</div>
+        <div class="card-body text-center text-muted py-5">
+            <i class="bi bi-clock-history fs-1 mb-2 d-block opacity-25"></i>
+            Service history will appear here once Cases are enabled.
+        </div>
+    </div>
+</div>
+{% endblock %}

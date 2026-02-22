@@ -1,0 +1,429 @@
+{% extends "_base.html" %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{% if edit_mode %}Edit Submission: {% endif %}{{ template.title }}</h4>
+                    <a href="{{ url_for('list_check_sheets') }}" class="btn btn-sm btn-outline-light">Cancel</a>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted">{{ template.description }}</p>
+
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+                        role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <hr>
+
+                    <form
+                        action="{% if edit_mode %}{{ url_for('update_check_sheet_submission', submission_id=submission.id) }}{% else %}{{ url_for('submit_check_sheet', template_id=template.id) }}{% endif %}"
+                        method="POST">
+                        {% for field in fields %}
+                        {% if field.type == 'header' %}
+                        <h5 class="mt-4 mb-3 border-bottom pb-2 text-primary">{{ field.label }}</h5>
+
+                        {% elif field.type == 'checkbox' %}
+                        <div class="mb-3 p-2 border-bottom">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="{{ field.label }}"
+                                        id="field_{{ loop.index }}" {% if field.required %}required{% endif %} {% if
+                                        submitted_data and submitted_data.get(field.label)=='Checked' %}checked{% endif
+                                        %}>
+                                    <label class="form-check-label" for="field_{{ loop.index }}">
+                                        {{ field.label }}
+                                    </label>
+                                </div>
+                                <div>
+                                    <!-- Button Removed -->
+                                    <button type="button" class="btn btn-sm btn-outline-warning"
+                                        onclick="document.getElementById('note_container_{{ loop.index }}').classList.toggle('d-none');">
+                                        <i class="bi bi-exclamation-triangle"></i> Report Issue
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Show note container if note exists -->
+                            <div id="note_container_{{ loop.index }}"
+                                class="mt-2 {% if not (warranty_notes and warranty_notes.get(field.label)) %}d-none{% endif %}">
+                                <textarea class="form-control border-warning" name="note_{{ field.label }}"
+                                    placeholder="Describe the issue for warranty..."
+                                    rows="2">{% if warranty_notes %}{{ warranty_notes.get(field.label, '') }}{% endif %}</textarea>
+                            </div>
+                        </div>
+
+                        {% elif field.type == 'textarea' %}
+                        <div class="mb-3">
+                            <label for="field_{{ loop.index }}" class="form-label">{{ field.label }}</label>
+                            <textarea class="form-control" name="{{ field.label }}" id="field_{{ loop.index }}" rows="3"
+                                {% if field.required %}required{% endif
+                                %}>{% if submitted_data %}{{ submitted_data.get(field.label, '') }}{% endif %}</textarea>
+                        </div>
+
+                        {% else %} <!-- Default to text -->
+                        <div class="mb-3">
+                            <label for="field_{{ loop.index }}" class="form-label">{{ field.label }}</label>
+                            <input type="{{ field.type }}" class="form-control" name="{{ field.label }}"
+                                id="field_{{ loop.index }}" {% if field.required %}required{% endif %}
+                                value="{% if submitted_data %}{{ submitted_data.get(field.label, '') }}{% elif field.label=='Serial Number' %}{{ request.args.get('serial_number', '') }}{% endif %}">
+                        </div>
+                        {% endif %}
+                        {% endfor %}
+
+                        <div class="mb-5">
+                            <h5 class="mt-4 mb-3 border-bottom pb-2 text-primary">Parts Used / Required</h5>
+
+                            <!-- Global Part Search -->
+                            <div class="mb-3 position-relative search-container">
+                                <input type="text" class="form-control" id="global_part_search"
+                                    placeholder="Type Part Number to search..." autocomplete="off">
+                                <div id="global_part_results" class="list-group search-results"></div>
+                            </div>
+
+                            <div id="parts_container">
+                                <!-- header -->
+                                <div class="row g-2 mb-2 fw-bold">
+                                    <div class="col-3">Part #</div>
+                                    <div class="col-2">Qty</div>
+                                    <div class="col-6">Description</div>
+                                    <div class="col-1"></div>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                onclick="addPartRow(null, '', 1, true)">
+                                <i class="bi bi-plus-lg"></i> Add Manual Part Row
+                            </button>
+
+                            <!-- Hidden input to store JSON string of parts before submit -->
+                            <input type="hidden" name="parts_list_json" id="parts_list_json">
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit"
+                                class="btn {% if edit_mode %}btn-primary{% else %}btn-success{% endif %} btn-lg">
+                                {% if edit_mode %}Update Submission{% else %}Submit Check Sheet{% endif %}
+                            </button>
+                            <a href="{{ url_for('list_check_sheets') }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <style>
+            .search-results {
+                position: absolute;
+                z-index: 1000;
+                width: 100%;
+                max-height: 200px;
+                overflow-y: auto;
+                display: none;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            }
+
+            .search-container {
+                position: relative;
+            }
+        </style>
+
+        <!-- Part Search Modal (for Item-Level Add) -->
+        <div class="modal fade" id="partSearchModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Search & Add Part</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="modal_context_desc">
+                        <div class="mb-3 position-relative">
+                            <label class="form-label">Search Part Number</label>
+                            <input type="text" class="form-control" id="modal_part_search"
+                                placeholder="Type part number..." autocomplete="off">
+                            <div id="modal_part_results" class="list-group search-results"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // --- Shared Logic: Add Part Row ---
+            // --- Shared Logic: Add Part Row ---
+            function addPartRow(partNum = '', desc = '', qty = 1, isManual = false) {
+                const container = document.getElementById('parts_container');
+                const rowId = 'part_row_' + Date.now() + Math.floor(Math.random() * 1000);
+                // Ensure nulls are empty strings
+                if (!partNum) partNum = '';
+                if (!desc) desc = '';
+
+                const div = document.createElement('div');
+                div.className = 'row g-2 mb-2 part-row align-items-center';
+                div.id = rowId;
+
+                div.innerHTML = `
+                <div class="col-3">
+                    <input type="text" class="form-control" name="part_number" placeholder="Part #" value="${partNum}" required>
+                </div>
+                <div class="col-2">
+                    <input type="number" class="form-control" name="part_qty" placeholder="1" value="${qty}" min="1" required>
+                </div>
+                <div class="col-6">
+                    <textarea class="form-control" name="part_desc" placeholder="Desc" rows="1">${desc}</textarea>
+                </div>
+                <div class="col-1 text-end">
+                    <button type="button" class="btn btn-outline-danger" onclick="document.getElementById('${rowId}').remove()">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            `;
+
+                container.appendChild(div);
+            }
+
+            // --- Search Logic Factory ---
+            function setupPartSearch(inputId, resultsId, onSelect) {
+                const input = document.getElementById(inputId);
+                const results = document.getElementById(resultsId);
+                let searchTimeout;
+                if (!input) return;
+
+                input.addEventListener('input', () => {
+                    clearTimeout(searchTimeout);
+                    const query = input.value.trim();
+
+                    if (query.length < 2) {
+                        results.style.display = 'none';
+                        return;
+                    }
+
+                    searchTimeout = setTimeout(() => {
+                        fetch(`{{ url_for('api_search_parts') }}?query=${encodeURIComponent(query)}`)
+                            .then(res => res.json())
+                            .then(parts => {
+                                results.innerHTML = '';
+                                if (parts.length > 0) {
+                                    parts.forEach(part => {
+                                        const item = document.createElement('button');
+                                        item.type = 'button';
+                                        item.className = 'list-group-item list-group-item-action text-start';
+                                        item.innerHTML = `<strong>${part.part_number}</strong> <small class="text-muted">${part.description}</small>`;
+                                        item.onclick = () => {
+                                            onSelect(part);
+                                            input.value = ''; // Clear search
+                                            results.style.display = 'none';
+                                        };
+                                        results.appendChild(item);
+                                    });
+                                } else {
+                                    results.innerHTML = '<div class="list-group-item text-muted">No parts found.</div>';
+                                }
+                                results.style.display = 'block';
+                            });
+                    }, 300);
+                });
+
+                // Hide on click outside
+                document.addEventListener('click', (e) => {
+                    if (!input.contains(e.target) && !results.contains(e.target)) {
+                        results.style.display = 'none';
+                    }
+                });
+            }
+
+        </script>
+
+        <!-- Hidden Data Containers for Safe JS Reading -->
+        <input type="hidden" id="ctx_submission_id" value="{{ submission.id if submission else '' }}">
+        <script id="ctx_parts_data" type="application/json">
+                {{ parts_data | tojson | safe }}
+            </script>
+
+        <script>
+            // --- MAIN INITIALIZATION ---
+            document.addEventListener('DOMContentLoaded', function () {
+                console.log("Check Sheet Script Loaded");
+
+                // 1. Pre-fill Parts (Edit Mode) - READ FROM JSON SCRIPT TAG
+                try {
+                    const partsScript = document.getElementById('ctx_parts_data');
+                    const savedParts = partsScript ? JSON.parse(partsScript.textContent) : [];
+                    console.log("Saved Parts:", savedParts);
+
+                    if (Array.isArray(savedParts) && savedParts.length > 0) {
+                        savedParts.forEach(p => {
+                            addPartRow(p.part_number, p.description, p.qty);
+                        });
+                    }
+                } catch (e) {
+                    console.error("Error loading saved parts:", e);
+                }
+
+                // 2. Setup Global Part Search
+                try {
+                    setupPartSearch('global_part_search', 'global_part_results', (part) => {
+                        addPartRow(part.part_number, part.description, 1);
+                    });
+                } catch (e) { console.error("Error setupPartSearch:", e); }
+
+                // 3. Form Submission Interceptor (Bundle Parts)
+                const form = document.querySelector('form');
+                if (form) {
+                    form.addEventListener('submit', function (e) {
+                        // Bundle parts into JSON
+                        const parts = [];
+                        document.querySelectorAll('.part-row').forEach(row => {
+                            // Use safe optional chaining or checks
+                            const pNum = row.querySelector('[name="part_number"]');
+                            const pQty = row.querySelector('[name="part_qty"]');
+                            const pDesc = row.querySelector('[name="part_desc"]');
+                            if (pNum && pQty) {
+                                parts.push({
+                                    part_number: pNum.value,
+                                    qty: pQty.value,
+                                    description: pDesc ? pDesc.value : ''
+                                });
+                            }
+                        });
+                        const hiddenInput = document.getElementById('parts_list_json');
+                        if (hiddenInput) hiddenInput.value = JSON.stringify(parts);
+                        console.log("Submitting with parts:", parts);
+                    });
+                }
+
+                // 4. Hashtag Auto-Add Logic
+                try {
+                    const processedHashtags = new Map();
+
+                    function handleHashtagInput(event) {
+                        const textarea = event.target;
+                        const fieldName = textarea.getAttribute('name');
+                        const text = textarea.value;
+                        const matches = text.match(/#([a-zA-Z0-9-]+)/g);
+
+                        if (!matches) return;
+
+                        if (!processedHashtags.has(fieldName)) {
+                            processedHashtags.set(fieldName, new Set());
+                        }
+                        const processedSet = processedHashtags.get(fieldName);
+
+                        matches.forEach(token => {
+                            const partNum = token.substring(1);
+                            if (!processedSet.has(partNum)) {
+                                processedSet.add(partNum);
+                                // Fetch details
+                                fetch(`{{ url_for('api_search_parts') }}?query=${encodeURIComponent(partNum)}`)
+                                    .then(res => res.json())
+                                    .then(parts => {
+                                        let match = parts.find(p => p.part_number.toLowerCase() === partNum.toLowerCase());
+                                        if (!match && parts.length > 0) match = parts[0];
+
+                                        let desc = '';
+                                        const contextLabel = fieldName.replace('note_', '').replace(/_/g, ' ');
+
+                                        if (match) {
+                                            desc = `${match.description} (For: ${contextLabel})`;
+                                            addPartRow(match.part_number, desc, 1);
+                                            const newVal = textarea.value.replace(token, `${token} - ${match.description.substring(0, 30)}...`);
+                                            textarea.value = newVal;
+                                        } else {
+                                            desc = `Manual Entry (For: ${contextLabel})`;
+                                            addPartRow(partNum, desc, 1, true);
+                                        }
+                                    })
+                                    .catch(err => console.error("Error auto-adding part:", err));
+                            }
+                        });
+                    }
+
+                    document.querySelectorAll('textarea[name^="note_"]').forEach(el => {
+                        el.addEventListener('keyup', (e) => {
+                            if (e.key === ' ' || e.key === 'Enter') handleHashtagInput(e);
+                        });
+                        el.addEventListener('blur', handleHashtagInput);
+                    });
+                } catch (e) { console.error("Error hashtag logic:", e); }
+
+
+                // 5. Serial Number Verification
+                const serialInput = document.querySelector('input[name="Serial Number"]');
+                if (serialInput) {
+                    const feedbackDiv = document.createElement('div');
+                    feedbackDiv.id = 'serial_verification_feedback';
+                    feedbackDiv.className = 'mt-2';
+                    serialInput.parentNode.appendChild(feedbackDiv);
+
+                    serialInput.addEventListener('blur', function () {
+                        const serial = this.value.trim();
+                        if (serial.length > 2) {
+                            feedbackDiv.innerHTML = '<span class="text-muted"><span class="spinner-border spinner-border-sm"></span> Checking...</span>';
+
+                            fetch(`/api/check_serial/${encodeURIComponent(serial)}`)
+                                .then(res => res.json())
+                                .then(res => res.json())
+                                .then(data => {
+                                    let html = '';
+
+                                    // Stolen Check
+                                    if (data.is_stolen) {
+                                        html += `
+                                            <div class="alert alert-danger mb-2 shadow-sm border-2 border-danger">
+                                                <h6 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> CRITICAL WARNING: STOLEN UNIT</h6>
+                                                <p class="mb-0 fw-bold">${data.stolen_warning}</p>
+                                            </div>
+                                         `;
+                                    }
+
+                                    if (data.exists) {
+                                        // Read ID from Hidden Input (Safe)
+                                        const currentSubID = document.getElementById('ctx_submission_id').value;
+
+                                        if (currentSubID) {
+                                            const isSame = data.submissions.some(s => s.id == currentSubID);
+                                            if (isSame && data.submissions.length === 1) {
+                                                html += '<div class="text-success"><i class="bi bi-check-circle"></i> Current Submission</div>';
+                                                feedbackDiv.innerHTML = html;
+                                                return;
+                                            }
+                                        }
+
+                                        html += '<div class="alert alert-warning mb-0"><i class="bi bi-clock-history"></i> <strong>Note:</strong> This unit has been checked before:<ul>';
+                                        data.submissions.forEach(sub => {
+                                            html += `<li>${sub.date} by ${sub.user}</li>`;
+                                        });
+                                        html += '</ul></div>';
+                                        feedbackDiv.innerHTML = html;
+                                    } else {
+                                        if (!data.is_stolen) {
+                                            html += '<div class="text-success"><i class="bi bi-check-circle-fill"></i> New Entry</div>';
+                                            setTimeout(() => { if (feedbackDiv.innerHTML.includes('New Entry')) feedbackDiv.innerHTML = ''; }, 3000);
+                                        }
+                                        feedbackDiv.innerHTML = html;
+                                    }
+                                })
+                                .catch(err => {
+                                    console.error(err);
+                                    feedbackDiv.innerHTML = '';
+                                });
+                        } else {
+                            feedbackDiv.innerHTML = '';
+                        }
+                    });
+                }
+            });
+        </script>
+        {% endblock %}

@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}Welcome - Set Up Your Site{% endblock %}
+
+{% block head_styles %}
+<style>
+    body {
+        background: #f8f9fa;
+    }
+
+    .wizard-container {
+        max-width: 720px;
+        margin: 2rem auto;
+    }
+
+    .wizard-progress {
+        display: flex;
+        justify-content: center;
+        gap: 0.5rem;
+        margin-bottom: 2rem;
+    }
+
+    .wizard-step-indicator {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: #dee2e6;
+        transition: all 0.3s ease;
+    }
+
+    .wizard-step-indicator.active {
+        background: var(--bs-primary, #0d6efd);
+        transform: scale(1.3);
+    }
+
+    .wizard-step-indicator.completed {
+        background: #198754;
+    }
+
+    .wizard-panel {
+        display: none;
+    }
+
+    .wizard-panel.active {
+        display: block;
+        animation: fadeIn 0.3s ease;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    .step-header {
+        text-align: center;
+        margin-bottom: 1.5rem;
+    }
+
+    .step-header h3 {
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+
+    .step-header p {
+        color: #6c757d;
+        font-size: 0.95rem;
+    }
+
+    .step-number {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        background: var(--bs-primary, #0d6efd);
+        color: white;
+        font-weight: 700;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .wizard-nav {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px solid #e9ecef;
+    }
+
+    .btn-wizard-next {
+        background-color: #0d6efd !important;
+        color: #ffffff !important;
+        border: 1px solid #0a58ca !important;
+    }
+
+    .btn-wizard-next:hover {
+        background-color: #0b5ed7 !important;
+    }
+
+    .btn-wizard-prev {
+        color: #6c757d !important;
+        border: 1px solid #dee2e6 !important;
+    }
+
+    .btn-wizard-prev:hover {
+        background-color: #f8f9fa !important;
+    }
+
+    .color-preview {
+        width: 50px;
+        height: 50px;
+        border-radius: 8px;
+        border: 2px solid #dee2e6;
+        display: inline-block;
+        vertical-align: middle;
+        margin-left: 0.5rem;
+    }
+
+    .completion-icon {
+        font-size: 4rem;
+        color: #198754;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="wizard-container">
+    <form method="POST" action="{{ url_for('settings.onboarding_save') }}" enctype="multipart/form-data"
+        id="onboardingForm">
+        {{ form.hidden_tag() }}
+
+        <!-- Progress Indicators -->
+        <div class="wizard-progress">
+            <div class="wizard-step-indicator active" data-step="0"></div>
+            <div class="wizard-step-indicator" data-step="1"></div>
+            <div class="wizard-step-indicator" data-step="2"></div>
+            <div class="wizard-step-indicator" data-step="3"></div>
+        </div>
+
+        <!-- Step 1: Welcome & Branding -->
+        <div class="wizard-panel active" data-step="0">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="step-header">
+                        <div class="step-number">1</div>
+                        <h3>Welcome! Let's Brand Your Site</h3>
+                        <p>Upload your logo and pick your primary color — these will appear on your website header and
+                            buttons.</p>
+                    </div>
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Company Logo</label>
+                            {{ form.company_logo(class="form-control") }}
+                            <div class="form-text">Recommended: PNG with transparent background, at least 200px wide.
+                            </div>
+                            {% if g.current_org.theme_config and g.current_org.theme_config.get('logo_url') %}
+                            <div class="mt-2 p-2 border rounded bg-light text-center">
+                                <img src="{{ g.current_org.theme_config['logo_url'] }}" alt="Current Logo"
+                                    style="max-height: 60px;">
+                                <div class="small text-muted mt-1">Current logo</div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Primary Theme Color</label>
+                            <div class="d-flex align-items-center">
+                                {{ form.primary_color(class="form-control form-control-color", type="color",
+                                style="width: 60px; height: 50px;") }}
+                                <span class="color-preview ms-2" id="colorPreview"></span>
+                            </div>
+                            <div class="form-text">This color will be used for your header, buttons, and links.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Site Content -->
+        <div class="wizard-panel" data-step="1">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="step-header">
+                        <div class="step-number">2</div>
+                        <h3>Customize Your Homepage</h3>
+                        <p>Set your headline and tagline — this is the first thing visitors see.</p>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Hero Title</label>
+                        {{ form.hero_title(class="form-control", placeholder="e.g., Welcome to Bob's Mowers") }}
+                        <div class="form-text">Main headline displayed on your homepage banner.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Tagline</label>
+                        {{ form.hero_tagline(class="form-control", placeholder="e.g., Your go-to source for quality
+                        outdoor power equipment.") }}
+                        <div class="form-text">Short description below the headline.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Contact Info -->
+        <div class="wizard-panel" data-step="2">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="step-header">
+                        <div class="step-number">3</div>
+                        <h3>Add Your Contact Info</h3>
+                        <p>This will appear on your website's Contact page so customers can reach you.</p>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Phone Number</label>
+                            {{ form.contact_phone(class="form-control", placeholder="(555) 123-4567") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Email Address</label>
+                            {{ form.contact_email(class="form-control", placeholder="sales@yourdealership.com") }}
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Street Address</label>
+                            {{ form.contact_address(class="form-control", rows=2, placeholder="123 Main St, Anytown, USA
+                            12345") }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 4: Done! -->
+        <div class="wizard-panel" data-step="3">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-5 text-center">
+                    <div class="completion-icon mb-3">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <h3 class="fw-bold">You're All Set! 🎉</h3>
+                    <p class="text-muted mb-4">Your site is ready to go. You can always fine-tune these settings later
+                        in <strong>Platform Settings</strong>.</p>
+
+                    <div class="d-grid gap-2 col-md-8 mx-auto">
+                        <button type="submit" class="btn btn-success btn-lg fw-bold">
+                            <i class="bi bi-rocket-takeoff me-2"></i>Save & Launch My Site
+                        </button>
+                        <a href="{{ url_for('settings.organization') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-gear me-2"></i>Go to Full Settings Instead
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="wizard-nav">
+            <button type="button" class="btn btn-wizard-prev px-4" id="prevBtn" style="visibility: hidden;">
+                <i class="bi bi-arrow-left me-1"></i> Back
+            </button>
+            <a href="{{ url_for('marketing.dashboard') }}" class="btn btn-link text-muted" id="skipBtn">Skip for now</a>
+            <button type="button" class="btn btn-wizard-next px-4 fw-bold" id="nextBtn">
+                Next <i class="bi bi-arrow-right ms-1"></i>
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        let currentStep = 0;
+        const totalSteps = 4;
+        const panels = document.querySelectorAll('.wizard-panel');
+        const indicators = document.querySelectorAll('.wizard-step-indicator');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const skipBtn = document.getElementById('skipBtn');
+
+        function showStep(step) {
+            panels.forEach((p, i) => {
+                p.classList.toggle('active', i === step);
+            });
+            indicators.forEach((ind, i) => {
+                ind.classList.remove('active', 'completed');
+                if (i < step) ind.classList.add('completed');
+                if (i === step) ind.classList.add('active');
+            });
+
+            prevBtn.style.visibility = step === 0 ? 'hidden' : 'visible';
+
+            if (step === totalSteps - 1) {
+                nextBtn.style.display = 'none';
+                skipBtn.style.display = 'none';
+            } else {
+                nextBtn.style.display = '';
+                skipBtn.style.display = '';
+            }
+        }
+
+        nextBtn.addEventListener('click', function () {
+            if (currentStep < totalSteps - 1) {
+                currentStep++;
+                showStep(currentStep);
+            }
+        });
+
+        prevBtn.addEventListener('click', function () {
+            if (currentStep > 0) {
+                currentStep--;
+                showStep(currentStep);
+            }
+        });
+
+        // Color preview sync
+        const colorInput = document.querySelector('input[name="primary_color"]');
+        const colorPreview = document.getElementById('colorPreview');
+        if (colorInput && colorPreview) {
+            function syncColor() { colorPreview.style.background = colorInput.value; }
+            colorInput.addEventListener('input', syncColor);
+            syncColor();
+        }
+    });
+</script>
+{% endblock %}

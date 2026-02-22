@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+{% block title %}{{ dealer.name }} | Dealers{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-start mb-4">
+    <div>
+        <a href="{{ url_for('dealers.index') }}" class="text-decoration-none text-muted mb-1 d-block small"><i
+                class="bi bi-arrow-left"></i> Back to Dealers</a>
+        <h2 class="mb-0">{{ dealer.name }}</h2>
+        {% if dealer.dealer_dba %}<span class="text-muted">{{ dealer.dealer_dba }}</span>{% endif %}
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('dealers.edit', dealer_id=dealer.id) }}" class="btn btn-outline-secondary">
+            <i class="bi bi-pencil"></i> Edit
+        </a>
+        <button class="btn btn-success" disabled title="Adding cases coming soon">
+            <i class="bi bi-plus-lg"></i> Add Case
+        </button>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Info & Contacts -->
+    <div class="col-lg-4">
+        <!-- Info Card -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent fw-bold py-3">Details</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4 text-muted small uppercase">Code</dt>
+                    <dd class="col-sm-8">{{ dealer.dealer_code or 'N/A' }}</dd>
+
+                    <dt class="col-sm-4 text-muted small uppercase">Address</dt>
+                    <dd class="col-sm-8">
+                        {{ dealer.address or 'N/A' }}
+                        {% if dealer.address %}
+                        <a href="https://www.google.com/maps/search/?api=1&query={{ dealer.address|urlencode }}"
+                            target="_blank" class="text-decoration-none ms-1"><i
+                                class="bi bi-box-arrow-up-right small"></i></a>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-4 text-muted small uppercase">Labor Rate</dt>
+                    <dd class="col-sm-8">{{ dealer.labor_rate|currency if dealer.labor_rate else 'N/A' }}</dd>
+
+                    <dt class="col-sm-4 text-muted small uppercase">Brands</dt>
+                    <dd class="col-sm-8">
+                        {% if dealer.manufacturers %}
+                        {{ dealer.manufacturers.replace(',', ', ') }}
+                        {% else %}
+                        N/A
+                        {% endif %}
+                    </dd>
+                </dl>
+            </div>
+            {% if dealer.notes %}
+            <div class="card-footer bg-light">
+                <small class="text-muted fw-bold">INTERNAL NOTES</small>
+                <p class="mb-0 small mt-1">{{ dealer.notes }}</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Contacts Card -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent fw-bold py-3 d-flex justify-content-between align-items-center">
+                <span>Contacts</span>
+                <span class="badge bg-secondary rounded-pill">{{ dealer.contacts|length }}</span>
+            </div>
+            <div class="list-group list-group-flush">
+                {% for contact in dealer.contacts %}
+                <div class="list-group-item p-3">
+                    <h6 class="mb-1">{{ contact.name }}</h6>
+                    <p class="mb-1 small text-muted">{{ contact.role or 'Staff' }}</p>
+                    <div class="small">
+                        {% if contact.email %}
+                        <div class="text-truncate" title="{{ contact.email }}"><i class="bi bi-envelope me-1"></i> <a
+                                href="mailto:{{ contact.email }}">{{ contact.email }}</a></div>
+                        {% endif %}
+                        {% if contact.phone %}
+                        <div><i class="bi bi-telephone me-1"></i> <a href="tel:{{ contact.phone }}">{{ contact.phone
+                                }}</a></div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% else %}
+                <div class="list-group-item p-3 text-muted text-center small">No contacts listed.</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Timeline/Notes & Cases -->
+    <div class="col-lg-8">
+        <!-- Add Note -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form action="{{ url_for('dealers.add_note', dealer_id=dealer.id) }}" method="POST">
+                    <textarea name="note_text" class="form-control mb-2" rows="2"
+                        placeholder="Write a note about this dealer... (Use @ to mention)"></textarea>
+                    <div class="text-end">
+                        <button type="submit" class="btn btn-sm btn-primary">Post Note</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Timeline -->
+        <h5 class="mb-3" id="notes-section">Activity Timeline</h5>
+        <div class="timeline">
+            {% for note in dealer.dealer_notes|sort(attribute='timestamp', reverse=True) %}
+            {% if not note.parent_id %}
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <div>
+                            <span class="fw-bold">{{ note.user }}</span>
+                            <span class="text-muted small mx-1">•</span>
+                            <span class="text-muted small" title="{{ note.timestamp }}">{{ note.timestamp.strftime('%b
+                                %d, %Y %I:%M %p') }}</span>
+                        </div>
+                    </div>
+                    <div class="note-content mb-2">
+                        {{ render_note_html(note.text, users)|safe }}
+                    </div>
+
+                    <!-- Simpler Reply Logic than Legacy -->
+                    {% if note.replies.count() > 0 %}
+                    <div class="bg-light p-2 rounded-3 mt-2 ms-3">
+                        {% for reply in note.replies %}
+                        <div class="mb-2 border-bottom pb-2 last-no-border">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <small class="fw-bold">{{ reply.user }}</small>
+                                <small class="text-muted" style="font-size: 0.75rem;">{{ reply.timestamp.strftime('%b %d
+                                    %I:%M %p') }}</small>
+                            </div>
+                            <div class="small text-secondary">{{ render_note_html(reply.text, users)|safe }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <div class="mt-2">
+                        <a class="text-muted small text-decoration-none" data-bs-toggle="collapse"
+                            href="#reply-{{ note.id }}" role="button">
+                            <i class="bi bi-reply"></i> Reply
+                        </a>
+                        <div class="collapse mt-2" id="reply-{{ note.id }}">
+                            <form action="{{ url_for('dealers.add_note', dealer_id=dealer.id) }}" method="POST">
+                                <input type="hidden" name="parent_note_id" value="{{ note.id }}">
+                                <div class="input-group input-group-sm">
+                                    <input type="text" name="note_text" class="form-control"
+                                        placeholder="Write a reply...">
+                                    <button class="btn btn-outline-secondary" type="submit">Reply</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            {% else %}
+            <div class="text-center text-muted py-4">No notes recorded yet.</div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

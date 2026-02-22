@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+{% block title %}Add Dealer | {{ g.current_org.name }}{% endblock %}
+
+{% block content %}
+<div class="container-md" style="max-width: 800px;">
+    <div class="mb-4">
+        <a href="{{ url_for('dealers.index') }}" class="text-decoration-none text-muted mb-2 d-inline-block"><i
+                class="bi bi-arrow-left"></i> Back to Dealers</a>
+        <h2>Add New Dealer</h2>
+    </div>
+
+    <form method="POST" action="{{ url_for('dealers.add') }}">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom px-4 py-3">
+                <h5 class="mb-0">Dealer Information</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label">Dealer Name <span class="text-danger">*</span></label>
+                        <input type="text" name="dealer_name" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">DBA (Doing Business As)</label>
+                        <input type="text" name="dealer_dba" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Dealer Code</label>
+                        <input type="text" name="dealer_code" class="form-control">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Address</label>
+                        <input type="text" name="address" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Labor Rate ($)</label>
+                        <input type="number" step="0.01" name="labor_rate" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Manufacturers</label>
+                        <div class="card card-body bg-light p-2" style="max-height: 150px; overflow-y: auto;">
+                            {% for mfg in all_manufacturers %}
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="manufacturers" value="{{ mfg }}"
+                                    id="mfg_{{ loop.index }}">
+                                <label class="form-check-label" for="mfg_{{ loop.index }}">{{ mfg }}</label>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Internal Notes</label>
+                        <textarea name="notes" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card border-0 shadow-sm mb-4">
+            <div
+                class="card-header bg-transparent border-bottom px-4 py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Contacts</h5>
+                <button type="button" class="btn btn-sm btn-outline-secondary" onclick="addContactField()">
+                    <i class="bi bi-plus-lg"></i> Add Contact
+                </button>
+            </div>
+            <div class="card-body p-4" id="contacts-container">
+                <!-- Contact Item Template (Hidden) -->
+                <div class="row g-3 contact-row border-bottom pb-3 mb-3" id="contact-template" style="display:none;">
+                    <div class="col-md-6">
+                        <input type="text" name="contact_names" class="form-control" placeholder="Name">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" name="contact_roles" class="form-control"
+                            placeholder="Role (e.g. Service Manager)">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="email" name="contact_emails" class="form-control" placeholder="Email">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="tel" name="contact_phones" class="form-control" placeholder="Phone">
+                    </div>
+                </div>
+
+                <!-- Initial Contact Field -->
+                <div class="row g-3 contact-row border-bottom pb-3 mb-3">
+                    <div class="col-md-6">
+                        <input type="text" name="contact_names" class="form-control" placeholder="Name">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="text" name="contact_roles" class="form-control" placeholder="Role">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="email" name="contact_emails" class="form-control" placeholder="Email">
+                    </div>
+                    <div class="col-md-6">
+                        <input type="tel" name="contact_phones" class="form-control" placeholder="Phone">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="{{ url_for('dealers.index') }}" class="btn btn-light me-md-2">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4">Create Dealer</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    function addContactField() {
+        const container = document.getElementById('contacts-container');
+        const template = document.getElementById('contact-template');
+        const clone = template.cloneNode(true);
+        clone.id = '';
+        clone.style.display = 'flex'; // Restore visibility
+        container.appendChild(clone);
+    }
+</script>
+{% endblock %}

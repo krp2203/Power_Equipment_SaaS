@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: #f8f9fa;
+            padding: 20px;
+            text-align: center;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .content {
+            padding: 20px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        th {
+            background-color: #f8f9fa;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25em 0.4em;
+            font-size: 75%;
+            font-weight: 700;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            border-radius: 0.25rem;
+            color: #fff;
+            background-color: #6c757d;
+        }
+
+        .bg-primary {
+            background-color: #0d6efd;
+        }
+
+        .bg-success {
+            background-color: #198754;
+        }
+
+        .bg-warning {
+            background-color: #ffc107;
+            color: #000;
+        }
+
+        .bg-secondary {
+            background-color: #6c757d;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #6c757d;
+            text-align: center;
+        }
+
+        h4 {
+            border-bottom: 1px solid #dee2e6;
+            padding-bottom: 10px;
+            margin-top: 30px;
+        }
+
+        h6 {
+            margin-top: 20px;
+            margin-bottom: 10px;
+            color: #0d6efd;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>{{ report_data.title }}</h2>
+            {% if report_data.start_date and report_data.end_date %}
+            <p>Period: {{ report_data.start_date }} to {{ report_data.end_date }}</p>
+            {% endif %}
+        </div>
+
+        <div class="content">
+            {% if report_type == 'general' %}
+            <h3>Summary</h3>
+            <p><strong>Total Cases Created:</strong> {{ report_data.total_cases }}</p>
+
+            <h4>Cases by Status</h4>
+            <ul>
+                {% for status, count in report_data.by_status.items() %}
+                <li>{{ status }}: {{ count }}</li>
+                {% endfor %}
+            </ul>
+
+            <h4>Cases by Technician</h4>
+            <ul>
+                {% for tech, count in report_data.by_technician.items() %}
+                <li>{{ tech }}: {{ count }}</li>
+                {% endfor %}
+            </ul>
+
+            <h4>Detailed Case List</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Reference</th>
+                        <th>Latest Note</th>
+                        <th>Dealer</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for case in report_data.cases %}
+                    <tr>
+                        <td><a href="{{ url_for('view_case', case_id=case.id, _external=True) }}">{{ case.id }}</a></td>
+                        <td>{{ case.status }}</td>
+                        <td>{{ case.reference|striptags|truncate(30) }}</td>
+                        <td>{{ case.latest_note_text|striptags|truncate(50) if case.latest_note_text else '-' }}</td>
+                        <td>{{ case.dealer.name if case.dealer else 'N/A' }}</td>
+                        <td>{{ case.creation_timestamp.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            {% elif report_type == 'user_activity' %}
+            {% for user_entry in report_data.users_data %}
+            <h4>{{ user_entry.user.username }}</h4>
+
+            <h6>Active Cases (Assigned & Open)</h6>
+            {% if user_entry.active_cases %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Reference</th>
+                        <th>Latest Note</th>
+                        <th>Dealer</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for case in user_entry.active_cases %}
+                    <tr>
+                        <td><a href="{{ url_for('view_case', case_id=case.id, _external=True) }}">{{ case.id }}</a></td>
+                        <td>{{ case.status }}</td>
+                        <td>{{ case.reference|striptags|truncate(30) }}</td>
+                        <td>{{ case.latest_note_text|striptags|truncate(50) if case.latest_note_text else '-' }}</td>
+                        <td>{{ case.dealer.name if case.dealer else 'N/A' }}</td>
+                        <td>{{ case.creation_timestamp.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No active cases.</p>
+            {% endif %}
+
+            <h6 style="color: #198754;">Cases Worked On (Notes/Labor in Period)</h6>
+            {% if user_entry.worked_on_cases %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Reference</th>
+                        <th>Latest Note</th>
+                        <th>Dealer</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for case in user_entry.worked_on_cases %}
+                    <tr>
+                        <td><a href="{{ url_for('view_case', case_id=case.id, _external=True) }}">{{ case.id }}</a></td>
+                        <td>{{ case.status }}</td>
+                        <td>{{ case.reference|striptags|truncate(30) }}</td>
+                        <td>{{ case.latest_note_text|striptags|truncate(50) if case.latest_note_text else '-' }}</td>
+                        <td>{{ case.dealer.name if case.dealer else 'N/A' }}</td>
+                        <td>{{ case.creation_timestamp.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p>No activity recorded in this period.</p>
+            {% endif %}
+            {% else %}
+            <p>No user activity found for the selected criteria.</p>
+            {% endfor %}
+
+            {% elif report_type in ['dealer', 'unit', 'model', 'tag'] %}
+            <p><strong>Total Cases Found:</strong> {{ report_data.cases|length }}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Case ID</th>
+                        <th>Status</th>
+                        <th>Reference</th>
+                        <th>Latest Note</th>
+                        <th>Dealer</th>
+                        <th>Unit S/N</th>
+                        <th>Created</th>
+                        <th>Assigned To</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for case in report_data.cases %}
+                    <tr>
+                        <td><a href="{{ url_for('view_case', case_id=case.id, _external=True) }}">{{ case.id }}</a></td>
+                        <td>{{ case.status }}</td>
+                        <td>{{ case.reference|striptags|truncate(30) }}</td>
+                        <td>{{ case.latest_note_text|striptags|truncate(50) if case.latest_note_text else '-' }}</td>
+                        <td>{{ case.dealer.name if case.dealer else 'N/A' }}</td>
+                        <td>{{ case.unit.serial_number if case.unit else 'N/A' }}</td>
+                        <td>{{ case.creation_timestamp.strftime('%Y-%m-%d') }}</td>
+                        <td>{{ case.assigned_to or 'Unassigned' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% elif report_type == 'top_dealers' %}
+            <h4>Top Dealers - Case List</h4>
+            <p><strong>Period:</strong> {{ report_data.start_date }} to {{ report_data.end_date }}</p>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Dealer Name</th>
+                        <th>Total Cases</th>
+                        <th>Case Reference</th>
+                        <th>Status</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in report_data.top_dealers %}
+                    <tr>
+                        <td>{{ item.dealer_name }}</td>
+                        <td>{{ item.case_count }}</td>
+                        <td>{{ item.case.reference|striptags|truncate(50) }}</td>
+                        <td>{{ item.case.status }}</td>
+                        <td>{{ item.case.creation_timestamp.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5">No cases found for this period.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+
+            {% if report_type == 'internal_cases' %}
+            <h3>Internal Cases Report</h3>
+            <p><strong>Period:</strong> {{ report_data.start_date }} to {{ report_data.end_date }}</p>
+
+            <table style="width: 100%; margin-bottom: 20px;">
+                <tr>
+                    <td style="text-align: center; background-color: #f8f9fa; padding: 15px;">
+                        <h4 style="margin: 0; border: none; color: #6c757d;">Total Cases</h4>
+                        <h2 style="margin: 10px 0 0 0;">{{ report_data.total_cases }}</h2>
+                    </td>
+                    <td style="text-align: center; background-color: #f8f9fa; padding: 15px;">
+                        <h4 style="margin: 0; border: none; color: #6c757d;">Total Parts Cost</h4>
+                        <h2 style="margin: 10px 0 0 0;">${{ "%.2f"|format(report_data.total_parts_cost) }}</h2>
+                    </td>
+                    <td style="text-align: center; background-color: #f8f9fa; padding: 15px;">
+                        <h4 style="margin: 0; border: none; color: #6c757d;">Total Labor Cost</h4>
+                        <h2 style="margin: 10px 0 0 0;">${{ "%.2f"|format(report_data.total_labor_cost) }}</h2>
+                    </td>
+                    <td style="text-align: center; background-color: #f8f9fa; padding: 15px;">
+                        <h4 style="margin: 0; border: none; color: #6c757d;">Total Cost</h4>
+                        <h2 style="margin: 10px 0 0 0; color: #198754;">${{ "%.2f"|format(report_data.total_cost) }}
+                        </h2>
+                    </td>
+                </tr>
+            </table>
+
+            <h4>Detailed Case List</h4>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Reference</th>
+                        <th>Latest Note</th>
+                        <th>Dealer</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for case in report_data.cases %}
+                    <tr>
+                        <td><a href="{{ url_for('view_case', case_id=case.id, _external=True) }}">{{ case.id }}</a></td>
+                        <td>{{ case.status }}</td>
+                        <td>{{ case.reference|striptags|truncate(30) }}</td>
+                        <td>{{ case.latest_note_text|striptags|truncate(50) if case.latest_note_text else '-' }}</td>
+                        <td>{{ case.dealer.name if case.dealer else 'N/A' }}</td>
+                        <td>{{ case.creation_timestamp.strftime('%Y-%m-%d') }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p>Generated by Dealer Dashboard on {{ report_data.end_date if report_data.end_date else 'Now' }}</p>
+        </div>
+    </div>
+</body>
+
+</html>

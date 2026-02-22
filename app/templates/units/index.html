@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}Manage Units | {{ g.current_org.name }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-1">Units</h2>
+        <p class="text-muted">Manage your equipment inventory and customer units.</p>
+    </div>
+    <a href="{{ url_for('units.add') }}" class="btn btn-primary">
+        <i class="bi bi-plus-lg me-1"></i> Add Unit
+    </a>
+</div>
+
+<div class="card border-0 shadow-sm">
+    <div class="card-body">
+        <!-- Search -->
+        <form method="GET" action="{{ url_for('units.index') }}" class="mb-4">
+            <div class="input-group">
+                <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+                <input type="text" name="search" class="form-control border-start-0 bg-light"
+                    placeholder="Search by Serial, Owner Name, or Company..." value="{{ search }}">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </form>
+
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Serial Number</th>
+                        <th>Make / Model</th>
+                        <th>Owner</th>
+                        <th>Hours</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for unit in units %}
+                    <tr>
+                        <td class="fw-bold">
+                            <a href="{{ url_for('units.view', unit_id=unit.id) }}" class="text-decoration-none">{{
+                                unit.serial_number or 'N/A' }}</a>
+                        </td>
+                        <td>
+                            <div class="fw-bold">{{ unit.manufacturer or '-' }}</div>
+                            <small class="text-muted">{{ unit.model_number or '-' }}</small>
+                        </td>
+                        <td>
+                            {% if unit.owner_company %}
+                            <div class="fw-bold">{{ unit.owner_company }}</div>
+                            <small class="text-muted">{{ unit.owner_name }}</small>
+                            {% else %}
+                            {{ unit.owner_name or 'Unknown' }}
+                            {% endif %}
+                        </td>
+                        <td>{{ unit.unit_hours or '-' }}</td>
+                        <td class="text-end">
+                            <a href="{{ url_for('units.view', unit_id=unit.id) }}"
+                                class="btn btn-sm btn-outline-primary">View</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="text-center py-5 text-muted">
+                            <i class="bi bi-tools fs-1 d-block mb-3 opacity-50"></i>
+                            No units found. <a href="{{ url_for('units.add') }}">Add your first unit</a>.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,32 @@
+{
+    "SCAG": [
+        {
+            "id": "scag_spring_tuneup",
+            "title": "Spring Tune-Up Special",
+            "message": "🌱 Spring is almost here! Is your Scag ready for the first cut? Bring it in for our 'Spring Ready' tune-up special and beat the rush. We'll check the belts, sharpen the blades, and change the oil so you're ready to roll. 🚜 #Scag #LawnCare #SpringReady",
+            "image_path": "/static/images/specials/scag_service.jpg"
+        },
+        {
+            "id": "scag_fleet_program",
+            "title": "Scag Fleet Program",
+            "message": "💼 Calling all Pro Landscapers! The Scag Fleet Program is back. Save thousands on new equipment when you bundle multiple units. Scale your business with the most reliable mowers in the industry. Come talk to us about our current fleet discounts! 💰 #ScagFleet #ProLandscaping #BusinessGrowth",
+            "image_path": "/static/images/specials/scag_fleet.jpg"
+        }
+    ],
+    "ECHO": [
+        {
+            "id": "echo_handheld_promo",
+            "title": "Echo Handheld Savings",
+            "message": "🔥 Get more power for your yard. We've got the latest Echo blowers and trimmers in stock and ready to work. Reliable, powerful, and built to last. Come check out the new X-Series today! 💨 #Echo #PowerEquipment #YardWork",
+            "image_path": "/static/images/specials/echo_handheld.jpg"
+        }
+    ],
+    "STIHL": [
+        {
+            "id": "stihl_chainsaw_event",
+            "title": "STIHL Chainsaw Event",
+            "message": "🪵 Cutting season is here! Whether you're clearing brush or cutting firewood, nothing beats a STIHL. Check out our current selection of legendary chainsaws and get the right tool for the job. 🪓 #STIHL #Chainsaw #FirewoodSeason",
+            "image_path": "/static/images/specials/stihl_saws.jpg"
+        }
+    ]
+}

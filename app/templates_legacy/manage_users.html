@@ -1,0 +1,316 @@
+{% extends "_base.html" %}
+
+{% block title %}Manage Users{% endblock %}
+
+{% block content %}
+<div class="container p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Manage Users</h1>
+        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#addUserModal"><i
+                class="bi bi-person-plus-fill me-2"></i>Add New User</button>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+        role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Name</th>
+                            <th>Role</th>
+                            <th>Reports</th>
+                            <th>Hourly Rate</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                        <tr>
+                            <td><strong>{{ user.username }}</strong></td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.first_name }} {{ user.last_name }}</td>
+                            <td><span class="badge bg-{{ 'primary' if user.role == 'admin' else 'secondary' }}">{{
+                                    user.role|capitalize }}</span></td>
+                            <td class="text-center">
+                                {% if user.receive_automated_reports %}
+                                <i class="bi bi-check-circle-fill text-success"
+                                    title="Receives Automated Open Case Reports"></i>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if user.labor_rate %}
+                                {{ user.labor_rate | currency }}
+                                {% else %}
+                                <span class="text-muted">Not Set</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                                    data-bs-target="#editUserModal-{{ user.id }}"><i class="bi bi-pencil-square"></i>
+                                    Edit</button>
+                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal"
+                                    data-bs-target="#resetPasswordModal-{{ user.id }}"><i class="bi bi-key"></i> Reset
+                                    Pass</button>
+                                {% if user.id != current_user.id and users|length > 1 %}
+                                <button class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
+                                    data-bs-target="#deleteUserModal-{{ user.id }}"><i class="bi bi-trash"></i>
+                                    Delete</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals for each user -->
+    {% for user in users %}
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editUserModal-{{ user.id }}" tabindex="-1"
+        aria-labelledby="editUserModalLabel-{{ user.id }}" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form action="{{ url_for('manage_users') }}" method="POST">
+                    <input type="hidden" name="action" value="edit">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="editUserModalLabel-{{ user.id }}">Edit User: {{ user.username }}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-username-{{ user.id }}" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="edit-username-{{ user.id }}" name="username"
+                                    value="{{ user.username }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-email-{{ user.id }}" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="edit-email-{{ user.id }}" name="email"
+                                    value="{{ user.email }}" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-first_name-{{ user.id }}" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="edit-first_name-{{ user.id }}"
+                                    name="first_name" value="{{ user.first_name or '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-last_name-{{ user.id }}" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="edit-last_name-{{ user.id }}"
+                                    name="last_name" value="{{ user.last_name or '' }}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-title-{{ user.id }}" class="form-label">Title</label>
+                                <input type="text" class="form-control" id="edit-title-{{ user.id }}" name="title"
+                                    value="{{ user.title or '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-cell_phone-{{ user.id }}" class="form-label">Cell Phone</label>
+                                <input type="tel" class="form-control" id="edit-cell_phone-{{ user.id }}"
+                                    name="cell_phone" value="{{ user.cell_phone or '' }}">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-role-{{ user.id }}" class="form-label">Role</label>
+                                <select class="form-select" id="edit-role-{{ user.id }}" name="role">
+                                    <option value="user" {% if user.role=='user' %}selected{% endif %}>User</option>
+                                    <option value="admin" {% if user.role=='admin' %}selected{% endif %}>Admin</option>
+                                </select>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="edit-labor_rate-{{ user.id }}" class="form-label">Hourly Labor Rate
+                                    ($)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="edit-labor_rate-{{ user.id }}"
+                                        name="labor_rate" value="{{ user.labor_rate or '' }}" step="0.01" min="0"
+                                        placeholder="e.g., 75.50">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox"
+                                    id="edit-receive_automated_reports-{{ user.id }}" name="receive_automated_reports"
+                                    {% if user.receive_automated_reports %}checked{% endif %}>
+                                <label class="form-check-label"
+                                    for="edit-receive_automated_reports-{{ user.id }}">Receive Automated Open Case
+                                    Reports</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-password-{{ user.id }}" class="form-label">New Password (optional)</label>
+                            <input type="password" class="form-control" id="edit-password-{{ user.id }}" name="password"
+                                placeholder="Leave blank to keep current password">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete User Modal -->
+    <div class="modal fade" id="deleteUserModal-{{ user.id }}" tabindex="-1"
+        aria-labelledby="deleteUserModalLabel-{{ user.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{{ url_for('manage_users') }}" method="POST">
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deleteUserModalLabel-{{ user.id }}">Delete User</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to permanently delete the user <strong>{{ user.username }}</strong>?
+                        </p>
+                        <p class="text-danger">This action cannot be undone.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-danger">Delete User</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reset Password Modal -->
+    <div class="modal fade" id="resetPasswordModal-{{ user.id }}" tabindex="-1"
+        aria-labelledby="resetPasswordModalLabel-{{ user.id }}" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <form action="{{ url_for('manage_users') }}" method="POST">
+                    <input type="hidden" name="action" value="reset_password">
+                    <input type="hidden" name="user_id" value="{{ user.id }}">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="resetPasswordModalLabel-{{ user.id }}">Reset Password</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Are you sure you want to reset the password for <strong>{{ user.username }}</strong>?</p>
+                        <p class="text-warning">A new temporary password will be generated, and the user will be
+                            required to change it on their next login.</p>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-warning">Reset Password</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+
+    <!-- Add User Modal -->
+    <div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <form action="{{ url_for('manage_users') }}" method="POST">
+                    <input type="hidden" name="action" value="add">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="addUserModalLabel">Add New User</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="add-username" class="form-label">Username</label>
+                                <input type="text" class="form-control" id="add-username" name="username" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="add-email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="add-email" name="email" required>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="add-first_name" class="form-label">First Name</label>
+                                <input type="text" class="form-control" id="add-first_name" name="first_name">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="add-last_name" class="form-label">Last Name</label>
+                                <input type="text" class="form-control" id="add-last_name" name="last_name">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="add-title" class="form-label">Title</label>
+                                <input type="text" class="form-control" id="add-title" name="title">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="add-cell_phone" class="form-label">Cell Phone</label>
+                                <input type="tel" class="form-control" id="add-cell_phone" name="cell_phone">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="add-role" class="form-label">Role</label>
+                                <select class="form-select" id="add-role" name="role">
+                                    <option value="user" selected>User</option>
+                                    <option value="admin">Admin</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="add-labor_rate" class="form-label">Hourly Labor Rate ($)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="add-labor_rate" name="labor_rate"
+                                        step="0.01" min="0" placeholder="e.g., 75.50">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="add-receive_automated_reports"
+                                    name="receive_automated_reports">
+                                <label class="form-check-label" for="add-receive_automated_reports">Receive Automated
+                                    Open Case Reports</label>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="add-password" class="form-label">Temporary Password</label>
+                            <input type="password" class="form-control" id="add-password" name="password" required>
+                            <div class="form-text">The user will be required to change this on first login.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                        <button type="submit" class="btn btn-primary">Add User</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

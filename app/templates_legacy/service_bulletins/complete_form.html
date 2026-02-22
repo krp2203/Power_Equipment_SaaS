@@ -1,0 +1,238 @@
+{% extends "_base.html" %}
+
+{% block title %}Record Completion - SB-{{ bulletin.sb_number }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <h2><i class="bi bi-check-circle"></i> Record Service Bulletin Completion</h2>
+    <p class="text-muted">SB-{{ bulletin.sb_number }}: {{ bulletin.title }}</p>
+
+    <div class="row mt-4">
+        <div class="col-md-8">
+            <form method="POST">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Unit Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="serial_number" class="form-label">Serial Number(s) *</label>
+                                <textarea class="form-control" id="serial_number" name="serial_number" rows="3"
+                                    placeholder="Enter one or multiple serial numbers (separated by commas or newlines)..."
+                                    required>{{ serial_number }}</textarea>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="model_name" class="form-label">Model Name</label>
+                                <input type="text" class="form-control" id="model_name" name="model_name"
+                                    value="{{ model_name }}">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="status" class="form-label">Status *</label>
+                            <select class="form-select" id="status" name="status" required>
+                                <option value="Completed">Completed</option>
+                                <option value="Inspected">Inspected Only</option>
+                                <option value="Replaced">Part Replaced</option>
+                                <option value="N/A">Not Applicable</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="4"
+                                placeholder="Enter any relevant notes about the inspection or repair..."></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="parts_used" class="form-label">Parts Used</label>
+                            <textarea class="form-control" id="parts_used" name="parts_used" rows="3"
+                                placeholder='["488561 spring"]'>{{ bulletin.required_parts if bulletin.required_parts else '[]' }}</textarea>
+                            <small class="text-muted">Pre-filled from bulletin or enter as JSON array: ["Part1",
+                                "Part2"]</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle"></i> Record Completion
+                    </button>
+                    <!-- Hidden input to store the modal response -->
+                    <input type="hidden" id="external_system_check" name="external_system_check" value="">
+
+                    <a href="{{ url_for('view_service_bulletin', bulletin_id=bulletin.id) }}"
+                        class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card sticky-top" style="top: 20px;">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">Bulletin Details</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>SB Number:</strong> {{ bulletin.sb_number }}</p>
+                    <p><strong>Issue Date:</strong> {{ bulletin.issue_date.strftime('%B %d, %Y') }}</p>
+                    {% if bulletin.warranty_code %}
+                    <p><strong>Warranty Code:</strong> {{ bulletin.warranty_code }}</p>
+                    {% endif %}
+                    {% if bulletin.labor_hours %}
+                    <p><strong>Labor Hours:</strong> {{ bulletin.labor_hours }}</p>
+                    {% endif %}
+                    {% if bulletin.pdf_filename %}
+                    <a href="{{ url_for('serve_bulletin_pdf', bulletin_id=bulletin.id) }}" target="_blank"
+                        class="btn btn-outline-primary w-100 mt-2">
+                        <i class="bi bi-file-pdf"></i> View PDF
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- External System Check Modal -->
+<div class="modal fade" id="externalCheckModal" tabindex="-1" aria-labelledby="externalCheckModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-primary">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="externalCheckModalLabel">
+                    <i class="bi bi-question-circle-fill"></i> External System Check
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                    aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="lead">Have you marked these serial number(s) as "Complete" in the external <strong>Service
+                        Bulletin Notification System</strong>?</p>
+                <div class="alert alert-info">
+                    <small>This step is required to keep our records synchronized.</small>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <button type="button" class="btn btn-outline-secondary btn-lg me-3" id="btnExternalNo"
+                    style="min-width: 100px;">
+                    NO
+                </button>
+                <button type="button" class="btn btn-success btn-lg" id="btnExternalYes" style="min-width: 100px;">
+                    YES
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block body_scripts %}
+<script>
+    // Auto-fill model name based on serial number
+    const affectedModels = {{ affected_models | tojson }};
+
+    document.getElementById('serial_number').addEventListener('input', function () {
+        const serial = this.value.trim().toUpperCase();
+        const modelInput = document.getElementById('model_name');
+
+        if (!serial) {
+            modelInput.value = '';
+            return;
+        }
+
+        // Find matching model
+        for (const model of affectedModels) {
+            const start = model.serial_start.toUpperCase();
+            const end = model.serial_end.toUpperCase();
+
+            if (serial >= start && serial <= end) {
+                modelInput.value = model.model_name;
+            }
+        }
+
+        // No match found - keep user input
+    });
+
+    // Check Stolen on Blur
+    document.getElementById('serial_number').addEventListener('blur', function () {
+        const serial = this.value.trim();
+        if (serial.length < 3) return;
+
+        // Clear existing alerts
+        const existingAlert = document.getElementById('stolen-alert-popup');
+        if (existingAlert) existingAlert.remove();
+
+        fetch(`/api/get_unit_by_serial?serial_number=${encodeURIComponent(serial)}`)
+            .then(res => {
+                // Even 404 might have stolen data
+                if (!res.ok && res.status !== 404) return null;
+                return res.json();
+            })
+            .then(data => {
+                if (data && data.is_stolen) {
+                    const alertHtml = `
+                        <div id="stolen-alert-popup" class="alert alert-danger alert-dismissible fade show mt-3 shadow-sm border-2 border-danger" role="alert">
+                            <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> CRITICAL WARNING: STOLEN UNIT</h4>
+                            <p class="mb-0 fw-bold fs-5">${data.stolen_warning}</p>
+                            <hr>
+                            <p class="mb-0">This unit has been reported as stolen. Please verify immediately.</p>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                     `;
+                    const cardBody = document.querySelector('.card-body'); // Insert into card
+                    if (cardBody) cardBody.insertAdjacentHTML('afterbegin', alertHtml);
+                }
+            })
+            .catch(e => console.error(e));
+    });
+
+    // Trigger on page load if serial is pre-filled
+    const serialInput = document.getElementById('serial_number');
+    if (serialInput && serialInput.value) {
+        serialInput.dispatchEvent(new Event('input'));
+    }
+
+    // --- Form Submission Interception ---
+    // Use ID if possible, otherwise fallback to form selector but ensure we get the right one
+    const form = document.querySelector('form');
+
+    // Ensure Bootstrap is loaded before using it
+    // Since we are in body_scripts, it should be fine.
+
+    const hiddenInput = document.getElementById('external_system_check');
+    const modalEl = document.getElementById('externalCheckModal');
+
+    if (form && hiddenInput && modalEl) {
+        const modal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
+        const btnYes = document.getElementById('btnExternalYes');
+        const btnNo = document.getElementById('btnExternalNo');
+
+        form.addEventListener('submit', function (e) {
+            // If hidden input is empty, prevent submit and show modal
+            if (!hiddenInput.value) {
+                e.preventDefault();
+                modal.show();
+            }
+            // If hidden input has value, let the form submit normally
+        });
+
+        btnYes.addEventListener('click', function () {
+            hiddenInput.value = 'yes';
+            modal.hide();
+            form.submit();
+        });
+
+        btnNo.addEventListener('click', function () {
+            hiddenInput.value = 'no';
+            modal.hide();
+            form.submit();
+        });
+    }
+
+</script>
+{% endblock %}

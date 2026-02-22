@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card shadow">
+            <div class="card-header bg-white">
+                <h4 class="mb-0">{{ title }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    {{ form.hidden_tag() }}
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">{{ form.manufacturer.label }}</label>
+                            {{ form.manufacturer(class="form-control") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ form.model_number.label }}</label>
+                            {{ form.model_number(class="form-control") }}
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">{{ form.serial_number.label }}</label>
+                            {{ form.serial_number(class="form-control") }}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">{{ form.year.label }}</label>
+                            {{ form.year(class="form-control") }}
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">{{ form.condition.label }}</label>
+                            {{ form.condition(class="form-select") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">{{ form.price.label }}</label>
+                            {{ form.price(class="form-control") }}
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">{{ form.hours.label }}</label>
+                            {{ form.hours(class="form-control") }}
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">{{ form.description.label }}</label>
+                        {{ form.description(class="form-control", rows=4) }}
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">{{ form.primary_image.label }}</label>
+                        {{ form.primary_image(class="form-control") }}
+                        {% if unit and unit.images %}
+                        <div class="mt-2">
+                            <small class="text-muted">Current Primary Image:</small><br>
+                            {% set primary_img = unit.images|selectattr('is_primary')|first %}
+                            {% if not primary_img and unit.images %}{% set primary_img = unit.images[0] %}{% endif %}
+                            <img src="{{ primary_img.image_url }}" class="img-thumbnail" style="height: 100px;">
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">{{ form.status.label }}</label>
+                            {{ form.status(class="form-select") }}
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <div class="form-check">
+                                {{ form.display_on_web(class="form-check-input") }}
+                                <label class="form-check-label">{{ form.display_on_web.label }}</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-success">Save Unit</button>
+                        <a href="{{ url_for('inventory.manage') }}" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

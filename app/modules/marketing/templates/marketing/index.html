@@ -1,0 +1,750 @@
+{% extends "base.html" %}
+
+{% block title %}Marketing Control Center{% endblock %}
+
+{% block content %}
+<!-- Facebook Connection Warning -->
+{% if not fb_connected %}
+<div class="alert alert-warning alert-dismissible fade show" role="alert">
+    <div class="d-flex align-items-start">
+        <i class="bi bi-exclamation-triangle-fill me-3" style="font-size: 1.5rem;"></i>
+        <div>
+            <h6 class="alert-heading mb-2"><strong>Facebook Not Connected</strong></h6>
+            <p class="mb-2">You need to connect your Facebook account before you can post. This only takes a minute!</p>
+            <a href="{{ url_for('settings.organization') }}#integrations" class="btn btn-sm btn-warning">
+                <i class="bi bi-link-45deg me-1"></i> Connect Facebook Now
+            </a>
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+{% endif %}
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Create New Facebook Post</h5>
+            </div>
+            <div class="card-body">
+                {% if not fb_connected %}
+                <!-- Disabled overlay when FB not connected -->
+                <div class="position-relative">
+                    <div class="position-absolute w-100 h-100" style="z-index: 10; background: rgba(255,255,255,0.8); cursor: not-allowed;">
+                        <div class="d-flex align-items-center justify-content-center h-100">
+                            <div class="text-center">
+                                <i class="bi bi-lock-fill text-warning" style="font-size: 3rem;"></i>
+                                <p class="mt-3 mb-0 fw-bold">Connect Facebook to unlock this feature</p>
+                            </div>
+                        </div>
+                    </div>
+                {% endif %}
+                <form method="POST" enctype="multipart/form-data" id="marketingForm" {% if not fb_connected %}disabled{% endif %}>
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Post Title</label>
+                        {{ form.title(class="form-control", placeholder="e.g., Spring Tune-Up Special") }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold small text-uppercase">Message Content</label>
+                        {{ form.content(class="form-control", rows=6, placeholder="What would you like to say to your
+                        customers?") }}
+                    </div>
+                    <div class="mb-4">
+                        <label class="form-label fw-bold small text-uppercase">Media Attachment</label>
+
+                        <!-- Unified Upload Dropzone -->
+                        <div id="unifiedDropzone" class="border border-2 rounded p-4 text-center" style="border-style: dashed !important; cursor: pointer; background: #f8f9fa;">
+                            <i class="bi bi-cloud-upload" style="font-size: 2.5rem; color: #6c757d;"></i>
+                            <p class="mt-2 mb-1 fw-bold">Drag & drop your media here</p>
+                            <p class="small text-muted mb-2">or click to browse</p>
+                            <input type="file" id="unifiedFileInput" accept=".pdf,image/*,video/*" style="display: none;">
+                            {{ form.image(style="display: none;", id="imageInput") }}
+                            <input type="hidden" id="pdfImageUrl" name="pdf_image_url" value="">
+                            <input type="hidden" id="uploadedFileType" value="">
+
+                            <div id="uploadProcessing" style="display: none;" class="mt-3">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Processing...</span>
+                                </div>
+                                <p class="small mt-2 mb-0" id="processingText">Processing...</p>
+                                <div class="progress mt-2" style="height: 20px; display: none;" id="uploadProgressBar">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" id="uploadProgressBarFill">0%</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- File Preview Area -->
+                        <div id="filePreview" style="display: none;" class="mt-3">
+                            <div class="alert alert-success d-flex align-items-center mb-2">
+                                <i class="bi bi-check-circle-fill me-2"></i>
+                                <div class="flex-grow-1">
+                                    <strong id="filePreviewTitle">File attached!</strong>
+                                    <br><small id="filePreviewName" class="text-muted"></small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger" onclick="clearAttachment()">
+                                    <i class="bi bi-x"></i> Remove
+                                </button>
+                            </div>
+                            <div id="filePreviewContent"></div>
+                        </div>
+
+                        <div class="form-text mt-2">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <strong>Supported:</strong> PDFs (auto-converts), Images (JPG, PNG, GIF), Videos (MP4, MOV, AVI, WMV)
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2" style="margin-top: 2rem; margin-bottom: 2rem;">
+                        <button type="submit" id="submitBtn" class="btn btn-lg fw-bold" style="background-color: #1877f2 !important;
+                                   border-color: #1877f2 !important;
+                                   color: white !important;
+                                   padding: 1rem 2rem !important;
+                                   font-size: 1.1rem !important;
+                                   display: block !important;
+                                   width: 100% !important;">
+                            <i class="bi bi-facebook me-2"></i> Post to Facebook Page
+                        </button>
+                        <div id="uploadProgress" class="mt-3" style="display: none;">
+                            <div class="card border-primary">
+                                <div class="card-body">
+                                    <div class="text-center mb-3">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Uploading...</span>
+                                        </div>
+                                    </div>
+                                    <h6 class="text-center mb-3" id="progressText">Uploading to Facebook...</h6>
+                                    <div class="progress" style="height: 25px;">
+                                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                                             role="progressbar"
+                                             style="width: 0%;"
+                                             id="facebookProgressBar">0%</div>
+                                    </div>
+                                    <p class="text-center text-muted small mt-2 mb-0" id="progressSubtext">
+                                        Please wait, this may take several minutes for large videos...
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+                {% if not fb_connected %}
+                </div><!-- Close disabled overlay -->
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Quick Tips -->
+        <div class="card border-0 shadow-sm bg-dark text-white mb-4">
+            <div class="card-header bg-transparent border-bottom border-secondary py-3">
+                <h5 class="mb-0"><i class="bi bi-lightbulb me-2 text-warning"></i>Quick Tips</h5>
+            </div>
+            <div class="card-body">
+                <div class="small">
+                    <p class="mb-3">
+                        <i class="bi bi-file-earmark-pdf me-2 text-danger"></i>
+                        <strong>PDF Marketing Materials:</strong> Drop manufacturer PDFs directly into the Media Attachment area - they'll auto-convert to images with a pre-filled template!
+                    </p>
+                    <p class="mb-3">
+                        <i class="bi bi-camera me-2 text-info"></i>
+                        <strong>Images:</strong> Posts with images get 3x more engagement than text-only posts.
+                    </p>
+                    <p class="mb-0">
+                        <i class="bi bi-play-circle me-2 text-success"></i>
+                        <strong>Videos:</strong> Large video files will upload in the background - you'll be notified when they're posted.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Posts Widget -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent Posts</h5>
+                <a href="{{ url_for('marketing.history') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body p-0">
+                {% if recent_posts %}
+                <div class="list-group list-group-flush">
+                    {% for post in recent_posts %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="flex-grow-1">
+                                <div class="fw-bold small mb-1">{{ post.title or 'Untitled Post' }}</div>
+                                <div class="text-muted small relative-time" style="font-size: 0.75rem;" data-timestamp="{{ post.created_at.isoformat() }}">
+                                    {{ post.created_at.strftime('%b %d, %I:%M %p') }}
+                                </div>
+                            </div>
+                            <div>
+                                {% if post.status == 'success' %}
+                                    <span class="badge bg-success" style="font-size: 0.7rem;">
+                                        <i class="bi bi-check-circle"></i>
+                                    </span>
+                                {% elif post.status == 'pending' %}
+                                    <span class="badge bg-warning" style="font-size: 0.7rem;">
+                                        <i class="bi bi-hourglass-split"></i>
+                                    </span>
+                                {% elif post.status == 'uploading' %}
+                                    <span class="badge bg-primary" style="font-size: 0.7rem;">
+                                        <i class="bi bi-upload"></i>
+                                    </span>
+                                {% elif post.status == 'failed' %}
+                                    <span class="badge bg-danger" style="font-size: 0.7rem;">
+                                        <i class="bi bi-x-circle"></i>
+                                    </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4 text-muted small">
+                    <i class="bi bi-inbox" style="font-size: 2rem; opacity: 0.3;"></i>
+                    <p class="mb-0 mt-2">No posts yet</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="alert alert-info border-0 shadow-sm small">
+            <i class="bi bi-lightbulb-fill me-2"></i>
+            <strong>Pro Tip:</strong> Posts with images get 3x more engagement! Use the "Specials" library to save time
+            and look professional.
+        </div>
+    </div>
+</div>
+
+<script>
+    // File validation for images and videos
+    document.addEventListener('DOMContentLoaded', function () {
+        const fileInput = document.getElementById('imageInput');
+        const form = document.getElementById('marketingForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const uploadProgress = document.getElementById('uploadProgress');
+
+        if (fileInput) {
+            fileInput.addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (file) {
+                    const isVideo = file.type.startsWith('video/');
+                    const isImage = file.type.startsWith('image/');
+
+                    // Check if it's a supported file type
+                    if (!isVideo && !isImage) {
+                        alert('Please upload an image or video file.');
+                        e.target.value = '';
+                        return;
+                    }
+
+                    // Check file size based on type
+                    if (isImage) {
+                        const maxSize = 10 * 1024 * 1024; // 10MB for images
+                        if (file.size > maxSize) {
+                            alert('Image is too large. Please choose an image under 10MB.');
+                            e.target.value = '';
+                            return;
+                        }
+                    } else if (isVideo) {
+                        const maxSize = 500 * 1024 * 1024; // 500MB for videos
+                        if (file.size > maxSize) {
+                            alert('Video is too large. Please choose a video under 500MB.');
+                            e.target.value = '';
+                            return;
+                        }
+
+                        // Show a message about upload time for large videos
+                        if (file.size > 10 * 1024 * 1024) { // > 10MB
+                            const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+                            alert(`Video size: ${sizeMB}MB. This will be uploaded in chunks for reliability. You'll see a progress bar.`);
+                        }
+                    }
+                }
+            });
+        }
+
+        // Show upload progress on form submit
+        if (form) {
+            form.addEventListener('submit', function(e) {
+                const file = fileInput.files[0];
+                const pdfImageUrl = document.getElementById('pdfImageUrl').value;
+
+                // Show progress for large files OR any file to give user feedback
+                if (file || pdfImageUrl) {
+                    // Show progress bar for user feedback
+                    submitBtn.disabled = true;
+                    uploadProgress.style.display = 'block';
+
+                    // Animate progress bar to show activity
+                    animateFacebookUploadProgress();
+
+                    if (file && file.size > 10 * 1024 * 1024) {
+                        // Large file - use chunked upload with progress
+                        e.preventDefault();
+                        uploadWithProgress();
+                    }
+                    // For small files and PDFs, form submits normally but shows progress
+                }
+            });
+        }
+
+        // Animate Facebook upload progress to show activity
+        function animateFacebookUploadProgress() {
+            const progressBar = document.getElementById('facebookProgressBar');
+            let progress = 0;
+
+            const interval = setInterval(() => {
+                progress += Math.random() * 5;
+                if (progress > 90) progress = 90; // Cap at 90% until actual completion
+
+                progressBar.style.width = Math.floor(progress) + '%';
+                progressBar.textContent = Math.floor(progress) + '%';
+            }, 300);
+
+            // Store interval ID so we can clear it if needed
+            window.fbUploadInterval = interval;
+        }
+
+        async function uploadWithProgress() {
+            const file = fileInput.files[0];
+            const title = document.querySelector('input[name="title"]').value;
+            const content = document.querySelector('textarea[name="content"]').value;
+
+            // Clear any existing animation
+            if (window.fbUploadInterval) {
+                clearInterval(window.fbUploadInterval);
+            }
+
+            submitBtn.disabled = true;
+            uploadProgress.style.display = 'block';
+
+            try {
+                // Upload using chunks to avoid timeout
+                await uploadInChunks(file, title, content);
+
+                // Success - show message and reload
+                alert('Video upload successful! It will be posted to Facebook in the background.');
+                window.location.href = '/marketing';
+            } catch (error) {
+                alert('Upload failed: ' + error.message);
+                submitBtn.disabled = false;
+                uploadProgress.style.display = 'none';
+                if (window.fbUploadInterval) {
+                    clearInterval(window.fbUploadInterval);
+                }
+            }
+        }
+
+        async function uploadInChunks(file, title, content) {
+            const chunkSize = 5 * 1024 * 1024; // 5MB chunks
+            const totalChunks = Math.ceil(file.size / chunkSize);
+
+            // Initialize upload session
+            const initResponse = await fetch('/marketing/init-chunk-upload', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    filename: file.name,
+                    totalChunks: totalChunks,
+                    fileSize: file.size
+                })
+            });
+
+            if (!initResponse.ok) throw new Error('Failed to initialize upload');
+            const {uploadId} = await initResponse.json();
+
+            // Upload chunks
+            for (let i = 0; i < totalChunks; i++) {
+                const start = i * chunkSize;
+                const end = Math.min(start + chunkSize, file.size);
+                const chunk = file.slice(start, end);
+
+                const formData = new FormData();
+                formData.append('uploadId', uploadId);
+                formData.append('chunkNumber', i);
+                formData.append('chunk', chunk);
+
+                const chunkResponse = await fetch('/marketing/upload-chunk', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!chunkResponse.ok) throw new Error(`Failed to upload chunk ${i + 1}`);
+
+                // Update progress on both text and progress bar
+                const progress = ((i + 1) / totalChunks) * 100;
+                const uploadedMB = ((i + 1) * chunkSize) / (1024 * 1024);
+                const totalMB = file.size / (1024 * 1024);
+
+                // Update main progress text
+                document.getElementById('progressText').textContent =
+                    `Uploading to Facebook... ${progress.toFixed(1)}%`;
+
+                // Update subtext with file size info
+                document.getElementById('progressSubtext').textContent =
+                    `${Math.min(uploadedMB, totalMB).toFixed(1)}MB / ${totalMB.toFixed(1)}MB uploaded`;
+
+                // Update progress bar
+                const progressBar = document.getElementById('facebookProgressBar');
+                progressBar.style.width = Math.floor(progress) + '%';
+                progressBar.textContent = Math.floor(progress) + '%';
+            }
+
+            // Complete upload
+            const completeResponse = await fetch('/marketing/complete-chunk-upload', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    uploadId: uploadId,
+                    title: title,
+                    content: content
+                })
+            });
+
+            if (!completeResponse.ok) throw new Error('Failed to complete upload');
+            return await completeResponse.json();
+        }
+    });
+
+    function useSpecial(title, content) {
+        document.querySelector('input[name="title"]').value = title;
+        document.querySelector('textarea[name="content"]').value = content;
+
+        // Smooth scroll to form on mobile
+        if (window.innerWidth < 768) {
+            document.getElementById('marketingForm').scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    // Convert UTC timestamps to relative time
+    function timeAgo(isoString) {
+        const date = new Date(isoString);
+        const now = new Date();
+        const seconds = Math.floor((now - date) / 1000);
+
+        if (seconds < 60) return 'Just now';
+        const minutes = Math.floor(seconds / 60);
+        if (minutes < 60) return minutes + ' minute' + (minutes > 1 ? 's' : '') + ' ago';
+        const hours = Math.floor(minutes / 60);
+        if (hours < 24) return hours + ' hour' + (hours > 1 ? 's' : '') + ' ago';
+        const days = Math.floor(hours / 24);
+        if (days < 7) return days + ' day' + (days > 1 ? 's' : '') + ' ago';
+
+        // If older than a week, show the actual date in local time
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    }
+
+    // Update all relative time elements
+    function updateRelativeTimes() {
+        document.querySelectorAll('.relative-time').forEach(el => {
+            const timestamp = el.getAttribute('data-timestamp');
+            if (timestamp) {
+                el.textContent = timeAgo(timestamp);
+            }
+        });
+    }
+
+    // Update on page load and every 30 seconds
+    updateRelativeTimes();
+    setInterval(updateRelativeTimes, 30000);
+
+    // ===== UNIFIED UPLOAD HANDLING - PDFs, Images, Videos =====
+    const unifiedDropzone = document.getElementById('unifiedDropzone');
+    const unifiedFileInput = document.getElementById('unifiedFileInput');
+    const uploadProcessing = document.getElementById('uploadProcessing');
+    const processingText = document.getElementById('processingText');
+    const uploadProgressBar = document.getElementById('uploadProgressBar');
+    const uploadProgressBarFill = document.getElementById('uploadProgressBarFill');
+    const filePreview = document.getElementById('filePreview');
+    const filePreviewTitle = document.getElementById('filePreviewTitle');
+    const filePreviewName = document.getElementById('filePreviewName');
+    const filePreviewContent = document.getElementById('filePreviewContent');
+
+    // Click to browse
+    unifiedDropzone.addEventListener('click', () => {
+        unifiedFileInput.click();
+    });
+
+    // File selected via browse
+    unifiedFileInput.addEventListener('change', (e) => {
+        if (e.target.files.length > 0) {
+            handleUnifiedFile(e.target.files[0]);
+        }
+    });
+
+    // Drag and drop
+    unifiedDropzone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        unifiedDropzone.style.background = '#e9ecef';
+    });
+
+    unifiedDropzone.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        unifiedDropzone.style.background = '#f8f9fa';
+    });
+
+    unifiedDropzone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        unifiedDropzone.style.background = '#f8f9fa';
+
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            handleUnifiedFile(files[0]);
+        }
+    });
+
+    async function handleUnifiedFile(file) {
+        const isPDF = file.type === 'application/pdf';
+        const isImage = file.type.startsWith('image/');
+        const isVideo = file.type.startsWith('video/');
+
+        if (!isPDF && !isImage && !isVideo) {
+            alert('Please upload a PDF, image, or video file');
+            return;
+        }
+
+        // Show processing UI
+        unifiedDropzone.style.display = 'none';
+        uploadProcessing.style.display = 'block';
+        uploadProgressBar.style.display = 'block';
+
+        try {
+            if (isPDF) {
+                await handlePDFUploadComplete(file);
+            } else if (isImage) {
+                await handleImageUpload(file);
+            } else if (isVideo) {
+                await handleVideoUpload(file);
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            alert('Error: ' + error.message);
+            resetUploadZone();
+        }
+    }
+
+    async function handlePDFUpload(file) {
+        processingText.textContent = 'Converting PDF to image...';
+        setProgress(0);
+
+        const formData = new FormData();
+        formData.append('pdf', file);
+
+        // Animate progress while processing
+        let currentProgress = 0;
+        const progressInterval = setInterval(() => {
+            if (currentProgress < 90) {
+                currentProgress += Math.random() * 15;
+                if (currentProgress > 90) currentProgress = 90;
+                setProgress(Math.floor(currentProgress));
+            }
+        }, 200);
+
+        try {
+            const response = await fetch('/marketing/parse-pdf', {
+                method: 'POST',
+                body: formData
+            });
+
+            clearInterval(progressInterval);
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Failed to process PDF');
+            }
+
+            const result = await response.json();
+
+            setProgress(100);
+            processingText.textContent = 'PDF converted successfully!';
+
+            return result;
+        } catch (error) {
+            clearInterval(progressInterval);
+            throw error;
+        }
+    }
+
+    async function handlePDFUploadComplete(file) {
+        const result = await handlePDFUpload(file);
+
+        // Auto-fill the form
+        document.querySelector('input[name="title"]').value = result.title || '';
+        document.querySelector('textarea[name="content"]').value = result.message || '';
+
+        // Attach the PDF-generated image
+        if (result.image_url) {
+            document.getElementById('pdfImageUrl').value = result.image_url;
+            document.getElementById('uploadedFileType').value = 'pdf';
+
+            // Show preview
+            setTimeout(() => {
+                uploadProcessing.style.display = 'none';
+                filePreview.style.display = 'block';
+                filePreviewTitle.innerHTML = '<i class="bi bi-file-earmark-pdf text-danger me-2"></i>PDF converted to image!';
+                filePreviewName.textContent = file.name;
+                filePreviewContent.innerHTML = `
+                    <img src="${result.image_url}" class="img-fluid rounded" style="max-height: 200px;">
+                    <p class="small text-muted mt-2 mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Detected Brand: <strong>${result.brand || 'Not detected'}</strong><br>
+                        Please customize the title and message above with your promotion details.
+                    </p>
+                `;
+                // Disable the hidden file input since we have a PDF image
+                document.getElementById('imageInput').disabled = true;
+            }, 500);
+        }
+    }
+
+    async function handleImageUpload(file) {
+        processingText.textContent = 'Processing image...';
+        setProgress(0);
+
+        // Check file size
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            throw new Error('Image is too large. Please choose an image under 10MB.');
+        }
+
+        // Animate progress smoothly
+        await animateProgress(0, 100, 600); // 600ms animation
+
+        // Set the file to the hidden input
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        document.getElementById('imageInput').files = dataTransfer.files;
+        document.getElementById('uploadedFileType').value = 'image';
+
+        processingText.textContent = 'Image attached!';
+
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            setTimeout(() => {
+                uploadProcessing.style.display = 'none';
+                filePreview.style.display = 'block';
+                filePreviewTitle.innerHTML = '<i class="bi bi-image text-info me-2"></i>Image attached!';
+                filePreviewName.textContent = file.name;
+                filePreviewContent.innerHTML = `<img src="${e.target.result}" class="img-fluid rounded" style="max-height: 200px;">`;
+            }, 300);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    async function handleVideoUpload(file) {
+        processingText.textContent = 'Preparing video...';
+        setProgress(0);
+
+        // Check file size
+        const maxSize = 500 * 1024 * 1024; // 500MB
+        if (file.size > maxSize) {
+            throw new Error('Video is too large. Please choose a video under 500MB.');
+        }
+
+        const sizeMB = (file.size / (1024 * 1024)).toFixed(1);
+
+        // Animate progress smoothly
+        await animateProgress(0, 100, 800); // 800ms animation for videos
+
+        // Set the file to the hidden input
+        const dataTransfer = new DataTransfer();
+        dataTransfer.items.add(file);
+        document.getElementById('imageInput').files = dataTransfer.files;
+        document.getElementById('uploadedFileType').value = 'video';
+
+        processingText.textContent = 'Video ready!';
+
+        // Show preview
+        setTimeout(() => {
+            uploadProcessing.style.display = 'none';
+            filePreview.style.display = 'block';
+            filePreviewTitle.innerHTML = '<i class="bi bi-play-circle text-success me-2"></i>Video ready!';
+            filePreviewName.textContent = file.name;
+
+            let uploadInfo = `<div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Video file ready:</strong> ${sizeMB}MB
+            `;
+
+            if (file.size > 10 * 1024 * 1024) {
+                uploadInfo += `<br><small>This video will be uploaded in the background when you click "Post to Facebook". You'll be notified when it's posted.</small>`;
+            }
+
+            uploadInfo += `</div>`;
+            filePreviewContent.innerHTML = uploadInfo;
+        }, 300);
+    }
+
+    function setProgress(percent) {
+        uploadProgressBarFill.style.width = percent + '%';
+        uploadProgressBarFill.textContent = percent + '%';
+    }
+
+    // Smooth animated progress
+    function animateProgress(startPercent, endPercent, durationMs) {
+        return new Promise((resolve) => {
+            const startTime = Date.now();
+            const progressRange = endPercent - startPercent;
+
+            function updateProgress() {
+                const elapsed = Date.now() - startTime;
+                const progress = Math.min(elapsed / durationMs, 1);
+                const currentPercent = startPercent + (progressRange * progress);
+
+                setProgress(Math.floor(currentPercent));
+
+                if (progress < 1) {
+                    requestAnimationFrame(updateProgress);
+                } else {
+                    resolve();
+                }
+            }
+
+            requestAnimationFrame(updateProgress);
+        });
+    }
+
+    function clearAttachment() {
+        // Clear all upload states
+        document.getElementById('pdfImageUrl').value = '';
+        document.getElementById('uploadedFileType').value = '';
+        document.getElementById('imageInput').value = '';
+        document.getElementById('imageInput').disabled = false;
+        unifiedFileInput.value = '';
+
+        // Reset UI
+        resetUploadZone();
+    }
+
+    function resetUploadZone() {
+        uploadProcessing.style.display = 'none';
+        uploadProgressBar.style.display = 'none';
+        filePreview.style.display = 'none';
+        unifiedDropzone.style.display = 'block';
+        setProgress(0);
+    }
+</script>
+
+<style>
+    .accordion-button::after {
+        filter: invert(1);
+    }
+
+    .text-truncate-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+
+    .list-group-item-action:hover {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+    }
+</style>
+{% endblock %}

@@ -1,0 +1,154 @@
+{% extends "base.html" %}
+{% block title %}Mandatory Service Bulletins | {{ g.current_org.name }}{% endblock %}
+
+{% block content %}
+<style>
+    .sb-card {
+        transition: transform 0.2s;
+        border: 1px solid #eee;
+    }
+
+    .sb-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .sb-card-header {
+        background-color: #ffc107;
+        /* Yellow */
+        padding: 0.5rem 1rem;
+        font-weight: bold;
+        color: #000;
+        border-bottom: 0;
+    }
+
+    .sb-card-header.completed {
+        background-color: #198754;
+        /* Green */
+        color: #fff;
+    }
+
+    .sb-card-header.mandatory {
+        background-color: #ffc107;
+        /* Bright Yellow */
+        animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+        0% {
+            opacity: 1;
+        }
+
+        50% {
+            opacity: 0.8;
+        }
+
+        100% {
+            opacity: 1;
+        }
+    }
+</style>
+
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <div class="d-flex align-items-center">
+        <i class="bi bi-exclamation-triangle-fill text-warning me-2 fs-3"></i>
+        <h1 class="h2 mb-0">Mandatory Service Bulletins</h1>
+    </div>
+    <div class="btn-toolbar mb-2 mb-md-0 gap-2">
+        <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#searchCollapse">
+            <i class="bi bi-search me-1"></i> Check Serial Number
+        </button>
+        <a href="{{ url_for('service_bulletins.upload') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle me-1"></i> New Bulletin
+        </a>
+    </div>
+</div>
+
+<!-- Search Collapse -->
+<div class="collapse {% if serial_number %}show{% endif %} mb-4" id="searchCollapse">
+    <div class="card card-body border-0 shadow-sm bg-light">
+        <form action="{{ url_for('service_bulletins.index') }}" method="GET" class="row g-3 align-items-end">
+            <div class="col-md-8">
+                <label class="form-label fw-bold">Check Applicability for Serial Number</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-white border-end-0"><i class="bi bi-hash"></i></span>
+                    <input type="text" name="serial" class="form-control border-start-0 ps-0"
+                        placeholder="Enter Serial Number..." value="{{ serial_number or '' }}" required>
+                </div>
+                <div class="form-text">Enter a unit serial number to see which bulletins apply.</div>
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-primary w-100">Check Applicability</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if serial_number %}
+<div class="alert alert-info border-0 shadow-sm mb-4 d-flex justify-content-between align-items-center">
+    <div>
+        <i class="bi bi-info-circle me-2"></i>
+        Showing results for Serial: <strong>{{ serial_number }}</strong>
+    </div>
+    <a href="{{ url_for('service_bulletins.index') }}" class="btn btn-sm btn-outline-info">Clear Results</a>
+</div>
+{% endif %}
+
+<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+    {% for sb in bulletins %}
+    {% set is_mandatory = sb.id in applicable_ids %}
+    {% set completion = completion_map.get(sb.id) %}
+
+    <div class="col">
+        <div class="card h-100 border-0 shadow-sm sb-card">
+            <div class="sb-card-header {% if completion %}completed{% elif is_mandatory %}mandatory{% endif %}">
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>SB-{{ sb.sb_number }}</span>
+                    {% if completion %}
+                    <span class="badge bg-white text-success small">COMPLETED</span>
+                    {% elif is_mandatory %}
+                    <span class="badge bg-dark text-white small">MANDATORY</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title fw-bold mb-1">{{ sb.title }}</h5>
+                <p class="text-muted small mb-3">
+                    <i class="bi bi-calendar3 me-1"></i> {{ sb.issue_date.strftime('%B %d, %Y') }}
+                </p>
+                <p class="card-text text-secondary small mb-4">
+                    {{ sb.description[:120] }}{% if sb.description|length > 120 %}...{% endif %}
+                </p>
+
+                <div class="d-flex gap-2 mb-3">
+                    <span class="badge bg-light text-dark border"><i class="bi bi-truck me-1"></i>{{
+                        sb.affected_models|length }} Model(s)</span>
+                    {% if sb.pdf_filename %}
+                    <a href="{{ url_for('static', filename='uploads/bulletins/' ~ g.current_org_id ~ '/' ~ sb.pdf_filename) }}"
+                        target="_blank" class="badge bg-light text-info border text-decoration-none">
+                        <i class="bi bi-file-pdf me-1"></i>PDF
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="card-footer bg-transparent border-top-0 pt-0 pb-3">
+                <div class="d-grid gap-2 d-md-flex justify-content-md-start">
+                    <a href="{{ url_for('service_bulletins.view', sb_id=sb.id) }}"
+                        class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-eye me-1"></i> View Details
+                    </a>
+                    <a href="#" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-pencil me-1"></i> Edit
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12 text-center py-5 text-muted">
+        <i class="bi bi-file-earmark-text display-4 d-block mb-3 opacity-50"></i>
+        No service bulletins found.
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

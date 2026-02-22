@@ -1,0 +1,125 @@
+{% extends "_base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Equipment Check Sheets</h1>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Back to Dashboard</a>
+    </div>
+
+    <!-- Warranty Report -->
+    <div class="card mb-4 border-warning">
+        <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Warranty Issue Reporting</h5>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('send_warranty_report') }}" method="POST" class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label for="start_date" class="form-label">Start Date</label>
+                    <input type="date" class="form-control" name="start_date" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="end_date" class="form-label">End Date</label>
+                    <input type="date" class="form-control" name="end_date" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="email_recipient" class="form-label">Recipient Email (Optional)</label>
+                    <input type="email" class="form-control" name="email_recipient" placeholder="warranty@krpcloud.com">
+                </div>
+                <div class="col-md-12">
+                    <button type="submit" class="btn btn-dark w-100">
+                        <i class="bi bi-envelope"></i> Email Warranty Information
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Available Templates -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Available Check Sheets</h5>
+            <a href="{{ url_for('manage_check_sheet_templates') }}" class="btn btn-sm btn-light text-primary fw-bold">
+                <i class="bi bi-gear-fill"></i> Manage Templates
+            </a>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                {% for template in templates %}
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ template.title }}</h5>
+                            <p class="card-text text-muted">{{ template.description or 'No description.' }}</p>
+                            <!-- Link directly to form -->
+                            <a href="{{ url_for('view_check_sheet', template_id=template.id) }}"
+                                class="btn btn-primary">
+                                <i class="bi bi-play-circle"></i> Start
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="col-12">
+                    <p class="text-muted text-center">No check sheets available. Add some to the database.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- User Submissions History Table -->
+    {% if my_submissions %}
+    <div class="card">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">Your Recent Submissions</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Check Sheet</th>
+                        <th>Serial Number</th>
+                        <th>Date</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sub in my_submissions %}
+                    <tr>
+                        <td>{{ sub.template.title }}</td>
+                        <td>{{ sub.parsed_data.get('Serial Number', 'N/A') }}</td>
+                        <td>{{ sub.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                        <td><span class="badge bg-success">Submitted</span></td>
+                        <td>
+                            <a href="{{ url_for('edit_check_sheet_submission', submission_id=sub.id) }}"
+                                class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-pencil"></i> Edit
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    let currentTemplateId = null;
+
+    // No modal needed anymore, buttons link directly
+</script>
+{% endblock %}

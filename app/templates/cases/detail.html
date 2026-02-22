@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Case #{{ case.id }} | {{ g.current_org.name }}{% endblock %}
+
+{% block content %}
+<div class="mb-4">
+    <a href="{{ url_for('cases.index') }}" class="text-decoration-none text-muted mb-2 d-inline-block"><i
+            class="bi bi-arrow-left"></i> Back to Cases</a>
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h2 class="mb-1">
+                Case #{{ case.id }}: {{ case.reference }}
+                {% if case.status == 'New' %}<span class="badge bg-primary align-middle fs-6">New</span>{% endif %}
+                {% if case.status == 'Open' %}<span class="badge bg-info text-dark align-middle fs-6">Open</span>{%
+                endif %}
+                {% if case.status == 'Closed' %}<span class="badge bg-secondary align-middle fs-6">Closed</span>{% endif
+                %}
+            </h2>
+            <div class="text-muted small">
+                Created {{ case.creation_timestamp.strftime('%b %d, %Y') }}
+                {% if case.unit %}for <strong>{{ case.unit.serial_number }}</strong>{% endif %}
+            </div>
+        </div>
+        <div>
+            <a href="{{ url_for('cases.edit', case_id=case.id) }}" class="btn btn-outline-primary me-2"><i
+                    class="bi bi-pencil"></i> Edit</a>
+            {% if case.status != 'Closed' %}
+            <form action="{{ url_for('cases.update_status', case_id=case.id) }}" method="POST" style="display:inline;">
+                <input type="hidden" name="status" value="Closed">
+                <button class="btn btn-outline-success"><i class="bi bi-check-circle"></i> Close Case</button>
+            </form>
+            {% else %}
+            <form action="{{ url_for('cases.update_status', case_id=case.id) }}" method="POST" style="display:inline;">
+                <input type="hidden" name="status" value="Open">
+                <button class="btn btn-outline-secondary"><i class="bi bi-arrow-counterclockwise"></i> Reopen</button>
+            </form>
+            {% endif %}
+            <form action="{{ url_for('cases.delete', case_id=case.id) }}" method="POST" style="display:inline;"
+                onsubmit="return confirm('Are you sure? This will delete the case and all its notes.');">
+                <button class="btn btn-outline-danger ms-2"><i class="bi bi-trash"></i></button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Left Column: Context -->
+    <div class="col-lg-4">
+        <!-- Customer / Unit Card -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent fw-bold py-3">Equipment Context</div>
+            <div class="card-body">
+                {% if case.unit %}
+                <h6 class="mb-1">{{ case.unit.manufacturer }} {{ case.unit.model_number }}</h6>
+                <div class="mb-3 text-muted small">SN: <a href="{{ url_for('units.view', unit_id=case.unit.id) }}">{{
+                        case.unit.serial_number }}</a></div>
+
+                <h6 class="mb-1">Owner</h6>
+                <p class="small mb-0">
+                    {{ case.unit.owner_company }}<br>
+                    {{ case.unit.owner_name }}<br>
+                    {% if case.unit.owner_phone %}<a href="tel:{{ case.unit.owner_phone }}">{{ case.unit.owner_phone
+                        }}</a><br>{% endif %}
+                </p>
+                {% else %}
+                <p class="text-muted">No unit attached.</p>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Dealer Card -->
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-transparent fw-bold py-3">Dealer Contact</div>
+            <div class="card-body">
+                {% if case.dealer %}
+                <h6 class="mb-1"><a href="{{ url_for('dealers.view', dealer_id=case.dealer.id) }}">{{ case.dealer.name
+                        }}</a></h6>
+                <div class="small text-muted mb-2">{{ case.dealer.dealer_code }}</div>
+                {% if case.dealer.contacts %}
+                <hr>
+                <small class="fw-bold text-muted uppercase">Primary Contact</small>
+                <div class="mt-1 small">
+                    {{ case.dealer.contacts[0].name }}<br>
+                    {% if case.dealer.contacts[0].email %}<a href="mailto:{{ case.dealer.contacts[0].email }}">{{
+                        case.dealer.contacts[0].email }}</a>{% endif %}
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="text-muted">No dealer assigned.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column: Timeline -->
+    <div class="col-lg-8">
+        <!-- Add Note -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-body">
+                <form action="{{ url_for('cases.add_note', case_id=case.id) }}" method="POST">
+                    <textarea name="note_text" class="form-control mb-2" rows="3"
+                        placeholder="Add a note, update status, or log call..."></textarea>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted"><i class="bi bi-info-circle"></i> Use @ to verify users (coming
+                            soon)</small>
+                        <button type="submit" class="btn btn-primary">Add Note</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <h5 class="mb-3">Timeline</h5>
+        <div class="timeline">
+            {% for note in case.notes|sort(attribute='timestamp', reverse=True) %}
+            <div
+                class="card border-0 shadow-sm mb-3 {{ 'border-start border-4 border-info' if note.user == 'System' else '' }}">
+                <div class="card-body p-3">
+                    <div class="d-flex justify-content-between mb-2">
+                        <div>
+                            <span class="fw-bold">{{ note.user }}</span>
+                            <span class="text-muted small mx-1">•</span>
+                            <span class="text-muted small">{{ note.timestamp.strftime('%b %d, %I:%M %p') }}</span>
+                        </div>
+                    </div>
+                    <div class="note-content">
+                        {{ render_note_html(note.text, users)|safe }}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="text-center text-muted py-5">
+                No activity recorded yet.
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

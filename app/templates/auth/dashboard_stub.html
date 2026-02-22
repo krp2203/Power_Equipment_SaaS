@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="card shadow-sm">
+    <div class="card-body p-5 text-center">
+        <h1 class="display-4">Welcome to {{ g.current_org.name }}</h1>
+        <p class="lead">You are logged in as <strong>{{ current_user.username }}</strong>.</p>
+        <hr class="my-4">
+        <div class="alert alert-success d-inline-block">
+            <strong>System Status:</strong> Operational 🚀
+        </div>
+    </div>
+</div>
+{% endblock %}

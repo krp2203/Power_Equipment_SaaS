@@ -1,0 +1,92 @@
+{% extends "_base.html" %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="container p-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-person-circle me-2"></i>My Profile</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Flash Messages -->
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+                        role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" action="{{ url_for('profile') }}">
+                        <div class="mb-4">
+                            <h5>Account Information</h5>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted">Username</label>
+                                    <input type="text" class="form-control" value="{{ current_user.username }}"
+                                        disabled>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label text-muted">Role</label>
+                                    <input type="text" class="form-control" value="{{ current_user.role|capitalize }}"
+                                        disabled>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-4">
+                            <h5>Preferences</h5>
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="receive_automated_reports"
+                                    name="receive_automated_reports" {% if current_user.receive_automated_reports
+                                    %}checked{% endif %}>
+                                <label class="form-check-label" for="receive_automated_reports">
+                                    <strong>Receive Automated Open Case Reports</strong>
+                                    <div class="form-text">
+                                        If enabled, you will receive an email report of your open cases every Sunday
+                                        evening and on the 1st of each month.
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-4">
+                            <h5>Change Password</h5>
+                            <div class="mb-3">
+                                <label for="current_password" class="form-label">Current Password</label>
+                                <input type="password" class="form-control" id="current_password"
+                                    name="current_password">
+                            </div>
+                            <div class="mb-3">
+                                <label for="new_password" class="form-label">New Password</label>
+                                <input type="password" class="form-control" id="new_password" name="new_password">
+                            </div>
+                            <div class="mb-3">
+                                <label for="confirm_password" class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" id="confirm_password"
+                                    name="confirm_password">
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="submit" class="btn btn-primary"><i class="bi bi-save me-2"></i>Save
+                                Changes</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

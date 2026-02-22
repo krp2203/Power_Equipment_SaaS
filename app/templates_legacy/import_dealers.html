@@ -1,0 +1,46 @@
+{% extends "_base.html" %}
+
+{% block title %}Import Dealers{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Import Dealer List</h3>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <strong>Note:</strong> Uploading a file will <strong>add new dealers</strong> and
+                        <strong>update existing dealers</strong> based on the "dealer name" column. It will not delete any data.
+                    </div>
+
+                    <form action="{{ url_for('import_dealers') }}" method="POST" enctype="multipart/form-data">
+                        <div class="mb-3">
+                            <label for="dealer_file" class="form-label">Upload Spreadsheet (.csv or .xlsx)</label>
+                            <input class="form-control" type="file" id="dealer_file" name="dealer_file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" required>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Import Dealers</button>
+                        </div>
+                    </form>
+
+                    <hr class="my-4">
+
+                    <h5>Spreadsheet Format Instructions</h5>
+                    <p>Your spreadsheet must contain a header row. Column names are flexible, and the system will try to match common variations.</p>
+                    <ul>
+                        <li><code>dealer name</code> (Required) - Can also be 'Name' or 'Dealership'.</li>
+                        <li><code>address</code>, <code>city</code>, <code>state</code>, <code>zip</code> - These will be combined into a single address field.</li>
+                        <li><code>dealer code</code> - Can also be 'Dealer Number' or 'Account Number'.</li>
+                        <li><code>dealer dba</code>, <code>notes</code>, <code>labor rate</code>, <code>username</code>, <code>password</code> - Additional dealer-specific fields.</li>
+                        <li><code>contact</code>, <code>phone</code> - Primary contact information. Can also be 'Contact Name', 'Phone Number', etc.</li>
+                        <li>One column for each manufacturer (e.g., <code>sg</code>, <code>wright</code>, <code>vortexx</code>). Place an 'x' or 'TRUE' in the cell if the dealer supports that manufacturer.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

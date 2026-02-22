@@ -1,0 +1,253 @@
+{% extends "_base.html" %}
+
+{% block title %}User Guide{% endblock %}
+
+{% block head_styles %}
+<style>
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+
+        .card {
+            border: none !important;
+            box-shadow: none !important;
+        }
+
+        .card-header {
+            border-bottom: 2px solid #dee2e6 !important;
+            background-color: transparent !important;
+        }
+
+        a {
+            text-decoration: none !important;
+            color: inherit !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-9">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h1 class="mb-0"><i class="bi bi-book-half me-2"></i>User Guide</h1>
+                    <div>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary no-print">← Back to Dashboard</a>
+                        <button class="btn btn-outline-primary btn-sm no-print" onclick="window.print()"><i
+                                class="bi bi-printer me-1"></i> Print / Save as PDF</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <p class="lead">Welcome to the KPM Tech Support Dashboard. This guide provides a detailed
+                        walkthrough of all application features, from basic case management to advanced administrative
+                        functions.</p>
+
+                    <hr>
+
+                    <h2 class="mt-4">1. The Dashboard</h2>
+                    <p>The main dashboard is your central hub for managing all support cases. It organizes cases into
+                        columns based on their type and status:</p>
+                    <ul>
+                        <li><strong>Support Calls:</strong> For remote support issues handled via phone or email.</li>
+                        <li><strong>Follow Ups:</strong> A dedicated column for any case that has a follow-up date set.
+                        </li>
+                        <li><strong>Field Support Cases:</strong> For issues requiring an on-site visit.</li>
+                        <li><strong>Internal Repairs:</strong> For in-house repairs where parts and labor costs are
+                            tracked.</li>
+                    </ul>
+                    <h4 class="mt-3">Filtering Cases</h4>
+                    <p>At the top of the dashboard, you can use dropdown filters to narrow down the cases shown by
+                        assigned user or time frame.</p>
+
+                    <hr>
+
+                    <h2 class="mt-4">2. Creating & Managing Cases</h2>
+                    <h4 class="mt-3">Creating a New Case</h4>
+                    <p>Click the large "Start New Case" button. You will be prompted to select a <strong>Case
+                            Type</strong>:</p>
+                    <ul>
+                        <li><strong>Support Case:</strong> For all standard customer and dealer interactions.</li>
+                        <li><strong>Internal / Warehouse Repair:</strong> To track costs for in-house repairs. This will
+                            enable the parts and labor tracking features.</li>
+                    </ul>
+                    <p>Fill in the relevant details for the dealer, unit, and the issue. The "Reference / Subject" field
+                        will become the first note on the case.</p>
+
+                    <h4 class="mt-3">Adding Notes and Attachments</h4>
+                    <p>On the case detail page, you can add notes, attach files, and reply to existing notes to create
+                        threads. You can also drag-and-drop files directly onto the note text area to upload them.</p>
+
+                    <h4 class="mt-3">Mentioning Users</h4>
+                    <p>Type <code>@</code> followed by a username (e.g., <code>@Ken P.</code>) in a note or the case
+                        reference to mention a user. They will receive an in-app and email notification.</p>
+
+                    <hr>
+
+                    <h2 class="mt-4">3. Workflow: Internal Repairs</h2>
+                    <p>When you open an "Internal Repair" case, the right-hand column changes to a cost-tracking
+                        interface.</p>
+
+                    <h4 class="mt-3">Cost Summary</h4>
+                    <p>This card shows a live running total of all parts and labor costs associated with the repair.</p>
+
+                    <h4 class="mt-3">Adding Parts</h4>
+                    <p>In the "Parts Used" tab, you can search for parts by their part number. The system will search
+                        all manufacturer price lists you have uploaded.</p>
+                    <ul>
+                        <li><strong>Add Existing Part:</strong> Type a part number. A list of matching parts will
+                            appear. Use the quantity input next to the desired part and click "Add".</li>
+                        <li><strong>Add New or Miscellaneous Part:</strong> If a part number is not found, a button will
+                            appear to "Add New Part or Misc. Item".
+                            <ul>
+                                <li>To add a <strong>new inventoried part</strong>, fill out the Manufacturer, Part
+                                    Number, Description, and Cost. This adds the part to your master price list for
+                                    future use.</li>
+                                <li>To add a <strong>miscellaneous item</strong> (like "Shop Supplies" or "Lubricant"),
+                                    leave the Manufacturer and Part Number blank and just fill in the Description and
+                                    Cost.</li>
+                            </ul>
+                        </li>
+                    </ul>
+
+                    <h4 class="mt-3">Logging Labor</h4>
+                    <p>In the "Labor Log" tab, enter the hours spent and a brief description of the work. The cost will
+                        be automatically calculated based on the hourly rate set in your user profile.</p>
+
+                    <hr>
+
+                    <h2 class="mt-4">4. Admin Features</h2>
+                    <p>Admin users have access to additional management pages via the user dropdown menu in the top
+                        navigation bar.</p>
+
+                    <h4 class="mt-3">Manage Users</h4>
+                    <p>Here you can add, edit, and delete users. When editing a user, you can set their <strong>Hourly
+                            Labor Rate</strong>, which is required for them to log labor on internal repair cases.</p>
+
+                    <h4 class="mt-3">Manage Manufacturers</h4>
+                    <p>This page allows you to maintain the official list of manufacturers that can be used when
+                        importing part price lists. This ensures data consistency.</p>
+
+                    <h4 class="mt-3">Import Part Prices</h4>
+                    <p>This page allows you to upload manufacturer price files in CSV or Excel format. The system will
+                        automatically update its master price list.</p>
+                    <ul>
+                        <li>Select an existing manufacturer from the dropdown. You can add new manufacturers on the
+                            "Manage Manufacturers" page.</li>
+                        <li>Select your price file. The file must have a header row with columns for at least "Part
+                            Number" and "Cost".</li>
+                        <li>Clicking "Start Import" will delete all old prices for that manufacturer and replace them
+                            with the contents of the new file.</li>
+                    </ul>
+
+                    <h4 class="mt-3">Reports</h4>
+                    <p>The reports page allows you to generate summaries. The new <strong>Internal Repairs Cost
+                            Report</strong> lets you select a date range to see a detailed breakdown of all repair
+                        costs, with totals for parts and labor.</p>
+
+                </div> <!-- End of Admin Features content -->
+
+                <hr>
+
+                <h2 class="mt-4">5. Mandatory Service Bulletins</h2>
+                <p>The <strong>Mandatory Service Bulletins</strong> module allows you to track and manage compliance
+                    with critical manufacturer updates.</p>
+
+                <h4 class="mt-3">Viewing Bulletins</h4>
+                <p>From the Bulletin List, click on any bulletin number to view its details. The detail page provides:
+                </p>
+                <ul>
+                    <li><strong>Bulletin Info:</strong> Issue date, SB number, and description.</li>
+                    <li><strong>Warranty & Labor:</strong> Displays the specific <strong>Warranty Code</strong> and
+                        allowed <strong>Labor Hours</strong>.</li>
+                    <li><strong>Required Parts:</strong> A list of parts required to perform the update.</li>
+                    <li><strong>Affected Models:</strong> A table of model names and serial number ranges covered by the
+                        bulletin.</li>
+                    <li><strong>PDF Viewer:</strong> An embedded viewer to read the full original PDF document.</li>
+                </ul>
+
+                <h4 class="mt-3">Recording Completions</h4>
+                <p>To record that a unit has been updated, click the green <strong>"Record Completion"</strong> button.
+                </p>
+                <ul>
+                    <li><strong>Bulk Entry:</strong> You can enter one or multiple serial numbers (separated by commas
+                        or newlines). The system will process each one individually.</li>
+                    <li><strong>Required Parts:</strong> This field is pre-filled key parts from the bulletin. You can
+                        modify it if needed.</li>
+                    <li><strong>Status:</strong> Mark as "Completed", "Inspected Only", "Replaced", or "N/A".</li>
+                </ul>
+
+                <div class="alert alert-info mt-2">
+                    <strong><i class="bi bi-info-circle"></i> External System Check:</strong>
+                    When submitting, you will be asked if you have marked the unit as complete in the <em>external
+                        manufacturer system</em>.
+                    <ul>
+                        <li><strong>YES:</strong> Sends a confirmation email to you and <strong>Technical
+                                Service</strong>.</li>
+                        <li><strong>NO:</strong> Sends a reminder email to you and Technical Service to update the
+                            external system and file the warranty.</li>
+                    </ul>
+                </div>
+
+                <hr>
+
+                <h2 class="mt-4">6. Equipment Check Sheets</h2>
+                <p>Check sheets allow you to create standardized inspection lists for various equipment types.</p>
+                <ul>
+                    <li><strong>Create:</strong> Use the "Check Sheet Builder" to design a new template with checkboxes,
+                        text fields, and headers.</li>
+                    <li><strong>Fill Out:</strong> Technicians can fill out these sheets digitally on a tablet or phone.
+                    </li>
+                    <li><strong>Print/Export:</strong> Completed check sheets can be printed or saved as PDFs to attach
+                        to customer invoices or warranty claims.</li>
+                </ul>
+
+                <hr>
+
+                <h2 class="mt-4">7. Stolen Units Database</h2>
+                <p>The system maintains a database of reported stolen units. This check is performed automatically in
+                    two places:</p>
+                <ol>
+                    <li><strong>Global Search:</strong> When searching for a serial number in the main search bar.</li>
+                    <li><strong>Service Bulletin Entry:</strong> When typing a serial number into the completion form.
+                    </li>
+                </ol>
+                <p>If a match is found, a <strong>CRITICAL WARNING</strong> popup will appear, alerting you to the
+                    stolen status. You should immediately verify the unit's status.</p>
+
+                <hr>
+
+                <h2 class="mt-4">8. Reports & Quick Links</h2>
+
+                <h4 class="mt-3">Quick Links Bar</h4>
+                <p>The "Quick Links" dropdown in the navigation bar gives you instant access to frequently used external
+                    tools and sites, such as:</p>
+                <ul>
+                    <li>Manufacturer Dealer Portals</li>
+                    <li>Parts Lookup Diagrams</li>
+                    <li>Warrany Filing Systems</li>
+                </ul>
+
+                <h4 class="mt-3">Warranty Bulk Report</h4>
+                <p>Found under the "Reports" section, this tool is designed for processing service bulletins. It
+                    provides a condensed list of all completed units for a specific timeframe, formatted for easy
+                    copy-pasting into warranty claim forms.</p>
+
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+```
+
+This new user guide provides a clear and structured overview of the dashboard's features. You can place this file at
+`/home/krp2203/dealer_dashboard/templates/user_guide.html`, and the existing link in the navigation bar will
+automatically direct users to it.
+
+<!--
+[PROMPT_SUGGESTION]Can you add a section to the user guide about the mobile-specific features?[/PROMPT_SUGGESTION]
+[PROMPT_SUGGESTION]How can I add a "Print" button to the user guide page?[/PROMPT_SUGGESTION]
+-->

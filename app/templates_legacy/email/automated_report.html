@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-bottom: 2px solid #007bff;
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            color: #007bff;
+            margin-top: 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }
+
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+
+        .footer {
+            margin-top: 30px;
+            font-size: 12px;
+            color: #666;
+            border-top: 1px solid #eee;
+            padding-top: 10px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 12px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+            color: white;
+        }
+
+        .bg-primary {
+            background-color: #0d6efd !important;
+            color: white !important;
+        }
+
+        .bg-warning {
+            background-color: #ffc107 !important;
+            color: black !important;
+        }
+
+        .bg-secondary {
+            background-color: #6c757d !important;
+            color: white !important;
+        }
+
+        .bg-success {
+            background-color: #198754 !important;
+            color: white !important;
+        }
+
+        .bg-dark {
+            background-color: #212529 !important;
+            color: white !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h2>{{ title }}</h2>
+            <p>Hello {{ user.username }},</p>
+            <p>Here is your automated report of open cases currently assigned to you.</p>
+        </div>
+
+        {% if cases %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Case ID</th>
+                    <th>Status</th>
+                    <th>Reference</th>
+                    <th>Latest Note</th>
+                    <th>Dealer</th>
+                    <th>Created</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for case in cases %}
+                <tr>
+                    <td><a href="{{ url_for('view_case', case_id=case.id, _external=True) }}">#{{ case.id }}</a></td>
+                    <td>
+                        {% if case.status in ['New', 'Needs Scheduling'] %}
+                        <span
+                            style="display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background-color: #0d6efd; color: white;">{{
+                            case.status }}</span>
+                        {% elif case.status in ['In Progress', 'Parts Ordered'] %}
+                        <span
+                            style="display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background-color: #ffc107; color: black;">{{
+                            case.status }}</span>
+                        {% elif case.status in ['Waiting on Dealer'] %}
+                        <span
+                            style="display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background-color: #6c757d; color: white;">{{
+                            case.status }}</span>
+                        {% elif case.status in ['Resolved', 'Completed'] %}
+                        <span
+                            style="display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background-color: #198754; color: white;">{{
+                            case.status }}</span>
+                        {% else %}
+                        <span
+                            style="display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; background-color: #212529; color: white;">{{
+                            case.status }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ case.reference|striptags|truncate(30) }}</td>
+                    <td>{{ case.latest_note_text|striptags|truncate(50) if case.latest_note_text else '-' }}</td>
+                    <td>{{ case.dealer.name if case.dealer else 'N/A' }}</td>
+                    <td>{{ case.creation_timestamp.strftime('%Y-%m-%d') }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        <p><strong>Total Open Cases:</strong> {{ cases|length }}</p>
+        {% else %}
+        <p>You have no open cases assigned to you at this time. Great job!</p>
+        {% endif %}
+
+        <div class="footer">
+            <p>This is an automated message from the KPM Tech Support Dashboard.</p>
+            <p>Generated on {{ now.strftime('%Y-%m-%d %H:%M') }}</p>
+        </div>
+    </div>
+</body>
+
+</html>

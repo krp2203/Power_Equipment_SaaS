@@ -1,0 +1,99 @@
+{% extends "_base.html" %}
+
+{% block title %}Import Part Prices{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="mb-0"><i class="bi bi-receipt-cutoff me-2"></i>Import Part Prices</h1>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+            </div>
+
+            <!-- Flash Messages -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <div class="card">
+                <div class="card-body">
+                    {% if not columns %}
+                    {# --- STEP 1: UPLOAD FILE --- #}
+                    <form action="{{ url_for('import_parts') }}" method="POST" enctype="multipart/form-data">
+                        <div class="mb-4">
+                            <label for="manufacturer-select" class="form-label fs-5">1. Manufacturer</label>
+                            <select id="manufacturer-select" name="manufacturer" class="form-select" required>
+                                <option value="">-- Select a Manufacturer --</option>
+                                {% for manu in existing_manufacturers %}
+                                <option value="{{ manu.name }}">{{ manu.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Select the manufacturer for this price file. You can add more from the <a href="{{ url_for('manage_manufacturers') }}">Manage Manufacturers</a> page.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="parts_file" class="form-label fs-5">2. Price File (CSV or Excel)</label>
+                            <input class="form-control" type="file" id="parts_file" name="parts_file" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" required>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-arrow-right-circle me-2"></i>Next: Map Columns
+                            </button>
+                        </div>
+                    </form>
+                    {% else %}
+                    {# --- STEP 2: MAP COLUMNS --- #}
+                    <form action="{{ url_for('import_parts') }}" method="POST">
+                        <input type="hidden" name="process_file" value="true">
+                        <input type="hidden" name="filename" value="{{ filename }}">
+                        <input type="hidden" name="manufacturer" value="{{ manufacturer }}">
+
+                        <div class="alert alert-info">
+                            <h5 class="alert-heading">Map Columns for: {{ manufacturer }}</h5>
+                            <p>Please tell the system which columns in your file <strong>{{ filename }}</strong> correspond to the required fields.</p>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="part_number_col" class="form-label fw-bold">Part Number Column <span class="text-danger">*</span></label>
+                            <select id="part_number_col" name="part_number_col" class="form-select" required>
+                                <option value="">-- Select Column --</option>
+                                {% for col in columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="cost_col" class="form-label fw-bold">Cost/Price Column <span class="text-danger">*</span></label>
+                            <select id="cost_col" name="cost_col" class="form-select" required>
+                                <option value="">-- Select Column --</option>
+                                {% for col in columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="description_col" class="form-label">Description Column (Optional)</label>
+                            <select id="description_col" name="description_col" class="form-select">
+                                <option value="">-- None --</option>
+                                {% for col in columns %}<option value="{{ col }}">{{ col }}</option>{% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-success btn-lg"><i class="bi bi-upload me-2"></i>Process Import</button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

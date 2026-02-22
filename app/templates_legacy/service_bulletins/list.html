@@ -1,0 +1,78 @@
+{% extends "_base.html" %}
+
+{% block title %}Mandatory Service Bulletins{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-exclamation-triangle-fill text-warning"></i> Mandatory Service Bulletins</h2>
+        <div>
+            <a href="{{ url_for('check_serial_for_bulletins') }}" class="btn btn-primary">
+                <i class="bi bi-search"></i> Check Serial Number
+            </a>
+            <a href="{{ url_for('create_service_bulletin') }}" class="btn btn-success">
+                <i class="bi bi-plus-circle"></i> New Bulletin
+            </a>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+        role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    {% if bulletins %}
+    <div class="row">
+        {% for bulletin in bulletins %}
+        <div class="col-md-6 col-lg-4 mb-3">
+            <div class="card h-100">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0">SB-{{ bulletin.sb_number }}</h5>
+                </div>
+                <div class="card-body">
+                    <h6 class="card-title">{{ bulletin.title }}</h6>
+                    <p class="card-text text-muted small">
+                        <i class="bi bi-calendar"></i> {{ bulletin.issue_date.strftime('%B %d, %Y') }}
+                    </p>
+                    {% if bulletin.description %}
+                    <p class="card-text">{{ bulletin.description[:100] }}{% if bulletin.description|length > 100 %}...{%
+                        endif %}</p>
+                    {% endif %}
+
+                    <div class="mt-2">
+                        <span class="badge bg-secondary">{{ bulletin.affected_models|length }} Model(s)</span>
+                        {% if bulletin.pdf_filename %}
+                        <span class="badge bg-info"><i class="bi bi-file-pdf"></i> PDF</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <a href="{{ url_for('view_service_bulletin', bulletin_id=bulletin.id) }}"
+                        class="btn btn-sm btn-primary">
+                        <i class="bi bi-eye"></i> View Details
+                    </a>
+                    <a href="{{ url_for('edit_service_bulletin', bulletin_id=bulletin.id) }}"
+                        class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-pencil"></i> Edit
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No service bulletins found.
+        <a href="{{ url_for('create_service_bulletin') }}" class="alert-link">Create your first bulletin</a>.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

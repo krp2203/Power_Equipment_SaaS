@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Check Serial Number | {{ g.current_org.name }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mb-4">
+    <div class="col-md-8 text-center">
+        <h1 class="h2 mb-3">Check Mandatory Service Bulletins</h1>
+        <div class="card shadow-sm border-0 bg-light">
+            <div class="card-body p-4">
+                <form action="{{ url_for('service_bulletins.check') }}" method="GET"
+                    class="d-flex gap-2 justify-content-center">
+                    <input type="text" name="serial" class="form-control form-control-lg"
+                        placeholder="Enter Serial Number (e.g. K7800123)" value="{{ serial_number or '' }}"
+                        style="max_width: 400px;" required>
+                    <button type="submit" class="btn btn-primary btn-lg"><i class="bi bi-search me-2"></i>Check</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if serial_number %}
+<div class="mb-4 d-flex justify-content-between align-items-center">
+    <h3>Results for Serial: <span class="font-monospace text-primary">{{ serial_number }}</span></h3>
+    {% if not applicable %}
+    <span class="badge bg-success fs-6"><i class="bi bi-check-circle me-1"></i>No Mandatory Bulletins Found</span>
+    {% endif %}
+</div>
+
+<div class="row g-4">
+    {% for item in applicable %}
+    {% set sb = item.bulletin %}
+    {% set completion = completion_map.get(sb.id) %}
+
+    <div class="col-lg-6">
+        <div
+            class="card h-100 border-0 shadow-sm {{ 'border-start border-5 border-success' if completion else 'border-start border-5 border-warning' }}">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <div>
+                    <span class="badge {{ 'bg-success' if completion else 'bg-warning text-dark' }} me-2">
+                        {{ 'COMPLETED' if completion else 'MANDATORY' }}
+                    </span>
+                    <span class="fw-bold">{{ sb.sb_number }}</span>
+                </div>
+                <small class="text-muted">{{ sb.issue_date.strftime('%b %d, %Y') }}</small>
+            </div>
+            <div class="card-body">
+                <h5 class="card-title">{{ sb.title }}</h5>
+                <p class="card-text text-muted small">{{ sb.description | truncate(150) }}</p>
+
+                <div class="mb-3">
+                    <small class="text-muted d-block"><strong>Affected Model:</strong> {{ item.model }}</small>
+                    <small class="text-muted d-block"><strong>Serial Range:</strong> {{ item.range }}</small>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-end mt-4">
+                    <a href="{{ url_for('service_bulletins.view', sb_id=sb.id) }}"
+                        class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-file-text me-1"></i> View Details
+                    </a>
+
+                    {% if completion %}
+                    <div class="text-end">
+                        <div class="text-success fw-bold"><i class="bi bi-check-circle-fill me-1"></i>Completed</div>
+                        <small class="text-muted">by {{ completion.user.username }} on {{
+                            completion.completion_date.strftime('%m/%d/%y') }}</small>
+                    </div>
+                    {% else %}
+                    <form action="{{ url_for('service_bulletins.complete', sb_id=sb.id) }}" method="POST">
+                        <input type="hidden" name="serial_number" value="{{ serial_number }}">
+                        <button type="submit" class="btn btn-success text-white">
+                            <i class="bi bi-check-lg me-1"></i> Record Completion
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    {% if serial_number %}
+    <div class="col-12 text-center py-5">
+        <h4 class="text-muted">Good news! No mandatory bulletins apply to this serial number.</h4>
+    </div>
+    {% endif %}
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

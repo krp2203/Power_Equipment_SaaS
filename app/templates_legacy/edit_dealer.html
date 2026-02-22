@@ -1,0 +1,65 @@
+{% extends "_base.html" %}
+{% block title %}Edit Dealer{% endblock %}
+{% block content %}
+<div class="container mt-4">
+    <a href="{{ url_for('manage_dealers') }}" class="btn btn-secondary btn-sm mb-3">← Back to Dealer List</a>
+    <div class="card">
+        <div class="card-header">
+            <h3>Edit Dealer: {{ dealer.name }}</h3>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('edit_dealer', dealer_id=dealer.id) }}" method="POST">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="dealer_name" class="form-label">Dealer Name</label>
+                            <input type="text" class="form-control" id="dealer_name" name="dealer_name" value="{{ dealer.name }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="dealer_dba" class="form-label">Dealer DBA</label>
+                            <input type="text" class="form-control" id="dealer_dba" name="dealer_dba" value="{{ dealer.dealer_dba or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="dealer_code" class="form-label">Dealer Code</label>
+                            <input type="text" class="form-control" id="dealer_code" name="dealer_code" value="{{ dealer.dealer_code or '' }}">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Address</label>
+                            <input type="text" class="form-control" id="address" name="address" value="{{ dealer.address or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label for="labor_rate" class="form-label">Labor Rate</label>
+                            <input type="text" class="form-control" id="labor_rate" name="labor_rate" value="{{ dealer.labor_rate or '' }}">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Supported Manufacturers</label>
+                            <div class="row">
+                                {% for manufacturer in all_manufacturers %}
+                                <div class="col-md-6">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="{{ manufacturer }}" name="manufacturers" id="manu-{{ manufacturer|replace(' ', '-') }}" {% if manufacturer in dealer.manufacturers %}checked{% endif %}>
+                                        <label class="form-check-label" for="manu-{{ manufacturer|replace(' ', '-') }}">
+                                            {{ manufacturer }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label for="notes" class="form-label">Notes</label>
+                    <textarea class="form-control" id="notes" name="notes" rows="4">{{ dealer.notes or '' }}</textarea>
+                </div>
+                <div class="d-flex justify-content-end mt-4">
+                    <a href="{{ url_for('view_dealer', dealer_id=dealer.id) }}" class="btn btn-secondary me-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

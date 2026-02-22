@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Edit Case #{{ case.id }} | {{ g.current_org.name }}{% endblock %}
+
+{% block content %}
+<div class="container-md" style="max-width: 800px;">
+    <div class="mb-4">
+        <a href="{{ url_for('cases.view', case_id=case.id) }}"
+            class="text-decoration-none text-muted mb-2 d-inline-block"><i class="bi bi-arrow-left"></i> Back to
+            Case</a>
+        <h2>Edit Case #{{ case.id }}</h2>
+    </div>
+
+    <form method="POST" action="{{ url_for('cases.edit', case_id=case.id) }}">
+        <!-- 1. Review Dealer -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom px-4 py-3">
+                <h5 class="mb-0">1. Dealer</h5>
+            </div>
+            <div class="card-body p-4">
+                <label class="form-label">Dealer</label>
+                <select name="dealer_id" class="form-select" required>
+                    {% for dealer in dealers %}
+                    <option value="{{ dealer.id }}" {% if case.dealer_id==dealer.id %}selected{% endif %}>{{ dealer.name
+                        }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <!-- 2. Update Unit -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom px-4 py-3">
+                <h5 class="mb-0">2. Equipment</h5>
+            </div>
+            <div class="card-body p-4">
+                {% if case.unit %}
+                <div class="alert alert-info d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <strong>Current Unit:</strong> {{ case.unit.manufacturer }} {{ case.unit.model_number }} ({{
+                        case.unit.serial_number }})
+                    </div>
+                </div>
+                {% endif %}
+
+                <label class="form-label">Change Unit (Search by Serial)</label>
+                <div class="input-group mb-2">
+                    <input type="text" id="serialInput" class="form-control"
+                        placeholder="Enter Serial Number to search...">
+                    <button class="btn btn-outline-secondary" type="button" onclick="lookupSerial()">Lookup</button>
+                </div>
+
+                <div id="unitResult" class="alert alert-light border d-none">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>Found:</strong> <span id="mfgModel"></span> (<span id="serialDisplay"></span>)<br>
+                            <small class="text-muted" id="ownerDisplay"></small>
+                        </div>
+                        <span class="badge bg-success"><i class="bi bi-check-lg"></i> Selected</span>
+                    </div>
+                </div>
+
+                <input type="hidden" name="unit_id" id="hiddenUnitId" value="{{ case.unit_id or '' }}">
+                <div class="form-text">Leave the search empty to keep the current unit (or no unit). Use search to
+                    verify and select a new unit.</div>
+                <div id="unitError" class="text-danger small d-none mt-2">Unit not found.</div>
+            </div>
+        </div>
+
+        <!-- 3. Details -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom px-4 py-3">
+                <h5 class="mb-0">3. Issue Details</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="mb-3">
+                    <label class="form-label">Reference / Subject <span class="text-danger">*</span></label>
+                    <input type="text" name="reference" class="form-control" required value="{{ case.reference }}">
+                </div>
+                <!-- 
+                <div class="mb-3">
+                    <label class="form-label">Description (Original Note cannot be edited here)</label>
+                    <div class="form-control bg-light text-muted">{{ case.notes[0].text if case.notes else 'No initial description.' }}</div>
+                </div>
+                -->
+            </div>
+        </div>
+
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="{{ url_for('cases.view', case_id=case.id) }}" class="btn btn-light me-md-2">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4">Save Changes</button>
+        </div>
+    </form>
+</div>
+
+<script>
+    async function lookupSerial() {
+        const serial = document.getElementById('serialInput').value.trim();
+        const resultBox = document.getElementById('unitResult');
+        const hiddenId = document.getElementById('hiddenUnitId');
+        const errorBox = document.getElementById('unitError');
+
+        if (!serial) return;
+
+        try {
+            const response = await fetch(`/api/units/check_serial/${encodeURIComponent(serial)}`);
+            const data = await response.json();
+
+            if (data.exists) {
+                document.getElementById('mfgModel').textContent = `${data.manufacturer} ${data.model_number}`;
+                document.getElementById('serialDisplay').textContent = serial;
+                document.getElementById('ownerDisplay').textContent = data.owner_company || data.owner_name || 'No Owner';
+
+                hiddenId.value = data.id;
+                resultBox.classList.remove('d-none');
+                errorBox.classList.add('d-none');
+            } else {
+                // Don't clear hiddenId immediately unless we want to force clearing. 
+                // Better behavior: prevent selection of invalid, but keep previous valid if any?
+                // User request: edit unit. 
+                // If checking explicitly, and not found, user arguably wants to know.
+                // But if they just typed garbage and clicked lookup... 
+                // Let's clear hiddenID to force them to pick a valid one IF they use lookup.
+                hiddenId.value = '';
+                resultBox.classList.add('d-none');
+                errorBox.classList.remove('d-none');
+            }
+        } catch (e) {
+            console.error(e);
+            errorBox.textContent = "Error checking serial.";
+            errorBox.classList.remove('d-none');
+        }
+    }
+</script>
+{% endblock %}

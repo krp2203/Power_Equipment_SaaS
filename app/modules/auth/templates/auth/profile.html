@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="container my-5">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1><i class="bi bi-person-circle me-3"></i>My Profile</h1>
+            <p class="text-muted">Manage your account settings and security.</p>
+        </div>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="row mb-3">
+        <div class="col-md-12">
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+    {% endwith %}
+
+    <div class="row">
+        <!-- Profile Details -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                    <h5 class="mb-0"><i class="bi bi-person-badge me-2 text-primary"></i>Personal Details</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="">
+                        {{ profile_form.hidden_tag() }}
+
+                        {{ wtf.form_field(profile_form.first_name) }}
+                        {{ wtf.form_field(profile_form.last_name) }}
+                        {{ wtf.form_field(profile_form.email) }}
+
+                        <div class="d-grid gap-2 mt-4">
+                            {{ profile_form.submit_profile(class="btn btn-primary btn-lg", style="background-color:
+                            #0d6efd !important; color: white !important; border: none !important; padding: 12px 24px
+                            !important; font-weight: 600 !important;") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security -->
+        <div class="col-md-6 mb-4">
+            <div class="card shadow-sm h-100 border-warning">
+                <div class="card-header bg-warning text-dark border-bottom-0 pt-4 pb-0 opacity-75">
+                    <h5 class="mb-0"><i class="bi bi-shield-lock me-2"></i>Security</h5>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-4">Change your password here. Must be at least 6 characters.</p>
+                    <form method="POST" action="">
+                        {{ password_form.hidden_tag() }}
+
+                        {{ wtf.form_field(password_form.current_password) }}
+                        <hr>
+                        {{ wtf.form_field(password_form.new_password) }}
+                        {{ wtf.form_field(password_form.confirm_password) }}
+
+                        <div class="d-grid gap-2 mt-4">
+                            {{ password_form.submit_password(class="btn btn-warning btn-lg", style="background-color:
+                            #ffc107 !important; color: #000 !important; border: none !important; padding: 12px 24px
+                            !important; font-weight: 600 !important;") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

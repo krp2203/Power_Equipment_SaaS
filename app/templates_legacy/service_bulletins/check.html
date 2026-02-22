@@ -1,0 +1,135 @@
+{% extends "_base.html" %}
+
+{% block title %}Check Serial Number{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <h2><i class="bi bi-search"></i> Check Serial Number for Mandatory Service Bulletins</h2>
+
+    <div class="row mt-4">
+        <div class="col-md-6 offset-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('check_serial_for_bulletins') }}">
+                        <div class="mb-3">
+                            <label for="serial_number" class="form-label">Enter Serial Number</label>
+                            <input type="text" class="form-control form-control-lg" id="serial_number"
+                                name="serial_number" value="{{ serial_number or '' }}"
+                                placeholder="e.g., Y3300500 or 151D00075" required autofocus>
+                        </div>
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> Check for Applicable Bulletins
+                            </button>
+                            {% if serial_number %}
+                            <a href="{{ url_for('check_serial_for_bulletins') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle"></i> Clear Search / New Search
+                            </a>
+                            {% endif %}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if serial_number %}
+    <div class="row mt-4">
+        <div class="col-md-10 offset-md-1">
+            <h4>Results for Serial Number: <code>{{ serial_number }}</code></h4>
+
+            {% if stolen_warning %}
+            <div class="alert alert-danger shadow-sm border-2 border-danger">
+                <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> CRITICAL WARNING: STOLEN UNIT
+                </h4>
+                <p class="mb-0 fw-bold fs-5">{{ stolen_warning }}</p>
+                <hr>
+                <p class="mb-0">This unit has been reported as stolen. Please verify immediately.</p>
+            </div>
+            {% endif %}
+
+            {% if applicable_bulletins %}
+            <div class="alert alert-warning">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <strong>{{ applicable_bulletins|length }} Mandatory Service Bulletin(s) Apply to This Unit</strong>
+            </div>
+
+            {% for item in applicable_bulletins %}
+            <div
+                class="card mb-3 {% if item.bulletin.id in completed_ids %}border-success{% else %}border-warning{% endif %}">
+                <div
+                    class="card-header {% if item.bulletin.id in completed_ids %}bg-success text-white{% else %}bg-warning text-dark{% endif %}">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">SB-{{ item.bulletin.sb_number }}: {{ item.bulletin.title }}</h5>
+                        {% if item.bulletin.id in completed_ids %}
+                        <span class="badge bg-light text-success"><i class="bi bi-check-circle-fill"></i>
+                            Completed</span>
+                        {% else %}
+                        <span class="badge bg-danger"><i class="bi bi-exclamation-circle-fill"></i> Action
+                            Required</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <p><strong>Affected Model:</strong> {{ item.model }}</p>
+                            <p><strong>Serial Range:</strong> <code>{{ item.serial_range }}</code></p>
+                            <p><strong>Issue Date:</strong> {{ item.bulletin.issue_date.strftime('%B %d, %Y') }}</p>
+                            {% if item.bulletin.description %}
+                            <p><strong>Description:</strong> {{ item.bulletin.description }}</p>
+                            {% endif %}
+                            {% if item.bulletin.warranty_code %}
+                            <p><strong>Warranty Code:</strong> {{ item.bulletin.warranty_code }}</p>
+                            {% endif %}
+                            {% if item.bulletin.labor_hours %}
+                            <p><strong>Labor Hours:</strong> {{ item.bulletin.labor_hours }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{{ url_for('view_service_bulletin', bulletin_id=item.bulletin.id) }}"
+                                class="btn btn-outline-primary mb-2 w-100">
+                                <i class="bi bi-eye"></i> View Details
+                            </a>
+                            {% if item.bulletin.pdf_filename %}
+                            <a href="{{ url_for('serve_bulletin_pdf', bulletin_id=item.bulletin.id) }}" target="_blank"
+                                class="btn btn-outline-secondary mb-2 w-100">
+                                <i class="bi bi-file-pdf"></i> View PDF
+                            </a>
+                            {% endif %}
+                            {% if item.bulletin.id not in completed_ids %}
+                            <a href="{{ url_for('complete_service_bulletin', bulletin_id=item.bulletin.id, serial=serial_number, model=item.model) }}"
+                                class="btn btn-success w-100">
+                                <i class="bi bi-check-circle"></i> Record Completion
+                            </a>
+                            {% else %}
+                            <div class="alert alert-success mb-0">
+                                <h6 class="alert-heading"><i class="bi bi-check-circle-fill"></i> Completed</h6>
+                                <p class="mb-1"><strong>By:</strong> {{
+                                    completion_details[item.bulletin.id].completed_by }}</p>
+                                <p class="mb-1"><strong>Date:</strong> {{
+                                    completion_details[item.bulletin.id].completed_at.strftime('%B %d, %Y') }}</p>
+                                {% if completion_details[item.bulletin.id].notes %}
+                                <p class="mb-0"><strong>Notes:</strong> {{ completion_details[item.bulletin.id].notes }}
+                                </p>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+
+            {% else %}
+            <div class="alert alert-success">
+                <i class="bi bi-check-circle-fill"></i>
+                <strong>No Mandatory Service Bulletins Apply to This Serial Number</strong>
+                <p class="mb-0 mt-2">This unit is not affected by any current mandatory service bulletins.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

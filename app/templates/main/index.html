@@ -1,0 +1,198 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | {{ g.current_org.name }}{% endblock %}
+
+{% block head_styles %}
+<style>
+    .card {
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+        transition: transform 0.2s;
+    }
+
+    .card:hover {
+        transform: translateY(-2px);
+    }
+
+    .text-truncate-2 {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4 align-items-center">
+    <div class="col-md-6">
+        <h2 class="mb-0">Dashboard</h2>
+        <p class="text-muted">Welcome back, {{ current_user.username }}</p>
+    </div>
+    <div class="col-md-6 text-md-end">
+        <!-- Add Case -->
+        <a href="{{ url_for('cases.create') }}" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Start New Case
+        </a>
+        <a href="{{ url_for('service_bulletins.check') }}" class="btn btn-warning text-dark">
+            <i class="bi bi-search me-1"></i> Check Bulletin
+        </a>
+    </div>
+</div>
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+    <div class="col-sm-6 col-lg-3">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle mb-1 opacity-75">Open Cases</h6>
+                        <h2 class="card-title mb-0">{{ total_open_cases }}</h2>
+                    </div>
+                    <i class="bi bi-folder2-open fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle mb-1 opacity-75">New Today</h6>
+                        <h2 class="card-title mb-0">{{ cases_opened_today }}</h2>
+                    </div>
+                    <i class="bi bi-calendar-check fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-sm-6 col-lg-3">
+        <div class="card bg-warning text-dark h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle mb-1 opacity-75">Overdue Follow-ups</h6>
+                        <h2 class="card-title mb-0">{{ overdue_count }}</h2>
+                    </div>
+                    <i class="bi bi-alarm fs-1 opacity-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <form class="d-flex gap-2" method="GET" action="{{ url_for('main.index') }}">
+            <div class="input-group">
+                <label class="input-group-text"><i class="bi bi-person"></i></label>
+                <select class="form-select" name="user_filter" onchange="this.form.submit()">
+                    <option value="all" {% if active_filter=='all' %}selected{% endif %}>All Users</option>
+                    {% for user in all_users %}
+                    <option value="{{ user.username }}" {% if active_filter==user.username %}selected{% endif %}>{{
+                        user.username }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="input-group">
+                <label class="input-group-text"><i class="bi bi-calendar"></i></label>
+                <select class="form-select" name="time_filter" onchange="this.form.submit()">
+                    <option value="all" {% if active_time_filter=='all' %}selected{% endif %}>All Time</option>
+                    <option value="today" {% if active_time_filter=='today' %}selected{% endif %}>Today</option>
+                    <option value="week" {% if active_time_filter=='week' %}selected{% endif %}>This Week</option>
+                    <option value="month" {% if active_time_filter=='month' %}selected{% endif %}>This Month</option>
+                </select>
+            </div>
+        </form>
+    </div>
+    <div class="col-md-4">
+        <!-- Search Placeholder -->
+        <div class="input-group">
+            <input type="text" class="form-control" placeholder="Search cases..." disabled>
+            <button class="btn btn-outline-secondary" disabled><i class="bi bi-search"></i></button>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Support Cases -->
+    <div class="col-lg-4">
+        <div class="card border-0 bg-transparent shadow-none">
+            <h5 class="mb-3 border-bottom pb-2">Support Cases</h5>
+
+            <ul class="nav nav-pills mb-3" id="supportTab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active py-1 px-3" data-bs-toggle="tab" data-bs-target="#new"
+                        type="button">New <span class="badge bg-secondary ms-1">{{ new_cases|length }}</span></button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link py-1 px-3" data-bs-toggle="tab" data-bs-target="#waiting"
+                        type="button">Waiting <span class="badge bg-secondary ms-1">{{ waiting_cases|length
+                            }}</span></button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link py-1 px-3" data-bs-toggle="tab" data-bs-target="#inprogress"
+                        type="button">In Progress <span class="badge bg-secondary ms-1">{{ in_progress_cases|length
+                            }}</span></button>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="new">
+                    {% for case in new_cases %}{% include 'main/case_card.html' %}{% else %}<p class="text-muted small">
+                        No new cases.</p>{% endfor %}
+                </div>
+                <div class="tab-pane fade" id="waiting">
+                    {% for case in waiting_cases %}{% include 'main/case_card.html' %}{% else %}<p
+                        class="text-muted small">No waiting cases.</p>{% endfor %}
+                </div>
+                <div class="tab-pane fade" id="inprogress">
+                    {% for case in in_progress_cases %}{% include 'main/case_card.html' %}{% else %}<p
+                        class="text-muted small">No in-progress cases.</p>{% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Follow Ups -->
+    <div class="col-lg-4">
+        <div class="card border-0 bg-transparent shadow-none">
+            <h5 class="mb-3 border-bottom pb-2">Follow Ups <span class="badge bg-warning text-dark ms-2">{{
+                    all_follow_ups|length }}</span></h5>
+            <div>
+                {% for case in all_follow_ups %}
+                {% include 'main/case_card.html' %}
+                {% else %}
+                <p class="text-muted small">No scheduled follow-ups.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Repairs -->
+    <div class="col-lg-4">
+        <div class="card border-0 bg-transparent shadow-none">
+            <h5 class="mb-3 border-bottom pb-2">Internal Repairs</h5>
+            <ul class="nav nav-pills mb-3" id="repairTab" role="tablist">
+                <li class="nav-item"><button class="nav-link active py-1 px-3" data-bs-toggle="tab"
+                        data-bs-target="#new-repair">New</button></li>
+                <li class="nav-item"><button class="nav-link py-1 px-3" data-bs-toggle="tab"
+                        data-bs-target="#prog-repair">In Progress</button></li>
+            </ul>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="new-repair">
+                    {% for case in new_repairs %}{% include 'main/case_card.html' %}{% else %}<p
+                        class="text-muted small">No new repairs.</p>{% endfor %}
+                </div>
+                <div class="tab-pane fade" id="prog-repair">
+                    {% for case in in_progress_repairs %}{% include 'main/case_card.html' %}{% else %}<p
+                        class="text-muted small">No active repairs.</p>{% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

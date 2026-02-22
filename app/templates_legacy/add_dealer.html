@@ -1,0 +1,129 @@
+{% extends "_base.html" %}
+{% block title %}Add New Dealer{% endblock %}
+
+{% block content %}
+<div class="container mt-5">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary btn-sm mb-3">← Back to Dashboard</a>
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3>Register New Dealership</h3>
+                </div>
+                <div class="card-body">
+                    <form action="{{ url_for('add_dealer') }}" method="POST">
+                        <h5 class="mb-3">Dealership Information</h5>
+                        <div class="mb-3">
+                            <label for="dealer_name" class="form-label">Dealer Name</label>
+                            <input type="text" class="form-control" id="dealer_name" name="dealer_name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="dealer_dba" class="form-label">Dealer DBA</label>
+                            <input type="text" class="form-control" id="dealer_dba" name="dealer_dba">
+                        </div>
+                        <div class="mb-3">
+                            <label for="dealer_code" class="form-label">Dealer Code</label>
+                            <input type="text" class="form-control" id="dealer_code" name="dealer_code">
+                        </div>
+                        <div class="mb-3">
+                            <label for="address" class="form-label">Address</label>
+                            <input type="text" class="form-control" id="address" name="address">
+                        </div>
+                        <div class="mb-3">
+                            <label for="labor_rate" class="form-label">Labor Rate</label>
+                            <input type="text" class="form-control" id="labor_rate" name="labor_rate">
+                        </div>
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Supported Manufacturers</label>
+                            <div class="row">
+                                {% for manufacturer in all_manufacturers %}
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="{{ manufacturer }}" name="manufacturers" id="manu-{{ manufacturer|replace(' ', '-') }}">
+                                        <label class="form-check-label" for="manu-{{ manufacturer|replace(' ', '-') }}">
+                                            {{ manufacturer }}
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div id="contacts-container">
+                            <h5 class="mb-3">Contacts</h5>
+                            <!-- Existing contact fields will be dynamically added here -->
+                        </div>
+                        <button type="button" id="add-contact-btn" class="btn btn-outline-primary btn-sm">+ Add Contact</button>
+
+                        <div class="d-flex justify-content-end mt-4">
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary me-2">Cancel</a>
+                            <button type="submit" class="btn btn-primary">Save Dealer</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const contactsContainer = document.getElementById('contacts-container');
+        const addContactBtn = document.getElementById('add-contact-btn');
+        let contactIndex = 0;
+
+        function addContactForm() {
+            contactIndex++;
+            const contactForm = document.createElement('div');
+            contactForm.classList.add('contact-form', 'mb-3', 'p-3', 'border', 'rounded');
+            contactForm.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6>Contact ${contactIndex}</h6>
+                    <button type="button" class="btn-close remove-contact-btn"></button>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Name</label>
+                        <input type="text" class="form-control" name="contact_names">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Role</label>
+                        <input type="text" class="form-control" name="contact_roles">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" name="contact_emails">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" class="form-control" name="contact_phones">
+                    </div>
+                </div>
+            `;
+            contactsContainer.appendChild(contactForm);
+        }
+
+        addContactBtn.addEventListener('click', addContactForm);
+
+        contactsContainer.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-contact-btn')) {
+                e.target.closest('.contact-form').remove();
+            }
+        });
+
+        // Add one contact form by default
+        addContactForm();
+    });
+</script>
+{% endblock body_scripts %}

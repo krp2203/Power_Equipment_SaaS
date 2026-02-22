@@ -1,0 +1,20 @@
+<a href="{{ url_for('view_case', case_id=visit.id) }}" class="card-link">
+    <div class="card border-primary">
+        <div class="card-header bg-primary text-white d-flex justify-content-between">
+            <span>{{ visit.dealer_name }}</span>
+            <span class="badge bg-light text-primary">{{ visit.status }}</span>
+        </div>
+        <div class="card-body">
+            <p class="card-text"><strong>Purpose:</strong> {{ visit.reference }}</p>
+            {% if visit.model_number %}
+            <p class="card-text text-muted"><strong>Unit:</strong> {{ visit.model_number }}</p>
+            {% endif %}
+            {% if visit.appointment_date %}
+            <p class="card-text text-success"><strong>Date: {{ visit.appointment_date }}</strong></p>
+            {% endif %}
+        </div>
+        <div class="card-footer text-muted">
+            Visit #{{ visit.id }} | Assigned Tech: {{ visit.assigned_to }}
+        </div>
+    </div>
+</a>

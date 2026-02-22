@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}Create New Site{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h1><i class="bi bi-globe me-2"></i>Create New Site</h1>
+            <p class="text-muted">Deploy a new SaaS instance for a dealer.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-8 col-lg-6">
+            <div class="card shadow-sm border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">New Organization Details</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="">
+                        {{ form.hidden_tag() }}
+
+                        <div class="mb-4">
+                            <h6 class="text-uppercase text-muted small">Dealer Info</h6>
+                            {{ wtf.form_field(form.org_name) }}
+                            {{ wtf.form_field(form.slug, placeholder="e.g. bobsmowers") }}
+                            <small class="form-text text-muted">
+                                This will determine the URL: <code>https://[slug].pes.bentcrankshaft.com</code>
+                            </small>
+                        </div>
+
+                        <hr>
+
+                        <div class="mb-4">
+                            <h6 class="text-uppercase text-muted small">Initial Admin User</h6>
+                            <div class="alert alert-info py-2 small">
+                                <i class="bi bi-info-circle me-1"></i> This user will be the main administrator for the
+                                new site.
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    {{ wtf.form_field(form.admin_username) }}
+                                </div>
+                                <div class="col-md-6">
+                                    {{ wtf.form_field(form.admin_password) }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 d-grid">
+                            {{ form.submit(class="btn btn-lg", style="background-color: #007bff; color: white;
+                            font-weight: 500;") }}
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h6>How it works</h6>
+                    <ul class="small text-muted pl-3">
+                        <li>Creating a site adds a new <strong>Organization</strong> record.</li>
+                        <li>It creates a default <strong>Admin User</strong> linked to that Organization.</li>
+                        <li>Data (Inventory, Customers) is effectively siloed by Organization ID.</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

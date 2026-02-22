@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            border: 1px solid #ddd;
+        }
+
+        .header {
+            background-color: #ffc107;
+            color: #000;
+            padding: 15px;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .field-row {
+            border-bottom: 1px solid #eee;
+            padding: 8px 0;
+        }
+
+        .label {
+            font-weight: bold;
+            color: #555;
+        }
+
+        .value {
+            margin-left: 10px;
+        }
+
+        .footer {
+            margin-top: 20px;
+            font-size: 0.8em;
+            color: #777;
+            text-align: center;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 8px;
+            background-color: #28a745;
+            color: white;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h2 style="margin: 0;">Service Bulletin Completion Report</h2>
+            <p style="margin: 5px 0 0 0;">SB-{{ bulletin.sb_number }}: {{ bulletin.title }}</p>
+        </div>
+
+        <div class="field-row">
+            <span class="label">Completed By:</span>
+            <span class="value">{{ user.username }}</span>
+        </div>
+
+        {% if completions[0].model_name %}
+        <div class="field-row">
+            <span class="label">Model:</span>
+            <span class="value">{{ completions[0].model_name }}</span>
+        </div>
+        {% endif %}
+
+        <br>
+        <h3 style="border-bottom: 2px solid #eee; padding-bottom: 5px;">Completed Units</h3>
+        {% for completion in completions %}
+        <div class="field-row">
+            <span class="label">Serial:</span> <strong>{{ completion.serial_number }}</strong>
+            <span class="value">
+                <span class="badge">{{ completion.status }}</span>
+                - {{ completion.completion_date.strftime('%B %d, %Y at %I:%M %p') }}
+            </span>
+            {% if completion.notes %}
+            <div style="margin-top: 5px; margin-left: 20px; font-style: italic; color: #666;">
+                Note: {{ completion.notes }}
+            </div>
+            {% endif %}
+        </div>
+        {% endfor %}
+
+        <div style="margin-top: 20px; padding: 15px; background-color: #f8f9fa; border-left: 4px solid #ffc107;">
+            <h3 style="margin-top: 0;">Bulletin Details</h3>
+            <p><strong>Issue Date:</strong> {{ bulletin.issue_date.strftime('%B %d, %Y') }}</p>
+            {% if bulletin.warranty_code %}
+            <p><strong>Warranty Code:</strong> {{ bulletin.warranty_code }}</p>
+            {% endif %}
+            {% if bulletin.labor_hours %}
+            <p><strong>Labor Hours:</strong> {{ bulletin.labor_hours }}</p>
+            {% endif %}
+            {% if bulletin.parsed_required_parts %}
+            <p><strong>Required Parts:</strong>
+            <ul>
+                {% for part in bulletin.parsed_required_parts %}
+                <li>{{ part }}</li>
+                {% endfor %}
+            </ul>
+            </p>
+            {% endif %}
+            {% if bulletin.description %}
+            <p><strong>Description:</strong> {{ bulletin.description }}</p>
+            {% endif %}
+        </div>
+
+        <div class="footer">
+            <p>This is an automated notification from the KPM Technical Service Dashboard.</p>
+        </div>
+    </div>
+</body>
+
+</html>

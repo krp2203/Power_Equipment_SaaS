@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Marketing Control Center{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1><i class="bi bi-shop-window me-2"></i>Marketing Control Center</h1>
+            <p class="text-muted">Manage your website integration and inventory status.</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{{ url_for('settings.organization') }}" class="btn btn-outline-primary">
+                <i class="bi bi-gear me-1"></i> Site Settings
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert for Impersonation (Helper for Admin) -->
+    {% if session.get('impersonation_origin_org') %}
+    <div class="alert alert-warning shadow-sm">
+        <i class="bi bi-eye"></i> You are viewing this dashboard as <strong>{{ g.current_org.name }}</strong>.
+        <a href="{{ url_for('super_admin.exit_impersonation') }}" class="alert-link">Exit Impersonation</a>
+    </div>
+    {% endif %}
+
+    <div class="row">
+        <!-- Connectivity Status (Only if POS Sync module enabled) -->
+        {% if g.current_org.modules.get('pos_sync') %}
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-{{ 'success' if bridge_online else 'danger' }} shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div
+                                class="text-xs font-weight-bold text-{{ 'success' if bridge_online else 'danger' }} text-uppercase mb-1">
+                                POS Bridge Status
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ 'Connected' if bridge_online else 'Offline' }}
+                            </div>
+                            <small class="text-muted">
+                                Last seen: {{ last_seen|time_ago if last_seen else 'Never' }}
+                            </small>
+                            <div class="mt-2">
+                                <form action="{{ url_for('marketing.download_bridge') }}" method="POST">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <div class="d-grid gap-2">
+                                        <button type="submit"
+                                            class="btn btn-{{ 'success' if bridge_online else 'danger' }}">
+                                            <i class="bi bi-download me-1"></i> Download Bridge
+                                        </button>
+                                        <div class="alert alert-info py-2 px-3 mb-0 small border-0 shadow-none"
+                                            style="background-color: rgba(13, 202, 240, 0.1);">
+                                            <i class="bi bi-info-circle-fill me-1"></i>
+                                            <strong>Pro Tip:</strong> Right-click the downloaded ZIP and select
+                                            <strong>"Extract All"</strong> before running the app.
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            {% if bridge_online %}
+                            <i class="bi bi-hdd-network fa-2x text-success" style="font-size: 2.5rem;"></i>
+                            {% else %}
+                            <i class="bi bi-hdd-network fa-2x text-danger" style="font-size: 2.5rem;"></i>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Inventory Stats -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <a href="{{ url_for('inventory.index') }}" class="text-decoration-none transition-hover">
+                <div class="card border-left-info shadow h-100 py-2">
+                    <div class="card-body">
+                        <div class="row no-gutters align-items-center">
+                            <div class="col mr-2">
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                    Web Inventory
+                                </div>
+                                <div class="h5 mb-0 font-weight-bold text-gray-800">{{ parts_count }} Parts</div>
+                                <div class="text-muted small">{{ units_count }} Owned Units</div>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-box-seam fa-2x text-info" style="font-size: 2.5rem;"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+
+        <!-- Integration Status -->
+        <div class="col-xl-4 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Integrations
+                            </div>
+                            <!-- ARI Check -->
+                            {% if g.current_org.modules.get('ari') %}
+                            <div class="mb-1">
+                                <i class="bi bi-check-circle-fill text-success me-1"></i> ARI PartSmart
+                            </div>
+                            {% endif %}
+                            
+                            <!-- Facebook Check -->
+                            {% if g.current_org.modules.get('facebook') %}
+                            <div>
+                                {% if g.current_org.facebook_page_id %}
+                                <i class="bi bi-check-circle-fill text-success me-1"></i> Facebook Page
+                                {% else %}
+                                <i class="bi bi-circle text-muted me-1"></i> Facebook Page
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            {% if not g.current_org.modules.get('ari') and not g.current_org.modules.get('facebook') %}
+                            <div class="text-muted small">No active add-ons.</div>
+                            {% endif %}
+                        </div>
+                        <div class="col-auto">
+                            <i class="bi bi-share fa-2x text-gray-300" style="font-size: 2.5rem;"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions / Guide -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h6 class="m-0 font-weight-bold">How to manage your website</h6>
+                </div>
+                <div class="card-body">
+                    <p>Welcome to your customized marketing dashboard. From here you can:</p>
+                    <ul>
+                        {% if g.current_org.modules.get('pos_sync') %}
+                        <li>Ensure your <strong>POS Bridge</strong> is running on your server to keep parts inventory in sync.</li>
+                        {% endif %}
+                        <li>Check <strong>Settings</strong> to enable or disable your active integrations.</li>
+                        {% if g.current_org.modules.get('pos_sync') %}
+                        <li>Your inventory updates automatically every 15 minutes when the bridge is online.</li>
+                        {% endif %}
+                        {% if g.current_org.modules.get('facebook') %}
+                        <li>Promote your equipment directly to your Facebook Page with one click.</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

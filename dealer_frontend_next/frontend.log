@@ -1,0 +1,119 @@
+nohup: ignoring input
+▲ Next.js 16.1.1
+- Local:         http://localhost:3005
+- Network:       http://192.168.86.34:3005
+
+✓ Starting...
+✓ Ready in 1021ms
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1
+API Fetch Error: TypeError: fetch failed
+    at ignore-listed frames {
+  [cause]: AggregateError: 
+      at ignore-listed frames {
+    code: 'ECONNREFUSED'
+  }
+}
+Likely network issue. API_BASE: http://localhost:8005/api/v1

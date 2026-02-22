@@ -1,0 +1,288 @@
+{% extends "_base.html" %}
+
+{% block title %}Start New Case{% endblock %}
+
+{% block head_styles %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/tributejs/dist/tribute.css" />
+    <!-- Trix Editor for rich text notes -->
+    <link rel="stylesheet" type="text/css" href="https://unpkg.com/trix@2.0.0/dist/trix.css">
+    <style>
+        /* Trix editor styling override */
+        trix-editor {
+            min-height: 120px;
+            background-color: white;
+            border-radius: 0.375rem;
+            border: var(--bs-border-width) solid var(--bs-border-color);
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10 col-xl-8">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h1 class="mb-0">Start New Case</h1>
+                <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <form action="{{ url_for('add_case') }}" method="POST" enctype="multipart/form-data">
+                        <!-- Case Type Selection -->
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Case Type</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="case_type" id="case_type_support" value="Support" checked>
+                                <label class="form-check-label" for="case_type_support">
+                                    Support Case (Standard dealer/customer issue)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="case_type" id="case_type_internal" value="Internal Repair">
+                                <label class="form-check-label" for="case_type_internal">
+                                    Internal / Warehouse Repair (Track parts & labor)
+                                </label>
+                            </div>
+                        </div>
+
+                        <h5 class="mb-3 border-bottom pb-2">Case Information</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="dealer_id" class="form-label">Dealer</label>
+                                <select id="dealer_id" name="dealer_id" class="form-select">
+                                    <option value="">-- Select a Dealer --</option>
+                                    {% for dealer in dealers %}
+                                        <option value="{{ dealer.id }}" {% if preselected_dealer_id == dealer.id %}selected{% endif %}>{{ dealer.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="channel" class="form-label">Channel</label>
+                                <select id="channel" name="channel" class="form-select">
+                                    <option>Phone Call</option>
+                                    <option>Email</option>
+                                    <option>Text Message</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="reference" class="form-label">Reference / Subject</label>
+                            <!-- Trix Editor for Reference/Subject -->
+                            <input id="reference_input" type="hidden" name="reference">
+                            <trix-editor id="reference_editor" input="reference_input" class="mentionable-trix"
+                                placeholder="Enter case reference, subject, or initial notes. You can also drag-and-drop files here.">
+                            </trix-editor>
+                        </div>
+                        <div class="mb-4">
+                            <label for="attachments" class="form-label">Attachments</label>
+                            <input class="form-control" type="file" id="attachments" name="attachments" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv" multiple>
+                        </div>
+                        <h5 class="mb-3 mt-4 border-bottom pb-2">Unit & Owner Information (Optional)</h5>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="manufacturer" class="form-label">Manufacturer</label>
+                                <select id="manufacturer" name="manufacturer" class="form-select">
+                                    <option value="">-- Select --</option>
+                                    {% for manu in all_manufacturers %}
+                                        <option value="{{ manu }}">{{ manu }}</option>
+                                    {% endfor %}
+                                    <option value="__add_new__">** Add New Manufacturer **</option>
+                                </select>
+                                <input type="text" name="new_manufacturer" id="new_manufacturer" class="form-control mt-2" placeholder="Enter new manufacturer name" style="display: none;">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="model_number" class="form-label">Model #</label>
+                                <input type="text" id="model_number" name="model_number" class="form-control">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="serial_number" class="form-label">Serial #</label>
+                                <input type="text" id="serial_number" name="serial_number" class="form-control">
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="engine_model" class="form-label">Engine Model</label>
+                                <input type="text" id="engine_model" name="engine_model" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="engine_serial" class="form-label">Engine Serial</label>
+                                <input type="text" id="engine_serial" name="engine_serial" class="form-control">
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="owner_name" class="form-label">Owner Name</label>
+                                <input type="text" id="owner_name" name="owner_name" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="owner_company" class="form-label">Owner Company</label>
+                                <input type="text" id="owner_company" name="owner_company" class="form-control">
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="owner_address" class="form-label">Owner Address</label>
+                            <input type="text" id="owner_address" name="owner_address" class="form-control">
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="owner_phone" class="form-label">Owner Phone</label>
+                                <input type="tel" id="owner_phone" name="owner_phone" class="form-control">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="owner_email" class="form-label">Owner Email</label>
+                                <input type="email" id="owner_email" name="owner_email" class="form-control">
+                            </div>
+                        </div>
+
+                        <div class="d-grid mt-4">
+                            <button type="submit" class="btn btn-danger btn-lg">Create Case</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block body_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tributejs/dist/tribute.min.js"></script>
+<!-- Trix Editor for rich text notes -->
+<script type="text/javascript" src="https://unpkg.com/trix@2.0.0/dist/trix.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    // Initialize Choices.js for the dealer dropdown for a better UX
+    const dealerSelect = document.getElementById('dealer_id');
+    if (dealerSelect) {
+        const choices = new Choices(dealerSelect, {
+            searchEnabled: true,
+            itemSelectText: '',
+        });
+    }
+
+    // --- Drag and Drop for Trix Editor ---
+    const referenceEditor = document.getElementById('reference_editor');
+    const attachmentInput = document.getElementById('attachments');
+    if (referenceEditor && attachmentInput) {
+        referenceEditor.addEventListener('dragover', e => { e.preventDefault(); e.currentTarget.classList.add('trix-active'); });
+        referenceEditor.addEventListener('dragleave', e => e.currentTarget.classList.remove('trix-active'));
+        referenceEditor.addEventListener('drop', e => {
+            e.preventDefault();
+            e.currentTarget.classList.remove('trix-active');
+            if (e.dataTransfer.files.length > 0) {
+                attachmentInput.files = e.dataTransfer.files;
+            }
+        });
+    }
+    // --- @Mention Logic ---
+    const mentionUsers = JSON.parse('{{ mention_data|safe }}');
+    if (mentionUsers.length > 0) {
+        const tribute = new Tribute({
+            values: mentionUsers,
+            selectTemplate: function (item) {
+                return '@' + item.original.value;
+            },
+            menuItemTemplate: function (item) {
+                return item.string;
+            },
+            lookup: 'key',
+            fillAttr: 'value'
+        });
+        const mentionableEditors = document.querySelectorAll('.mentionable-trix');
+        mentionableEditors.forEach(editor => {
+            tribute.attach(editor);
+        });
+    }
+
+    // --- NEW: Auto-fill Unit Info by Serial Number ---
+    const serialNumberInput = document.getElementById('serial_number');
+    if (serialNumberInput) {
+        serialNumberInput.addEventListener('blur', function() {
+            const serial = this.value.trim();
+            if (serial.length < 3) return; // Don't search for very short strings
+
+            fetch(`/api/get_unit_by_serial?serial_number=${encodeURIComponent(serial)}`)
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 404) {
+                            // Unit not found, which is fine. User is creating a new one.
+                            console.log('Unit not found, ready for new entry.');
+                        } else {
+                            throw new Error('Network response was not ok.');
+                        }
+                        return null;
+                    }
+                    return response.json();
+                })
+                .then(unit => {
+                    if (unit) {
+                        // Unit found, populate the form fields
+                        document.getElementById('manufacturer').value = unit.manufacturer || '';
+                        document.getElementById('model_number').value = unit.model_number || '';
+                        document.getElementById('engine_model').value = unit.engine_model || '';
+                        document.getElementById('engine_serial').value = unit.engine_serial || '';
+                        document.getElementById('owner_name').value = unit.owner_name || '';
+                        document.getElementById('owner_company').value = unit.owner_company || '';
+                        document.getElementById('owner_address').value = unit.owner_address || '';
+                        document.getElementById('owner_phone').value = unit.owner_phone || '';
+                        document.getElementById('owner_email').value = unit.owner_email || '';
+                        
+                        // Create a small feedback message
+                        const feedbackEl = document.createElement('div');
+                        feedbackEl.className = 'form-text text-success';
+                        feedbackEl.textContent = 'Existing unit information has been pre-filled.';
+                        // Remove old feedback if it exists
+                        const oldFeedback = serialNumberInput.parentElement.querySelector('.form-text.text-success');
+                        if (oldFeedback) oldFeedback.remove();
+                        serialNumberInput.parentElement.appendChild(feedbackEl);
+                    }
+                })
+                .catch(error => console.error('Error fetching unit data:', error));
+        });
+    }
+
+    // --- "Add New Manufacturer" Logic ---
+    const manufacturerSelect = document.getElementById('manufacturer');
+    const newManufacturerInput = document.getElementById('new_manufacturer');
+
+    if (manufacturerSelect && newManufacturerInput) {
+        manufacturerSelect.addEventListener('change', function() {
+            if (this.value === '__add_new__') {
+                newManufacturerInput.style.display = 'block';
+                newManufacturerInput.setAttribute('required', 'required');
+                newManufacturerInput.focus();
+            } else {
+                newManufacturerInput.style.display = 'none';
+                newManufacturerInput.removeAttribute('required');
+                newManufacturerInput.value = '';
+            }
+        });
+
+        // When submitting, if "Add New" is selected, we need to use the text input's value.
+        // The backend will need to be adjusted to check for `new_manufacturer` if `manufacturer` is `__add_new__`.
+        const form = manufacturerSelect.closest('form');
+        form.addEventListener('submit', function() {
+            if (manufacturerSelect.value === '__add_new__') {
+                // To make it simple for the backend, let's just set the select's value to the new input's value.
+                // But the input name is different, so we need to handle `new_manufacturer` on the backend.
+                // Let's modify the `manufacturer` hidden input instead.
+                if(newManufacturerInput.value) {
+                    // A better approach is to let the backend handle the `new_manufacturer` field.
+                    // We'll adjust the POST logic in `add_case` in a future step if needed.
+                    // For now, the backend logic for creating a unit will need to check for this.
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

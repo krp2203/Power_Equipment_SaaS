@@ -1,0 +1,501 @@
+{% extends "_base.html" %}
+
+{% block title %}Tech Support Dashboard{% endblock %}
+
+{% block head_styles %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+
+    .card {
+        margin-bottom: 1rem;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08), 0 2px 3px rgba(0, 0, 0, 0.12);
+        transition: all 0.2s ease-in-out;
+    }
+
+    .card-link {
+        text-decoration: none;
+        color: inherit;
+    }
+
+    .card-link:hover .card {
+        border-color: #0d6efd;
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.1);
+        transform: translateY(-2px);
+    }
+
+    .tab-content {
+        padding-top: 1rem;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+
+    .collapsible-header .bi-chevron-down {
+        transition: transform 0.35s ease;
+    }
+
+    .collapsible-header {
+        cursor: pointer;
+        user-select: none;
+        /* Prevents text selection when clicking */
+    }
+
+    .collapsible-header[aria-expanded="true"] .bi-chevron-down {
+        transform: rotate(-180deg);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+        role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-start mb-3">
+        <!-- Start New Case Button -->
+        <div class="mb-3 mb-lg-0">
+            <a href="{{ url_for('add_case') }}" id="start-new-case-btn" class="btn btn-danger btn-lg py-3 px-5">Start
+                New Case</a>
+        </div>
+
+        <!-- Knowledge Base Search (Moved and Resized) -->
+        <div class="w-100" style="max-width: 450px;">
+            <div class="card">
+                <div class="card-body p-2">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-book-half"></i></span>
+                        <input type="text" id="kb-search-input" class="form-control"
+                            placeholder="Knowledge Base Search...">
+                        <button class="btn btn-outline-primary" type="button" id="kb-search-btn"><i
+                                class="bi bi-search"></i></button>
+                    </div>
+                    <div id="kb-results-container" class="mt-2" style="max-height: 250px; overflow-y: auto;">
+                        <!-- Search results will appear here -->
+                    </div>
+                    <div id="kb-loading-spinner" class="text-center mt-2" style="display: none;">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <p class="text-muted mb-4">Welcome, {{ current_user.username }}</p>
+    <!-- Filters -->
+    <div class="row mb-4 align-items-end">
+        <div class="col-md-4 col-lg-3 mb-2 mb-md-0">
+            <form action="{{ url_for('dashboard') }}" method="GET">
+                <input type="hidden" name="time_filter" value="{{ active_time_filter }}">
+                <div class="input-group">
+                    <label class="input-group-text" for="user-filter-select"><i
+                            class="bi bi-person-check-fill"></i></label>
+                    <select class="form-select" id="user-filter-select" name="user_filter"
+                        onchange="this.form.submit()">
+                        <option value="{{ current_user.username }}" {% if active_filter==current_user.username
+                            %}selected{% endif %}>My Cases</option>
+                        <option value="all" {% if active_filter=='all' %}selected{% endif %}>All Cases</option>
+                        <option disabled>──────────</option>
+                        {% for user in all_users %}
+                        {% if user.username != current_user.username %}
+                        <option value="{{ user.username }}" {% if active_filter==user.username %}selected{% endif %}>{{
+                            user.username }}</option>
+                        {% endif %}
+                        {% endfor %}
+                    </select>
+                </div>
+            </form>
+        </div>
+        <div class="col-md-4 col-lg-3 mb-2 mb-md-0">
+            <form action="{{ url_for('dashboard') }}" method="GET">
+                <input type="hidden" name="user_filter" value="{{ active_filter }}">
+                <div class="input-group">
+                    <label class="input-group-text" for="time-filter-select"><i class="bi bi-clock-history"></i></label>
+                    <select class="form-select" id="time-filter-select" name="time_filter"
+                        onchange="this.form.submit()">
+                        <option value="all" {% if active_time_filter=='all' or not active_time_filter %}selected{% endif
+                            %}>All Time</option>
+                        <option value="today" {% if active_time_filter=='today' %}selected{% endif %}>Today</option>
+                        <option value="week" {% if active_time_filter=='week' %}selected{% endif %}>This Week</option>
+                        <option value="month" {% if active_time_filter=='month' %}selected{% endif %}>This Month
+                        </option>
+                    </select>
+                </div>
+            </form>
+        </div>
+        <!-- Main Case Search -->
+        <div class="col-md-4 col-lg-6">
+            <form action="{{ url_for('search_cases') }}" method="GET">
+                <div class="input-group">
+                    <input type="text" class="form-control" name="search_term"
+                        placeholder="Search All Cases (by ID, S/N, Dealer, Owner...)"
+                        value="{{ request.args.get('search_term', '') }}">
+                    <button class="btn btn-primary" type="submit"><i class="bi bi-search"></i> Search</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN DASHBOARD AREA -->
+    <div class="row">
+
+        <!-- Support Calls -->
+        <div class="col-lg-3">
+            {% set total_support_cases = new_cases|length + waiting_cases|length + in_progress_cases|length %}
+            <h4 class="mb-3 d-lg-block {% if total_support_cases > 3 %}collapsible-header{% endif %}" {% if
+                total_support_cases> 3 %}
+                data-bs-toggle="collapse"
+                data-bs-target="#support-calls-collapse"
+                aria-expanded="true"
+                {% endif %}>
+                Support Calls
+                <i class="bi bi-chevron-down float-end"></i>
+            </h4>
+            <div id="support-calls-collapse" class="collapse show">
+                <div class="card">
+                    <div class="card-header bg-body-secondary">
+                        <ul class="nav nav-tabs card-header-tabs" id="incomingCasesTab" role="tablist">
+                            <li class="nav-item" role="presentation"><button class="nav-link active"
+                                    data-bs-toggle="tab" data-bs-target="#new" type="button">New <span
+                                        class="badge bg-secondary">{{ new_cases|length }}</span></button></li>
+                            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
+                                    data-bs-target="#waiting" type="button">Waiting <span class="badge bg-secondary">{{
+                                        waiting_cases|length }}</span></button></li>
+                            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
+                                    data-bs-target="#inprogress" type="button">In Progress <span
+                                        class="badge bg-secondary">{{ in_progress_cases|length }}</span></button></li>
+                        </ul>
+                    </div>
+                    <div class="card-body tab-content" id="incomingCasesTabContent">
+                        <div class="tab-pane fade show active" id="new" role="tabpanel">
+                            {% for case in new_cases %}{% include 'case_card.html' %}{% else %}<p class="text-muted">No
+                                new cases.</p>{% endfor %}
+                        </div>
+                        <div class="tab-pane fade" id="waiting" role="tabpanel">
+                            {% for case in waiting_cases %}{% include 'case_card.html' %}{% else %}<p
+                                class="text-muted">No cases are waiting on a dealer.</p>{% endfor %}
+                        </div>
+                        <div class="tab-pane fade" id="inprogress" role="tabpanel">
+                            {% for case in in_progress_cases %}{% include 'case_card.html' %}{% else %}<p
+                                class="text-muted">No cases are in progress.</p>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Follow Ups -->
+        <div class="col-lg-3">
+            <h4 class="mb-3 d-lg-block {% if all_follow_ups|length > 3 %}collapsible-header{% endif %}" {% if
+                all_follow_ups|length> 3 %}
+                data-bs-toggle="collapse"
+                data-bs-target="#follow-ups-collapse"
+                aria-expanded="true"
+                {% endif %}>
+                Follow Ups <span class="badge bg-warning text-dark">{{ all_follow_ups|length }}</span>
+                <i class="bi bi-chevron-down float-end"></i>
+            </h4>
+            <div id="follow-ups-collapse" class="collapse show">
+                <div class="card">
+                    <div class="card-body tab-content">
+                        {% for case in all_follow_ups %}
+                        {% include 'case_card.html' %}
+                        {% else %}
+                        <p class="text-muted">No cases are scheduled for follow-up.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Field Support -->
+        <div class="col-lg-3">
+            {% set total_field_cases = needs_scheduling_visits|length + scheduled_visits|length +
+            parts_ordered_visits|length %}
+            <h4 class="mb-3 d-lg-block {% if total_field_cases > 3 %}collapsible-header{% endif %}" {% if
+                total_field_cases> 3 %}
+                data-bs-toggle="collapse"
+                data-bs-target="#field-support-collapse"
+                aria-expanded="true"
+                {% endif %}>
+                Field Support Cases
+                <i class="bi bi-chevron-down float-end"></i>
+            </h4>
+            <div id="field-support-collapse" class="collapse show">
+                <div class="card">
+                    <div class="card-header bg-body-secondary">
+                        <ul class="nav nav-tabs card-header-tabs" id="visitsTab" role="tablist">
+                            <li class="nav-item" role="presentation"><button class="nav-link active"
+                                    data-bs-toggle="tab" data-bs-target="#needs-scheduling" type="button">New <span
+                                        class="badge bg-secondary">{{ needs_scheduling_visits|length }}</span></button>
+                            </li>
+                            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
+                                    data-bs-target="#scheduled" type="button">Scheduled <span
+                                        class="badge bg-secondary">{{ scheduled_visits|length }}</span></button></li>
+                            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
+                                    data-bs-target="#parts-ordered" type="button">Parts <span
+                                        class="badge bg-secondary">{{ parts_ordered_visits|length }}</span></button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body tab-content" id="visitsTabContent">
+                        <div class="tab-pane fade show active" id="needs-scheduling" role="tabpanel">
+                            {% for case in needs_scheduling_visits %}{% include 'case_card.html' %}{% else %}<p
+                                class="text-muted">No visits need scheduling.</p>{% endfor %}
+                        </div>
+                        <div class="tab-pane fade" id="scheduled" role="tabpanel">
+                            {% for case in scheduled_visits %}{% include 'case_card.html' %}{% else %}<p
+                                class="text-muted">No visits are scheduled.</p>{% endfor %}
+                        </div>
+                        <div class="tab-pane fade" id="parts-ordered" role="tabpanel">
+                            {% for case in parts_ordered_visits %}{% include 'case_card.html' %}{% else %}<p
+                                class="text-muted">No visits are waiting on parts.</p>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Internal Repairs -->
+        <div class="col-lg-3">
+            {% set total_repair_cases = new_repairs|length + in_progress_repairs|length + awaiting_parts_repairs|length
+            %}
+            <h4 class="mb-3 d-lg-block {% if total_repair_cases > 3 %}collapsible-header{% endif %}" {% if
+                total_repair_cases> 3 %}
+                data-bs-toggle="collapse"
+                data-bs-target="#internal-repairs-collapse"
+                aria-expanded="true"
+                {% endif %}>
+                Internal Repairs
+                <i class="bi bi-chevron-down float-end"></i>
+            </h4>
+            <div id="internal-repairs-collapse" class="collapse show">
+                <div class="card">
+                    <div class="card-header bg-body-secondary">
+                        <ul class="nav nav-tabs card-header-tabs" id="repairsTab" role="tablist">
+                            <li class="nav-item" role="presentation"><button class="nav-link active"
+                                    data-bs-toggle="tab" data-bs-target="#new-repairs" type="button">New <span
+                                        class="badge bg-secondary">{{ new_repairs|length }}</span></button></li>
+                            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
+                                    data-bs-target="#inprogress-repairs" type="button">In Progress <span
+                                        class="badge bg-secondary">{{ in_progress_repairs|length }}</span></button></li>
+                            <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab"
+                                    data-bs-target="#awaiting-parts-repairs" type="button">Awaiting Parts <span
+                                        class="badge bg-secondary">{{ awaiting_parts_repairs|length }}</span></button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body tab-content" id="repairsTabContent">
+                        <div class="tab-pane fade show active" id="new-repairs" role="tabpanel">
+                            {% for case in new_repairs %}{% include 'case_card.html' %}{% else %}<p class="text-muted">
+                                No new repairs.</p>{% endfor %}
+                        </div>
+                        <div class="tab-pane fade" id="inprogress-repairs" role="tabpanel">
+                            {% for case in in_progress_repairs %}{% include 'case_card.html' %}{% else %}<p
+                                class="text-muted">No repairs are in progress.</p>{% endfor %}
+                        </div>
+                        <div class="tab-pane fade" id="awaiting-parts-repairs" role="tabpanel">
+                            {% for case in awaiting_parts_repairs %}{% include 'case_card.html' %}{% else %}<p
+                                class="text-muted">No repairs are awaiting parts.</p>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // --- Notification Helper (re-usable) ---
+        const showBrowserNotification = (title, options) => {
+            // Only proceed if permission is granted and the service worker is active.
+            if (Notification.permission === "granted" && 'serviceWorker' in navigator && navigator.serviceWorker.controller) {
+                navigator.serviceWorker.controller.postMessage({
+                    type: 'SHOW_NOTIFICATION',
+                    payload: { title, options }
+                });
+            }
+        };
+
+        // --- Overdue Follow-up Notifications ---
+        const overdueFollowUps = {{ overdue_follow_ups_data | tojson
+    }};
+    if (overdueFollowUps && overdueFollowUps.length > 0) {
+        const showAllNotifications = () => {
+            overdueFollowUps.forEach((caseData, index) => {
+                const notificationKey = `notified-follow-up-iso-${caseData.id}`;
+                const lastNotified = localStorage.getItem(notificationKey);
+
+                if (lastNotified === caseData.follow_up_date_iso) return;
+
+                setTimeout(() => {
+                    const url = `/case/${caseData.id}`;
+                    showBrowserNotification("Overdue Follow-up", {
+                        body: `Case #${caseData.id}: ${caseData.dealer_name}\nDue: ${caseData.follow_up_date_str}`,
+                        tag: `case-${caseData.id}`,
+                        data: { url: url }
+                    });
+                    localStorage.setItem(notificationKey, caseData.follow_up_date_iso);
+                }, index * 300);
+            });
+        };
+
+        // Check for permission and show notifications
+        if (!("Notification" in window)) {
+            console.log("This browser does not support desktop notifications.");
+        } else if (Notification.permission === "granted") {
+            showAllNotifications();
+        } else if (Notification.permission !== "denied") {
+            Notification.requestPermission().then(permission => {
+                if (permission === "granted") {
+                    showAllNotifications();
+                }
+            });
+        }
+    }
+
+    // --- Enter Key Shortcut ---
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && document.activeElement === document.body) {
+            event.preventDefault();
+            const startButton = document.getElementById('start-new-case-btn');
+            if (startButton) {
+                window.location.href = startButton.href;
+            }
+        }
+    });
+
+    // --- Notification Polling ---
+    const pollForNotifications = () => {
+        fetch('/check_notifications')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+                return response.json();
+            })
+            .then(notifications => {
+                if (notifications && notifications.length > 0) {
+                    if (Notification.permission === "granted") {
+                        showCommentNotifications(notifications);
+                    } else if (Notification.permission !== "denied") {
+                        Notification.requestPermission().then(permission => {
+                            if (permission === "granted") {
+                                showCommentNotifications(notifications);
+                            }
+                        });
+                    }
+                }
+            })
+            .catch(error => console.error('Error polling for notifications:', error));
+    };
+
+    const showCommentNotifications = (notifications) => {
+        notifications.forEach((notification, index) => {
+            setTimeout(() => {
+                let url = '#';
+                let tag = `notification-${notification.id}`; // Use unique notification ID for tag
+                if (notification.case_id) {
+                    url = `/case/${notification.case_id}`;
+                } else if (notification.dealer_id && notification.dealer_note_id) {
+                    // Note: The anchor tag format should match the one in your dealer_detail.html
+                    url = `/dealer/${notification.dealer_id}#note-${notification.dealer_note_id}`;
+                }
+
+                showBrowserNotification("New Update", {
+                    body: notification.message,
+                    tag: tag,
+                    data: { url: url }
+                });
+            }, index * 300); // Stagger notifications
+        });
+    };
+
+    const NOTIFICATION_POLL_INTERVAL = 20000; // 20 seconds
+    setInterval(pollForNotifications, NOTIFICATION_POLL_INTERVAL);
+    pollForNotifications(); // Also check immediately on page load
+
+    // --- Initial and Dynamic Timestamp Formatting ---
+    formatTimestamps(); // Format timestamps on initial load
+
+    // --- FEATURE: KNOWLEDGE BASE SEARCH ---
+    const kbSearchInput = document.getElementById('kb-search-input');
+    const kbSearchBtn = document.getElementById('kb-search-btn');
+    const kbResultsContainer = document.getElementById('kb-results-container');
+    const kbLoadingSpinner = document.getElementById('kb-loading-spinner');
+    let kbSearchTimeout;
+
+    const performKbSearch = () => {
+        const query = kbSearchInput.value.trim();
+        if (query.length < 2) {
+            kbResultsContainer.innerHTML = ''; // Clear results if query is too short
+            return;
+        }
+
+        kbLoadingSpinner.style.display = 'block';
+        kbResultsContainer.innerHTML = '';
+
+        fetch("{{ url_for('search_knowledge_base') }}", {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ query: query })
+        })
+            .then(res => res.json())
+            .then(data => {
+                kbLoadingSpinner.style.display = 'none';
+                if (data.error) {
+                    kbResultsContainer.innerHTML = `<div class="alert alert-danger py-2">${data.error}</div>`;
+                    return;
+                }
+                if (data.results && data.results.length > 0) {
+                    const list = document.createElement('ul');
+                    list.className = 'list-group list-group-flush';
+                    data.results.forEach(item => {
+                        const listItem = document.createElement('li');
+                        listItem.className = 'list-group-item d-flex justify-content-between align-items-center py-2';
+                        listItem.innerHTML = `
+                        <a href="${item.url}" target="_blank" title="${item.name}">
+                            <i class="bi bi-file-earmark-text me-2"></i>
+                            ${item.name}
+                        </a>
+                        <a href="${item.url}" target="_blank" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-up-right"></i></a>
+                    `;
+                        list.appendChild(listItem);
+                    });
+                    kbResultsContainer.appendChild(list);
+                } else {
+                    kbResultsContainer.innerHTML = '<p class="text-muted small">No matching documents found.</p>';
+                }
+            })
+            .catch(err => {
+                kbLoadingSpinner.style.display = 'none';
+                kbResultsContainer.innerHTML = `<div class="alert alert-danger py-2">An error occurred during search.</div>`;
+            });
+    };
+
+    kbSearchInput.addEventListener('keyup', (e) => {
+        clearTimeout(kbSearchTimeout);
+        if (e.key === 'Enter') {
+            performKbSearch();
+        } else {
+            kbSearchTimeout = setTimeout(performKbSearch, 500); // Auto-search after 500ms
+        }
+    });
+    kbSearchBtn.addEventListener('click', performKbSearch);
+});
+</script>
+{% endblock %}

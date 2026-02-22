@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2>Inventory Management</h2>
+        <p class="text-muted">Manage your own equipment for sale (Whole Goods).</p>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('inventory.add') }}" class="btn btn-success">
+            <i class="bi bi-plus-lg"></i> Add Unit
+        </a>
+    </div>
+</div>
+
+<div class="card shadow">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-4">Image</th>
+                        <th>Unit Details</th>
+                        <th>Price</th>
+                        <th>Status</th>
+                        <th>Web</th>
+                        <th class="text-end pe-4">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for unit in units %}
+                    <tr>
+                        <td class="ps-4">
+                            {% set primary_img = unit.images|selectattr('is_primary')|first %}
+                            {% if not primary_img and unit.images %}
+                            {% set primary_img = unit.images[0] %}
+                            {% endif %}
+
+                            {% if primary_img %}
+                            <img src="{{ primary_img.image_url }}" class="img-thumbnail"
+                                style="height: 50px; width: 50px; object-fit: cover;">
+                            {% else %}
+                            <div class="bg-light d-flex align-items-center justify-content-center text-muted border rounded"
+                                style="height: 50px; width: 50px;">
+                                <i class="bi bi-camera"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <strong>{{ unit.year or '' }} {{ unit.manufacturer }} {{ unit.model_number }}</strong>
+                            <br>
+                            <small class="text-muted">{{ unit.serial_number or 'No Serial' }}</small>
+                        </td>
+                        <td>${{ unit.price }}</td>
+                        <td>
+                            {% if unit.status == 'Available' %}
+                            <span class="badge bg-success">Available</span>
+                            {% elif unit.status == 'Sold' %}
+                            <span class="badge bg-secondary">Sold</span>
+                            {% else %}
+                            <span class="badge bg-warning text-dark">{{ unit.status }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if unit.display_on_web %}
+                            <i class="bi bi-check-circle-fill text-success" title="Visible"></i>
+                            {% else %}
+                            <i class="bi bi-eye-slash text-muted" title="Hidden"></i>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            {% if g.current_org.modules.get('facebook') %}
+                            <form action="{{ url_for('inventory.social_share', id=unit.id) }}" method="POST"
+                                class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-info me-1" title="Post to Facebook">
+                                    <i class="bi bi-facebook me-1"></i> Post
+                                </button>
+                            </form>
+                            {% endif %}
+                            <a href="{{ url_for('inventory.edit', id=unit.id) }}"
+                                class="btn btn-sm btn-outline-primary me-1" title="Edit Unit">
+                                <i class="bi bi-pencil-square me-1"></i> Edit
+                            </a>
+                            <form action="{{ url_for('inventory.delete', id=unit.id) }}" method="POST" class="d-inline"
+                                onsubmit="return confirm('Are you sure you want to delete this unit? This cannot be undone.');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Unit">
+                                    <i class="bi bi-trash me-1"></i> Delete
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <p class="mb-0">No inventory items found.</p>
+                            <a href="{{ url_for('inventory.add') }}" class="btn btn-sm btn-outline-success mt-2">Add
+                                First Unit</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

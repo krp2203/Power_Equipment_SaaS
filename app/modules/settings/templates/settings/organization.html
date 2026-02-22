@@ -1,0 +1,517 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block title %}Platform Settings{% endblock %}
+
+{% block head_styles %}
+<style>
+    .nav-tabs .nav-link {
+        color: #495057;
+        font-weight: 500;
+        padding: 12px 20px;
+        border: none;
+        border-bottom: 3px solid transparent;
+    }
+
+    .nav-tabs .nav-link.active {
+        color: var(--bs-primary);
+        background-color: transparent;
+        border-bottom: 3px solid var(--bs-primary);
+    }
+
+    .settings-card {
+        border: none;
+        border-radius: 8px;
+    }
+
+    .form-section-title {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        font-weight: 600;
+        color: #6c757d;
+        margin-bottom: 1.5rem;
+        margin-top: 2rem;
+    }
+
+    .form-control:focus {
+        box-shadow: none;
+        border-color: var(--bs-primary);
+    }
+
+    .logo-preview-container {
+        max-width: 400px;
+        transition: transform 0.2s;
+    }
+
+    .logo-preview-container:hover {
+        transform: scale(1.02);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <h1 class="h3 mb-1">Platform Settings</h1>
+            <p class="text-muted small">Configure your custom dealership website environment.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-9">
+            <form method="POST" action="" enctype="multipart/form-data" id="settingsForm">
+                {{ form.hidden_tag() }}
+
+                <div class="card shadow-sm settings-card">
+                    <div class="card-header bg-white p-0 border-bottom">
+                        <ul class="nav nav-tabs px-3" id="settingsTabs" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" id="branding-tab" data-bs-toggle="tab" href="#branding"
+                                    role="tab">Branding</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="content-tab" data-bs-toggle="tab" href="#content"
+                                    role="tab">Site Content</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="integrations-tab" data-bs-toggle="tab" href="#integrations"
+                                    role="tab">Integrations</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" id="users-tab" data-bs-toggle="tab" href="#users"
+                                    role="tab">Users</a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="card-body p-4">
+                        <div class="tab-content" id="settingsTabsContent">
+                            <!-- Branding Tab -->
+                            <div class="tab-pane fade show active" id="branding" role="tabpanel">
+                                <h6 class="form-section-title mt-0">Visual Identity</h6>
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        {% if g.current_org.theme_config and g.current_org.theme_config.get('logo_url')
+                                        %}
+                                        <div class="mb-3 logo-preview-container">
+                                            <label class="form-label d-block text-muted small mb-2">Current Website
+                                                Logo</label>
+                                            <div class="p-3 border rounded bg-light shadow-sm text-center">
+                                                <img src="{{ g.current_org.theme_config['logo_url'] }}" alt="Logo"
+                                                    style="max-height: 120px; max-width: 100%; height: auto;">
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                        {{ wtf.form_field(form.company_logo) }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        {{ wtf.form_field(form.primary_color, type="color", class="form-control",
+                                        style="height: 50px;") }}
+                                        <div class="mt-4">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <label class="form-label mb-0">{{ form.slug.label.text }}</label>
+                                                {% if session.get('impersonation_origin_org') or g.current_org.id == 1
+                                                %}
+                                                <span class="badge bg-primary" style="font-size: 0.65rem;">SAAS
+                                                    ADMIN</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary" style="font-size: 0.65rem;"><i
+                                                        class="bi bi-lock-fill me-1"></i>RESTRICTED</span>
+                                                {% endif %}
+                                            </div>
+                                            {{ wtf.form_field(form.slug, label_visible=False) }}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Site Content Tab -->
+                            <div class="tab-pane fade" id="content" role="tabpanel">
+                                <h6 class="form-section-title mt-0">Homepage Hero Section</h6>
+                                <div class="row mb-4">
+                                    <div class="col-12 mb-3">
+                                        {{ wtf.form_field(form.hero_title) }}
+                                        <div class="mt-2">
+                                            {{ wtf.form_field(form.hero_show_logo) }}
+                                        </div>
+                                    </div>
+                                    <div class="col-12">
+                                        {{ wtf.form_field(form.hero_tagline) }}
+                                    </div>
+                                </div>
+
+                                <h6 class="form-section-title">Brand Carousel</h6>
+                                <div class="card shadow-sm mb-4 border bg-light">
+                                    <div class="card-body">
+                                        <p class="text-muted small mb-3">Upload up to 8 manufacturer logos to display in
+                                            a scrolling carousel on your homepage.</p>
+                                        <div class="row">
+                                            {% for i in range(1, 9) %}
+                                            <div class="col-md-3 col-6 mb-3">
+                                                <div class="border rounded p-3 text-center bg-white h-100">
+                                                    <h6 class="small font-weight-bold mb-2">Slot {{ i }}</h6>
+
+                                                    <!-- Show existing image if set -->
+                                                    {% if g.current_org.theme_config and
+                                                    g.current_org.theme_config.get('brand_logos', {}).get(i|string) %}
+                                                    <div class="mb-2">
+                                                        <img src="{{ g.current_org.theme_config['brand_logos'][i|string] }}"
+                                                            class="img-fluid" style="max-height: 40px;">
+                                                    </div>
+                                                    {% endif %}
+
+                                                    {% set field = form['brand_logo_' ~ i] %}
+                                                    {{ wtf.form_field(field, class="form-control form-control-sm") }}
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <h6 class="form-section-title">Feature Sections</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-4 p-3 border rounded shadow-sm bg-light">
+                                        <label class="fw-bold mb-2">Inventory Feature</label>
+                                        {{ wtf.form_field(form.feat_inventory_title) }}
+                                        {{ wtf.form_field(form.feat_inventory_text, rows=3) }}
+                                    </div>
+                                    <div class="col-md-4 p-3 border rounded shadow-sm bg-light">
+                                        <label class="fw-bold mb-2">Parts Feature</label>
+                                        {{ wtf.form_field(form.feat_parts_title) }}
+                                        {{ wtf.form_field(form.feat_parts_text, rows=3) }}
+                                    </div>
+                                    <div class="col-md-4 p-3 border rounded shadow-sm bg-light">
+                                        <label class="fw-bold mb-2">Service Feature</label>
+                                        {{ wtf.form_field(form.feat_service_title) }}
+                                        {{ wtf.form_field(form.feat_service_text, rows=3) }}
+                                    </div>
+                                </div>
+
+                                <h6 class="form-section-title">Contact Information</h6>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        {{ wtf.form_field(form.contact_phone) }}
+                                        {{ wtf.form_field(form.contact_email) }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        {{ wtf.form_field(form.contact_address, rows=2) }}
+                                        {{ wtf.form_field(form.contact_text, rows=2) }}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Integrations Tab -->
+                            <div class="tab-pane fade" id="integrations" role="tabpanel">
+                                {% if session.get('impersonation_origin_org') or g.current_org.id == 1 %}
+                                <h6 class="form-section-title mt-0">Active Add-on Modules (Admin)</h6>
+                                <div class="row mb-4 p-3 bg-light rounded border">
+                                    <div class="col-md-4">
+                                        {{ wtf.form_field(form.module_pos_sync) }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        {{ wtf.form_field(form.module_facebook) }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        {{ wtf.form_field(form.module_ari) }}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                {% if g.current_org.modules.get('pos_sync') %}
+                                <h6 class="form-section-title">POS & Inventory</h6>
+                                <div class="row mb-4">
+                                    <div class="col-md-12 mb-3">
+                                        {{ wtf.form_field(form.enable_pos) }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        {{ wtf.form_field(form.pos_provider) }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        {{ wtf.form_field(form.pos_bridge_key) }}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                {% if g.current_org.modules.get('ari') %}
+                                <h6 class="form-section-title">ARI PartSmart</h6>
+                                <div class="row mb-4">
+                                    <div class="col-md-12 mb-3">
+                                        {{ wtf.form_field(form.enable_ari) }}
+                                    </div>
+                                    <div class="col-md-12">
+                                        {{ wtf.form_field(form.ari_dealer_id) }}
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                {% if g.current_org.modules.get('facebook') %}
+                                <h6 class="form-section-title">Facebook Marketing</h6>
+                                <div class="col-md-12">
+                                    {% if g.current_org.facebook_page_id %}
+                                    <div class="alert alert-success d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <i class="bi bi-facebook me-2"></i>
+                                            <strong>Connected to Page ID:</strong> {{ g.current_org.facebook_page_id }}
+                                        </div>
+                                        <button type="submit" formaction="{{ url_for('settings.facebook_disconnect') }}"
+                                            formmethod="POST" class="btn btn-outline-danger btn-sm">
+                                            Disconnect
+                                        </button>
+                                    </div>
+                                    <!-- Hidden fields to preserve data on other updates if needed, though simpler to just ignore them in route -->
+                                    {% else %}
+                                    <div class="p-4 border rounded bg-light text-center">
+                                        <i class="bi bi-facebook text-primary display-4 mb-3"></i>
+                                        <h5>Connect your Facebook Page</h5>
+                                        <p class="text-muted small mb-4">
+                                            Allow Power Equipment SaaS to post updates to your dealer page.
+                                        </p>
+                                        <a href="{{ url_for('settings.facebook_connect') }}"
+                                            class="btn fw-bold px-4 py-2"
+                                            style="background-color: #1877F2 !important; color: #ffffff !important; border: 1px solid #145dbf !important; border-radius: 6px; text-decoration: none;">
+                                            <i class="bi bi-facebook me-2"></i> Connect with Facebook
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                {% endif %}
+
+                                {% if not g.current_org.modules.get('pos_sync') and not g.current_org.modules.get('ari') and not g.current_org.modules.get('facebook') %}
+                                <div class="text-center py-5">
+                                    <i class="bi bi-puzzle text-muted" style="font-size: 3rem; opacity: 0.3;"></i>
+                                    <p class="text-muted mt-3 mb-0">No integration modules are currently enabled for your account.</p>
+                                    <p class="text-muted small">Contact support to activate additional features.</p>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Users Tab -->
+                            <div class="tab-pane fade" id="users" role="tabpanel">
+                                <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
+                                    <h5 class="mb-0 h6 text-uppercase fw-bold text-muted"
+                                        style="letter-spacing: 0.05rem;">Staff & Permissions</h5>
+                                    <button type="button" class="btn btn-dark btn-sm px-3" data-bs-toggle="modal"
+                                        data-bs-target="#addUserModal">
+                                        <i class="bi bi-person-plus me-1"></i> Add User
+                                    </button>
+                                </div>
+
+                                <div class="table-responsive">
+                                    <table class="table table-hover align-middle">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th>Username</th>
+                                                <th>Email</th>
+                                                <th>Role</th>
+                                                <th class="text-end">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for u in users %}
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="bg-light rounded-circle p-2 me-2">
+                                                            <i class="bi bi-person text-muted"></i>
+                                                        </div>
+                                                        <strong>{{ u.username }}</strong>
+                                                        {% if u.id == current_user.id %}
+                                                        <span class="badge bg-info ms-2"
+                                                            style="font-size: 0.6rem;">YOU</span>
+                                                        {% endif %}
+                                                    </div>
+                                                </td>
+                                                <td class="small">{{ u.email or 'N/A' }}</td>
+                                                <td>
+                                                    <span
+                                                        class="badge {% if u.role == 'admin' %}bg-dark{% else %}bg-secondary{% endif %}">
+                                                        {{ u.role|upper }}
+                                                    </span>
+                                                </td>
+                                                <td class="text-end">
+                                                    <div class="btn-group">
+                                                        <button type="button"
+                                                            class="btn btn-outline-dark btn-sm border-0"
+                                                            data-bs-toggle="modal" data-bs-target="#editUserModal"
+                                                            data-user-id="{{ u.id }}" data-username="{{ u.username }}"
+                                                            data-email="{{ u.email }}" data-role="{{ u.role }}"
+                                                            title="Edit User">
+                                                            <i class="bi bi-pencil"></i>
+                                                        </button>
+                                                        {% if u.id != current_user.id %}
+                                                        <form
+                                                            action="{{ url_for('settings.delete_user', user_id=u.id) }}"
+                                                            method="POST"
+                                                            onsubmit="return confirm('Are you sure you want to remove {{ u.username }}?');"
+                                                            style="display:inline;">
+                                                            <input type="hidden" name="csrf_token"
+                                                                value="{{ csrf_token() }}">
+                                                            <button type="submit"
+                                                                class="btn btn-outline-danger btn-sm border-0"
+                                                                title="Delete User">
+                                                                <i class="bi bi-trash"></i>
+                                                            </button>
+                                                        </form>
+                                                        {% endif %}
+                                                    </div>
+                                                    {% if u.id == current_user.id %}
+                                                    <div class="mt-1"><span class="text-muted small"><em>(Current
+                                                                User)</em></span></div>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div> <!-- End tab-content -->
+                    </div>
+
+                    <div class="card-footer bg-light p-3 text-end border-top">
+                        <button type="submit" name="submit" class="btn btn-dark px-5 py-2 fw-bold">
+                            <i class="bi bi-check-circle me-1"></i> Save All Settings
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            <div class="card shadow-sm mt-4 settings-card" id="bridge-download-section">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 h6">Manual Bridge Download</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <p class="text-muted small mb-0">Download the sync bridge for local POS integration.</p>
+                        </div>
+                        <form action="{{ url_for('marketing.download_bridge') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline-info btn-sm">
+                                <i class="bi bi-usb-drive me-1"></i> Download Media (ZIP)
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-3">
+            <div class="card bg-dark text-white border-0 shadow-sm rounded-4 overflow-hidden">
+                <div class="card-body p-4">
+                    <h6 class="text-primary mb-3"><i class="bi bi-info-circle me-2"></i>Quick Help</h6>
+                    <div class="small opacity-75">
+                        <p><strong>Site Updates:</strong> Changes are visible on your website immediately.</p>
+                        <hr class="opacity-25">
+                        <p><strong>Branding:</strong> Use your primary brand color to theme buttons and headers.</p>
+                        <hr class="opacity-25">
+                        <p><strong>SEO:</strong> Use descriptive Hero titles to help search engines find you.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="alert alert-info mt-4 border-0 shadow-sm small">
+                <i class="bi bi-lightbulb me-2"></i>
+                <strong>Tip:</strong> You can use HTML snippets in text areas for advanced styling.
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1" aria-labelledby="addUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="addUserModalLabel"><i class="bi bi-person-plus me-2"></i>Add Site User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('settings.add_user') }}" method="POST">
+                <div class="modal-body">
+                    {{ add_user_form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ wtf.form_field(add_user_form.username) }}
+                    </div>
+                    <div class="mb-3">
+                        {{ wtf.form_field(add_user_form.email) }}
+                    </div>
+                    <div class="mb-3">
+                        {{ wtf.form_field(add_user_form.password) }}
+                        <div class="form-text small text-muted">User will be required to change this upon first login.
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        {{ wtf.form_field(add_user_form.role) }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    {{ wtf.form_field(add_user_form.submit, class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editUserModalLabel"><i class="bi bi-person-gear me-2"></i>Edit Site User:
+                    <span id="edit-username-display" class="fw-bold"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editUserForm" method="POST">
+                <div class="modal-body">
+                    {{ edit_user_form.hidden_tag() }}
+                    <div class="mb-3">
+                        {{ wtf.form_field(edit_user_form.email) }}
+                    </div>
+                    <div class="mb-3">
+                        {{ wtf.form_field(edit_user_form.role) }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    {{ wtf.form_field(edit_user_form.submit, class="btn btn-primary") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const hash = window.location.hash;
+        if (hash) {
+            const triggerEl = document.querySelector(`a[href="${hash}"]`);
+            if (triggerEl) {
+                const tab = new bootstrap.Tab(triggerEl);
+                tab.show();
+            }
+        }
+
+        const editUserModal = document.getElementById('editUserModal');
+        if (editUserModal) {
+            editUserModal.addEventListener('show.bs.modal', function (event) {
+                const button = event.relatedTarget;
+                const userId = button.getAttribute('data-user-id');
+                const username = button.getAttribute('data-username');
+                const email = button.getAttribute('data-email');
+                const role = button.getAttribute('data-role');
+
+                const form = editUserModal.querySelector('#editUserForm');
+                form.action = `/settings/users/${userId}/edit`;
+
+                editUserModal.querySelector('#edit-username-display').textContent = username;
+                editUserModal.querySelector('input[name="email"]').value = email;
+                editUserModal.querySelector('select[name="role"]').value = role;
+            });
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Add Unit | {{ g.current_org.name }}{% endblock %}
+
+{% block content %}
+<div class="container-md" style="max-width: 800px;">
+    <div class="mb-4">
+        <a href="{{ url_for('units.index') }}" class="text-decoration-none text-muted mb-2 d-inline-block"><i
+                class="bi bi-arrow-left"></i> Back to Units</a>
+        <h2>Add New Unit</h2>
+    </div>
+
+    <form method="POST" action="{{ url_for('units.add') }}">
+        <!-- Equipment Info -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom px-4 py-3">
+                <h5 class="mb-0">Equipment Details</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Serial Number</label>
+                        <input type="text" name="serial_number" class="form-control" required placeholder="required">
+                        <div class="form-text">Must be unique within organization.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Manufacturer</label>
+                        <input class="form-control" list="manufacturerOptions" name="manufacturer"
+                            placeholder="Type to search...">
+                        <datalist id="manufacturerOptions">
+                            {% for mfg in manufacturers %}
+                            <option value="{{ mfg }}">
+                                {% endfor %}
+                        </datalist>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Model Number</label>
+                        <input type="text" name="model_number" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Current Hours</label>
+                        <input type="text" name="unit_hours" class="form-control">
+                    </div>
+
+                    <div class="col-12">
+                        <hr class="my-2">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label">Engine Model</label>
+                        <input type="text" name="engine_model" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Engine Serial</label>
+                        <input type="text" name="engine_serial" class="form-control">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Owner Info -->
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-transparent border-bottom px-4 py-3">
+                <h5 class="mb-0">Owner Information</h5>
+            </div>
+            <div class="card-body p-4">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Owner Name</label>
+                        <input type="text" name="owner_name" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Company Name</label>
+                        <input type="text" name="owner_company" class="form-control">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Address</label>
+                        <input type="text" name="owner_address" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Email</label>
+                        <input type="email" name="owner_email" class="form-control">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Phone</label>
+                        <input type="tel" name="owner_phone" class="form-control">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <a href="{{ url_for('units.index') }}" class="btn btn-light me-md-2">Cancel</a>
+            <button type="submit" class="btn btn-primary px-4">Create Unit</button>
+        </div>
+    </form>
+</div>
+{% endblock %}

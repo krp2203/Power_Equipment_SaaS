@@ -1,0 +1,308 @@
+{% extends "_base.html" %}
+
+{% block title %}{{ 'Edit' if bulletin else 'New' }} Service Bulletin{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <h2><i class="bi bi-exclamation-triangle-fill text-warning"></i> {{ 'Edit' if bulletin else 'Create' }} Service
+        Bulletin</h2>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+        role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    {% if not bulletin %}
+    <!-- Auto-Fill from PDF Section -->
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-magic"></i> Auto-Fill from PDF</h5>
+        </div>
+        <div class="card-body">
+            <p class="text-muted">Upload a PDF to automatically extract bulletin information. You can edit the fields
+                below before saving.</p>
+            <div class="input-group">
+                <input type="file" class="form-control" id="auto_fill_pdf" accept=".pdf">
+                <button type="button" class="btn btn-primary" id="parse_pdf_btn">
+                    <i class="bi bi-magic"></i> Parse & Fill Form
+                </button>
+            </div>
+            <div id="parse_status" class="mt-2"></div>
+        </div>
+    </div>
+    {% endif %}
+
+    <form method="POST" enctype="multipart/form-data" class="mt-4" id="bulletin_form">
+        <div class="row">
+            <div class="col-md-8">
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">Bulletin Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="sb_number" class="form-label">SB Number *</label>
+                                <input type="text" class="form-control" id="sb_number" name="sb_number"
+                                    value="{{ bulletin.sb_number if bulletin else '' }}" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="issue_date" class="form-label">Issue Date *</label>
+                                <input type="date" class="form-control" id="issue_date" name="issue_date"
+                                    value="{{ bulletin.issue_date.strftime('%Y-%m-%d') if bulletin else '' }}" required>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="labor_hours" class="form-label">Labor Hours</label>
+                                <input type="text" class="form-control" id="labor_hours" name="labor_hours"
+                                    value="{{ bulletin.labor_hours if bulletin else '' }}"
+                                    placeholder="e.g., 0.5 or 0.5, 1.0, 0.75">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="title" class="form-label">Title *</label>
+                            <input type="text" class="form-control" id="title" name="title"
+                                value="{{ bulletin.title if bulletin else '' }}" required>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="description" class="form-label">Description</label>
+                            <textarea class="form-control" id="description" name="description"
+                                rows="4">{{ bulletin.description if bulletin else '' }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="warranty_code" class="form-label">Warranty Code</label>
+                                <input type="text" class="form-control" id="warranty_code" name="warranty_code"
+                                    value="{{ bulletin.warranty_code if bulletin else '' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="required_parts" class="form-label">Required Parts</label>
+                                <textarea class="form-control" id="required_parts" name="required_parts" rows="3"
+                                    placeholder='["488561 spring", "123456 bolt"]'>{{ bulletin.required_parts if bulletin else '[]' }}</textarea>
+                                <small class="text-muted">Auto-filled from PDF or enter as JSON array: ["Part1",
+                                    "Part2"]</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="pdf_file" class="form-label">
+                                PDF File {% if not bulletin %}*{% else %}(leave empty to keep current){% endif %}
+                            </label>
+                            {% if bulletin and bulletin.pdf_filename %}
+                            <div class="alert alert-info py-2 mb-2">
+                                <i class="bi bi-file-pdf"></i> Current: {{ bulletin.pdf_original_name or
+                                bulletin.pdf_filename }}
+                            </div>
+                            {% endif %}
+                            <input type="file" class="form-control" id="pdf_file" name="pdf_file" accept=".pdf" {% if
+                                not bulletin %}required{% endif %}>
+                            <small class="text-muted">PDF only, max 10MB</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Affected Models & Serial Ranges</h5>
+                        <button type="button" class="btn btn-sm btn-success" onclick="addModelRow()">
+                            <i class="bi bi-plus"></i> Add Model
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="models_container">
+                            {% if bulletin and bulletin.affected_models %}
+                            {% for model in bulletin.affected_models %}
+                            <div class="row g-2 mb-2 model-row">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="model_name[]" placeholder="Model Name"
+                                        value="{{ model.model_name }}" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control" name="serial_start[]"
+                                        placeholder="Serial Start" value="{{ model.serial_start }}" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control" name="serial_end[]" placeholder="Serial End"
+                                        value="{{ model.serial_end }}" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-danger w-100"
+                                        onclick="this.parentElement.parentElement.remove()">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <div class="row g-2 mb-2 model-row">
+                                <div class="col-md-4">
+                                    <input type="text" class="form-control" name="model_name[]" placeholder="Model Name"
+                                        required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control" name="serial_start[]"
+                                        placeholder="Serial Start" required>
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" class="form-control" name="serial_end[]" placeholder="Serial End"
+                                        required>
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-danger w-100"
+                                        onclick="this.parentElement.parentElement.remove()">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="card sticky-top" style="top: 20px;">
+                    <div class="card-header">
+                        <h5 class="mb-0">Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <button type="submit" class="btn btn-primary w-100 mb-2">
+                            <i class="bi bi-save"></i> {{ 'Update' if bulletin else 'Create' }} Bulletin
+                        </button>
+                        <a href="{{ url_for('list_service_bulletins') }}" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-x-circle"></i> Cancel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    // PDF Auto-Fill Functionality
+    document.getElementById('parse_pdf_btn')?.addEventListener('click', async function () {
+        const fileInput = document.getElementById('auto_fill_pdf');
+        const statusDiv = document.getElementById('parse_status');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            statusDiv.innerHTML = '<div class="alert alert-warning">Please select a PDF file first.</div>';
+            return;
+        }
+
+        statusDiv.innerHTML = '<div class="alert alert-info"><i class="bi bi-hourglass-split"></i> Parsing PDF...</div>';
+
+        const formData = new FormData();
+        formData.append('pdf_file', file);
+
+        try {
+            const response = await fetch('/api/parse_bulletin_pdf', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+
+            console.log('Parsed PDF data:', data);
+            console.log('Models received:', data.models);
+
+            if (data.error) {
+                statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${data.error}</div>`;
+                return;
+            }
+
+            // Fill form fields
+            if (data.sb_number) document.getElementById('sb_number').value = data.sb_number;
+            if (data.title) document.getElementById('title').value = data.title;
+            if (data.issue_date) document.getElementById('issue_date').value = data.issue_date;
+            if (data.description) document.getElementById('description').value = data.description;
+            if (data.warranty_code) document.getElementById('warranty_code').value = data.warranty_code;
+            if (data.labor_hours) document.getElementById('labor_hours').value = data.labor_hours;
+            if (data.required_parts) document.getElementById('required_parts').value = data.required_parts;
+
+            // Clear existing model rows
+            const container = document.getElementById('models_container');
+            container.innerHTML = '';
+
+            console.log('Clearing models container and adding', data.models?.length || 0, 'models');
+
+            // Add model rows
+            if (data.models && data.models.length > 0) {
+                data.models.forEach(model => {
+                    const row = document.createElement('div');
+                    row.className = 'row g-2 mb-2 model-row';
+                    row.innerHTML = `
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" name="model_name[]" placeholder="Model Name" value="${model.model}" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="serial_start[]" placeholder="Serial Start" value="${model.serial_start}" required>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" name="serial_end[]" placeholder="Serial End" value="${model.serial_end}" required>
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-danger w-100" onclick="this.parentElement.parentElement.remove()">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                `;
+                    container.appendChild(row);
+                });
+            } else {
+                // Add one empty row if no models found
+                addModelRow();
+            }
+
+            // Also set the PDF file for the actual form submission
+            // We need to transfer the file to the main form's file input
+            const mainFileInput = document.getElementById('pdf_file');
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            mainFileInput.files = dataTransfer.files;
+
+            statusDiv.innerHTML = '<div class="alert alert-success"><i class="bi bi-check-circle"></i> PDF parsed successfully! Review and edit the fields below, then save.</div>';
+
+            // Scroll to form
+            document.getElementById('bulletin_form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        } catch (error) {
+            statusDiv.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        }
+    });
+
+    function addModelRow() {
+        const container = document.getElementById('models_container');
+        const newRow = document.createElement('div');
+        newRow.className = 'row g-2 mb-2 model-row';
+        newRow.innerHTML = `
+        <div class="col-md-4">
+            <input type="text" class="form-control" name="model_name[]" placeholder="Model Name" required>
+        </div>
+        <div class="col-md-3">
+            <input type="text" class="form-control" name="serial_start[]" placeholder="Serial Start" required>
+        </div>
+        <div class="col-md-3">
+            <input type="text" class="form-control" name="serial_end[]" placeholder="Serial End" required>
+        </div>
+        <div class="col-md-2">
+            <button type="button" class="btn btn-outline-danger w-100" onclick="this.parentElement.parentElement.remove()">
+                <i class="bi bi-trash"></i>
+            </button>
+        </div>
+    `;
+        container.appendChild(newRow);
+    }
+</script>
+{% endblock %}

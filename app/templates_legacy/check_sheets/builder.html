@@ -1,0 +1,188 @@
+{% extends "_base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-9 mx-auto">
+        <h2 class="mb-4">Check Sheet Builder</h2>
+
+        <!-- PDF Upload Helper -->
+        <div class="card mb-4 bg-light border-0">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-magic"></i> Auto-Fill from PDF</h5>
+                <p class="text-muted small">Upload a PDF to automatically extract items. You can edit them below
+                    properly before saving.</p>
+                <form id="pdfForm" enctype="multipart/form-data">
+                    <div class="input-group">
+                        <input type="file" class="form-control" name="pdf_file" accept=".pdf" required>
+                        <button class="btn btn-outline-secondary" type="submit" id="parseBtn">Parse & Fill
+                            Builder</button>
+                    </div>
+                </form>
+                <div id="pdfLoading" class="d-none mt-2 text-primary">
+                    <div class="spinner-border spinner-border-sm" role="status"></div> Parsing PDF... please wait.
+                </div>
+            </div>
+        </div>
+
+        <form method="POST"
+            action="{{ url_for('update_check_sheet_template', template_id=template.id) if template else url_for('save_check_sheet_template') }}">
+            <!-- Meta Data -->
+            <div class="card mb-3">
+                <div class="card-header">Template Details</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Title</label>
+                        <input type="text" class="form-control" name="title" id="templateTitle" required
+                            placeholder="e.g. KPM Tiger Cat II Checklist"
+                            value="{{ template.title if template else '' }}">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Description (Optional)</label>
+                        <textarea class="form-control" name="description" id="templateDesc"
+                            rows="2">{{ template.description if template else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Builder Area -->
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>Checklist Items</span>
+                    <button type="button" class="btn btn-sm btn-success" onclick="addItem()">
+                        <i class="bi bi-plus-lg"></i> Add Item
+                    </button>
+                </div>
+                <div class="card-body bg-light" id="builderContainer" style="min-height: 200px;">
+                    <!-- Items inserted here -->
+                </div>
+            </div>
+
+            <input type="hidden" name="fields_json" id="fieldsJson">
+
+            <div class="d-grid gap-2">
+                <button type="submit" class="btn btn-primary btn-lg" onclick="prepareSave()">
+                    {{ 'Update Template' if template else 'Save Template' }}
+                </button>
+                <a href="{{ url_for('manage_check_sheet_templates') }}" class="btn btn-link text-muted">Cancel</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Builder Row Template -->
+<template id="itemTemplate">
+    <div class="card mb-2 builder-item shadow-sm">
+        <div class="card-body p-2 d-flex align-items-center gap-2">
+            <div class="handle text-muted" style="cursor: move;">
+                <i class="bi bi-grip-vertical"></i>
+            </div>
+
+            <div class="flex-grow-1">
+                <input type="text" class="form-control form-control-sm item-label" placeholder="Item Label / Question"
+                    required>
+            </div>
+
+            <div style="width: 150px;">
+                <select class="form-select form-select-sm item-type">
+                    <option value="checkbox">Checkbox</option>
+                    <option value="header">-- Header --</option>
+                    <option value="text">Text Input</option>
+                    <option value="textarea">Text Area</option>
+                </select>
+            </div>
+
+            <div class="form-check form-switch" title="Required?">
+                <input class="form-check-input item-required" type="checkbox">
+            </div>
+
+            <button type="button" class="btn btn-sm btn-outline-danger"
+                onclick="this.closest('.builder-item').remove()">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+    </div>
+</template>
+
+<script>
+    // Simple Add logic
+    function addItem(label = '', type = 'checkbox', required = false) {
+        const container = document.getElementById('builderContainer');
+        const tmpl = document.getElementById('itemTemplate').content.cloneNode(true);
+
+        const row = tmpl.querySelector('.builder-item');
+        row.querySelector('.item-label').value = label;
+        row.querySelector('.item-type').value = type;
+        row.querySelector('.item-required').checked = required;
+
+        container.appendChild(row);
+    }
+
+    // PDF Parse Logic
+    document.getElementById('pdfForm').addEventListener('submit', async function (e) {
+        e.preventDefault();
+        const formData = new FormData(this);
+        document.getElementById('pdfLoading').classList.remove('d-none');
+        document.getElementById('parseBtn').disabled = true;
+
+        try {
+            const response = await fetch("{{ url_for('parse_pdf_to_json') }}", {
+                method: 'POST',
+                body: formData
+            });
+            const data = await response.json();
+
+            if (data.error) {
+                alert('Error: ' + data.error);
+            } else {
+                // Populate Form
+                document.getElementById('templateTitle').value = data.title;
+                document.getElementById('templateDesc').value = data.description;
+                document.getElementById('builderContainer').innerHTML = ''; // Clear existing
+
+                data.fields.forEach(field => {
+                    addItem(field.label, field.type, field.required || false);
+                });
+            }
+        } catch (err) {
+            alert('Failed to upload/parse PDF');
+            console.error(err);
+        } finally {
+            document.getElementById('pdfLoading').classList.add('d-none');
+            document.getElementById('parseBtn').disabled = false;
+        }
+    });
+
+    // Save Logic - Serialize to JSON
+    function prepareSave() {
+        const rows = document.querySelectorAll('.builder-item');
+        const fields = [];
+
+        rows.forEach(row => {
+            fields.push({
+                label: row.querySelector('.item-label').value,
+                type: row.querySelector('.item-type').value,
+                required: row.querySelector('.item-required').checked
+            });
+        });
+
+        document.getElementById('fieldsJson').value = JSON.stringify(fields);
+    }
+
+    // Initial item logic
+    const existingFields = {{ template.fields_structure | safe if template and template.fields_structure else 'null' }};
+
+    if (existingFields && existingFields.length > 0) {
+        // Edit Mode: Populate existing fields
+        existingFields.forEach(field => {
+            addItem(field.label, field.type, field.required);
+        });
+    } else {
+        // Create Mode: Add default item if empty
+        if (document.getElementById('builderContainer').children.length === 0) {
+            addItem('Serial Number', 'text', true);
+        }
+    }
+</script>
+
+<!-- Add dragula or sortable if needed later, kept simple for now -->
+{% endblock %}

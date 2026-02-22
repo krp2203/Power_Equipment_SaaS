@@ -1,0 +1,591 @@
+{% extends "_base.html" %}
+
+{% block title %}Reports{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="mb-0">Reports</h1>
+        <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+    </div>
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show"
+        role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Generate a Report</h5>
+        </div>
+        <div class="card-body p-4">
+            <form action="{{ url_for('reports') }}" method="GET" id="reportForm">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label for="report_type_selector" class="form-label">Report Type</label>
+                        <select id="report_type_selector" class="form-select">
+                            <option value="general" {% if report_type=='general' or not report_type %}selected{% endif
+                                %}>General (By Period)</option>
+                            <option value="dealer" {% if report_type=='dealer' %}selected{% endif %}>By Dealer</option>
+                            <option value="user_activity" {% if report_type=='user_activity' %}selected{% endif %}>User
+                                Activity</option>
+                            <option value="unit" {% if report_type=='unit' %}selected{% endif %}>By Unit S/N</option>
+                            <option value="model" {% if report_type=='model' %}selected{% endif %}>By Model #</option>
+                            <option value="tag" {% if report_type=='tag' %}selected{% endif %}>By Tag</option>
+                            <option value="top_dealers" {% if report_type=='top_dealers' %}selected{% endif %}>Top
+                                Dealers</option>
+                            <option value="internal_cases" {% if report_type=='internal_cases' %}selected{% endif %}>
+                                Internal Cases</option>
+                        </select>
+                    </div>
+
+                    <!-- General Report Inputs -->
+                    <div class="col-md-4 report-input-group" id="group_general">
+                        <label for="period" class="form-label">Period</label>
+                        <select name="period" id="period" class="form-select">
+                            <option value="weekly" {% if request.args.get('period')=='weekly' %}selected{% endif %}>Last
+                                7 Days</option>
+                            <option value="monthly" {% if request.args.get('period')=='monthly' %}selected{% endif %}>
+                                Last 30 Days</option>
+                        </select>
+                    </div>
+
+                    <!-- Dealer Report Inputs -->
+                    <div class="col-md-4 report-input-group" id="group_dealer" style="display:none;">
+                        <label for="dealer_id" class="form-label">Dealer</label>
+                        <select name="dealer_id" id="dealer_id" class="form-select" disabled>
+                            <option value="">-- Select Dealer --</option>
+                            {% for dealer in all_dealers %}
+                            <option value="{{ dealer.id }}" {% if selected_dealer_id==dealer.id %}selected{% endif %}>{{
+                                dealer.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- User Activity Inputs -->
+                    <div class="col-md-8 report-input-group" id="group_user_activity" style="display:none;">
+                        <input type="hidden" name="report_scope" value="user_activity" disabled>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="ua_period" class="form-label">Period</label>
+                                <select name="period" id="ua_period" class="form-select" disabled>
+                                    <option value="daily" {% if request.args.get('period')=='daily' %}selected{% endif
+                                        %}>Today</option>
+                                    <option value="weekly" {% if request.args.get('period')=='weekly' %}selected{% endif
+                                        %}>Last 7 Days</option>
+                                    <option value="monthly" {% if request.args.get('period')=='monthly' %}selected{%
+                                        endif %}>Last 30 Days</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="user_id" class="form-label">User</label>
+                                <select name="user_id" id="user_id" class="form-select" disabled>
+                                    <option value="">-- All Users --</option>
+                                    {% for user in all_users %}
+                                    <option value="{{ user.id }}" {% if selected_user_id==user.id %}selected{% endif %}>
+                                        {{ user.username }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Dealers Inputs -->
+                    <div class="col-md-8 report-input-group" id="group_top_dealers" style="display:none;">
+                        <input type="hidden" name="report_scope" value="top_dealers" disabled>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="td_period" class="form-label">Period</label>
+                                <select name="period" id="td_period" class="form-select" disabled>
+                                    <option value="daily" {% if request.args.get('period')=='daily' %}selected{% endif
+                                        %}>Today</option>
+                                    <option value="weekly" {% if request.args.get('period')=='weekly' %}selected{% endif
+                                        %}>Last 7 Days</option>
+                                    <option value="monthly" {% if request.args.get('period')=='monthly' %}selected{%
+                                        endif %}>Last 30 Days</option>
+                                    <option value="yearly" {% if request.args.get('period')=='yearly' %}selected{% endif
+                                        %}>Last Year</option>
+                                    <option value="all_time" {% if request.args.get('period')=='all_time' %}selected{%
+                                        endif %}>All Time</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="limit" class="form-label">Limit</label>
+                                <select name="limit" id="limit" class="form-select" disabled>
+                                    <option value="5" {% if request.args.get('limit')=='5' %}selected{% endif %}>Top 5
+                                    </option>
+                                    <option value="10" {% if request.args.get('limit')=='10' or not
+                                        request.args.get('limit') %}selected{% endif %}>Top 10</option>
+                                    <option value="25" {% if request.args.get('limit')=='25' %}selected{% endif %}>Top
+                                        25</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Internal Cases Inputs -->
+                    <div class="col-md-8 report-input-group" id="group_internal_cases" style="display:none;">
+                        <input type="hidden" name="report_scope" value="internal_cases" disabled>
+                        <div class="col-md-6">
+                            <label for="ic_period" class="form-label">Period</label>
+                            <select name="period" id="ic_period" class="form-select" disabled>
+                                <option value="daily" {% if request.args.get('period')=='daily' %}selected{% endif %}>
+                                    Today</option>
+                                <option value="weekly" {% if request.args.get('period')=='weekly' %}selected{% endif %}>
+                                    Last 7 Days</option>
+                                <option value="monthly" {% if request.args.get('period')=='monthly' %}selected{% endif
+                                    %}>Last 30 Days</option>
+                                <option value="yearly" {% if request.args.get('period')=='yearly' %}selected{% endif %}>
+                                    Last Year</option>
+                                <option value="all_time" {% if request.args.get('period')=='all_time' %}selected{% endif
+                                    %}>All Time</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Unit Inputs -->
+                    <div class="col-md-4 report-input-group" id="group_unit" style="display:none;">
+                        <label for="serial_number" class="form-label">Unit S/N</label>
+                        <input type="text" name="serial_number" id="serial_number" class="form-control"
+                            value="{{ searched_serial or '' }}" disabled>
+                    </div>
+
+                    <!-- Model Inputs -->
+                    <div class="col-md-4 report-input-group" id="group_model" style="display:none;">
+                        <label for="model_number" class="form-label">Model #</label>
+                        <input type="text" name="model_number" id="model_number" class="form-control"
+                            value="{{ searched_model or '' }}" disabled>
+                    </div>
+
+                    <!-- Tag Inputs -->
+                    <div class="col-md-4 report-input-group" id="group_tag" style="display:none;">
+                        <label for="tag_name" class="form-label">Tag</label>
+                        <input type="text" name="tag_name" id="tag_name" class="form-control"
+                            value="{{ searched_tag or '' }}" list="tagOptions" disabled>
+                        <datalist id="tagOptions">
+                            {% for tag in all_tags %}
+                            <option value="{{ tag.name }}">
+                                {% endfor %}
+                        </datalist>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary w-100">Generate Report</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% if report_data %}
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0">{{ report_data.title }}</h5>
+    </div>
+    <div class="card-body">
+        {% if report_type == 'general' %}
+        <div class="row">
+            <div class="col-md-4">
+                <h6>Summary</h6>
+                <p><strong>Period:</strong> {{ report_data.start_date }} to {{ report_data.end_date }}</p>
+                <p><strong>Total Cases Created:</strong> {{ report_data.total_cases }}</p>
+            </div>
+            <div class="col-md-4">
+                <h4>Cases by Status</h4>
+                <ul class="list-group mb-3">
+                    {% for status, count in report_data.by_status.items() %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ status }}
+                        <a href="#" class="badge bg-primary rounded-pill report-summary-link text-decoration-none"
+                            data-type="status" data-value="{{ status }}">{{ count }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+
+                <h4>Cases by Technician</h4>
+                <ul class="list-group mb-3">
+                    {% for tech, count in report_data.by_technician.items() %}
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        {{ tech }}
+                        <a href="#" class="badge bg-secondary rounded-pill report-summary-link text-decoration-none"
+                            data-type="tech" data-value="{{ tech }}">{{ count }}</a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% elif report_type == 'user_activity' %}
+    <p><strong>Period:</strong> {{ report_data.start_date }} to {{ report_data.end_date }}</p>
+
+    {% for user_entry in report_data.users_data %}
+    <div class="mb-5">
+        <h4 class="border-bottom pb-2">{{ user_entry.user.username }}</h4>
+
+        <h6 class="mt-3 text-primary">Active Cases (Assigned & Open)</h6>
+        {% if user_entry.active_cases %}
+        <div class="table-responsive mb-3">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Reference</th>
+                        <th>Latest Note</th>
+                        <th>Dealer</th>
+                        <th>Created</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for case in user_entry.active_cases %}
+                    <tr>
+                        <td><a href="{{ url_for('view_case', case_id=case.id) }}">{{ case.id }}</a></td>
+                        <td>{{ case.status }}</td>
+                        <td>{{ case.reference|striptags|truncate(30) }}</td>
+                        <td>{{ case.latest_note_text|striptags|truncate(50) if case.latest_note_text else '-' }}
+                        </td>
+                        <td>{{ case.dealer.name if case.dealer else 'N/A' }}</td>
+                        <td><span class="local-datetime"
+                                data-timestamp="{{ case.creation_timestamp.isoformat() }}Z"></span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No active cases.</p>
+        {% endif %}
+
+        <h6 class="mt-3 text-success">Cases Worked On (Notes/Labor in Period)</h6>
+        {% if user_entry.worked_on_cases %}
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Status</th>
+                        <th>Reference</th>
+                        <th>Latest Note</th>
+                        <th>Dealer</th>
+                        <th>Last Updated</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for case in user_entry.worked_on_cases %}
+                    <tr>
+                        <td><a href="{{ url_for('view_case', case_id=case.id) }}">{{ case.id }}</a></td>
+                        <td>{{ case.status }}</td>
+                        <td>{{ case.reference|striptags|truncate(30) }}</td>
+                        <td>{{ case.latest_note_text|striptags|truncate(50) if case.latest_note_text else '-' }}
+                        </td>
+                        <td>{{ case.dealer.name if case.dealer else 'N/A' }}</td>
+                        <td><span class="local-datetime"
+                                data-timestamp="{{ case.creation_timestamp.isoformat() }}Z"></span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <p class="text-muted">No activity recorded in this period.</p>
+        {% endif %}
+    </div>
+    {% else %}
+    <p class="text-center text-muted">No user activity found for the selected criteria.</p>
+    {% endfor %}
+
+    {% elif report_type == 'tag' %}
+    <p><strong>Tag:</strong> {{ report_data.title.split(': ')[1] }}</p>
+    <p><strong>Total Cases Found:</strong> {{ report_data.total_cases }}</p>
+    {% elif report_type == 'top_dealers' %}
+    <p><strong>Period:</strong> {{ report_data.start_date }} to {{ report_data.end_date }}</p>
+    {% elif report_type == 'internal_cases' %}
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-muted">Total Cases</h6>
+                    <h3 class="card-text">{{ report_data.total_cases }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-muted">Total Parts Cost</h6>
+                    <h3 class="card-text">${{ "%.2f"|format(report_data.total_parts_cost) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-muted">Total Labor Cost</h6>
+                    <h3 class="card-text">${{ "%.2f"|format(report_data.total_labor_cost) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light">
+                <div class="card-body text-center">
+                    <h6 class="card-title text-muted">Total Cost</h6>
+                    <h3 class="card-text text-success">${{ "%.2f"|format(report_data.total_cost) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+    <p><strong>Period:</strong> {{ report_data.start_date }} to {{ report_data.end_date }}</p>
+    {% endif %}
+</div>
+</div>
+
+{% if report_type == 'top_dealers' %}
+<h5 class="mt-4">Top Dealers - Case List</h5>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Dealer Name</th>
+                <th>Total Cases</th>
+                <th>Case Reference</th>
+                <th>Status</th>
+                <th>Created</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in report_data.top_dealers %}
+            <tr>
+                <td>{{ item.dealer_name }}</td>
+                <td><span class="badge bg-primary rounded-pill">{{ item.case_count }}</span></td>
+                <td>{{ item.case.reference|striptags|truncate(50) }}</td>
+                <td>{{ item.case.status }}</td>
+                <td><span class="local-datetime"
+                        data-timestamp="{{ item.case.creation_timestamp.isoformat() }}Z"></span></td>
+                <td><a href="{{ url_for('view_case', case_id=item.case.id) }}"
+                        class="btn btn-sm btn-outline-primary">View Case</a></td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="6" class="text-center text-muted">No cases found for this period.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<h5 class="mt-4">Detailed Case List</h5>
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Case ID</th>
+                <th>Status</th>
+                <th>Reference</th>
+                <th>Latest Note</th>
+                <th>Dealer</th>
+                <th>Unit S/N</th>
+                <th>Created</th>
+                <th>Assigned To</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for case in report_data.cases %}
+            <tr data-status="{{ case.status }}" data-tech="{{ case.assigned_to or 'Unassigned' }}">
+                <td><a href="{{ url_for('view_case', case_id=case.id) }}">{{ case.id }}</a></td>
+                <td>
+                    <span class="badge 
+                                {% if case.status in ['New', 'Needs Scheduling'] %} bg-primary
+                                {% elif case.status in ['In Progress', 'Parts Ordered'] %} bg-warning text-dark
+                                {% elif case.status in ['Waiting on Dealer'] %} bg-secondary
+                                {% elif case.status in ['Resolved', 'Completed'] %} bg-success
+                                {% else %} bg-dark
+                                {% endif %}">
+                        {{ case.status }}
+                    </span>
+                </td>
+                <td>{{ case.reference|truncate(50) }}</td>
+                <td>{{ case.latest_note_text|striptags|truncate(50) if case.latest_note_text else '-' }}</td>
+                <td>{{ case.dealer.name if case.dealer else 'N/A' }}</td>
+                <td>{{ case.unit.serial_number if case.unit else 'N/A' }}</td>
+                <td><span class="local-datetime" data-timestamp="{{ case.creation_timestamp.isoformat() }}Z"></span>
+                </td>
+                <td>{{ case.assigned_to or 'Unassigned' }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="8" class="text-center text-muted">No cases found for this report.</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<hr class="my-4">
+
+<!-- Email Report Section -->
+<div class="mt-4">
+    <h5>Email This Report</h5>
+    <form action="{{ url_for('email_report') }}" method="POST" class="row g-3 align-items-end">
+        <!-- Hidden fields to reconstruct the report -->
+        <input type="hidden" name="period" value="{{ request.args.get('period', '') }}">
+        <input type="hidden" name="dealer_id" value="{{ request.args.get('dealer_id', '') }}">
+        <input type="hidden" name="serial_number" value="{{ request.args.get('serial_number', '') }}">
+        <input type="hidden" name="model_number" value="{{ request.args.get('model_number', '') }}">
+        <input type="hidden" name="tag_name" value="{{ request.args.get('tag_name', '') }}">
+        <input type="hidden" name="report_scope" value="{{ request.args.get('report_scope', '') }}">
+        <input type="hidden" name="user_id" value="{{ request.args.get('user_id', '') }}">
+
+        <div class="col-md-6">
+            <label for="recipient_email" class="form-label">Recipient Email(s) (comma separated)</label>
+            <input type="text" name="recipient_email" id="recipient_email" class="form-control"
+                placeholder="user@example.com" required>
+        </div>
+        <div class="col-md-3">
+            <button type="submit" class="btn btn-outline-primary w-100">
+                <i class="bi bi-envelope"></i> Send Email
+            </button>
+        </div>
+    </form>
+</div>
+</div>
+</div>
+{% endif %}
+</div>
+<!-- Modal for Case Details -->
+<div class="modal fade" id="caseListModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Case List</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="modalCaseTable">
+                        <thead>
+                            <tr>
+                                <th>Case ID</th>
+                                <th>Status</th>
+                                <th>Reference</th>
+                                <th>Latest Note</th>
+                                <th>Dealer</th>
+                                <th>Unit S/N</th>
+                                <th>Created</th>
+                                <th>Assigned To</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Rows will be populated by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block body_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        // This ensures the global timestamp formatting function runs on this page
+        if (typeof formatTimestamps === 'function') {
+            formatTimestamps();
+        }
+
+        const reportTypeSelector = document.getElementById('report_type_selector');
+        const inputGroups = {
+            'general': document.getElementById('group_general'),
+            'dealer': document.getElementById('group_dealer'),
+            'user_activity': document.getElementById('group_user_activity'),
+            'top_dealers': document.getElementById('group_top_dealers'),
+            'unit': document.getElementById('group_unit'),
+            'model': document.getElementById('group_model'),
+            'tag': document.getElementById('group_tag'),
+            'internal_cases': document.getElementById('group_internal_cases')
+        };
+
+        function updateForm() {
+            const selectedType = reportTypeSelector.value;
+
+            for (const [type, group] of Object.entries(inputGroups)) {
+                if (type === selectedType) {
+                    group.style.display = 'block';
+                    // Enable inputs within this group
+                    group.querySelectorAll('input, select').forEach(el => el.disabled = false);
+                } else {
+                    group.style.display = 'none';
+                    // Disable inputs within this group so they aren't submitted
+                    group.querySelectorAll('input, select').forEach(el => el.disabled = true);
+                }
+            }
+        }
+
+        if (reportTypeSelector) {
+            reportTypeSelector.addEventListener('change', updateForm);
+            // Initialize on load
+            updateForm();
+        }
+
+        // Modal Logic for Clickable Summaries
+        const caseListModal = new bootstrap.Modal(document.getElementById('caseListModal'));
+        const modalTitle = document.querySelector('#caseListModal .modal-title');
+        const modalTableBody = document.querySelector('#modalCaseTable tbody');
+
+        // We need to find the main table source. 
+        // There are two main tables: one for general/dealer/unit/model/tag (report_data.cases)
+        // and one for user_activity (which doesn't have summary bubbles yet, so we ignore it for now).
+        // The summary bubbles are only present for General and Dealer reports (and maybe Unit/Model/Tag if they have stats).
+        // The main table is usually the last one on the page for these reports.
+        // Let's assume the table with rows containing data-status/data-tech is the source.
+
+        document.querySelectorAll('.report-summary-link').forEach(link => {
+            link.addEventListener('click', function (e) {
+                e.preventDefault();
+                const type = this.dataset.type;
+                const value = this.dataset.value;
+
+                modalTitle.textContent = `Cases - ${type === 'status' ? 'Status: ' : 'Technician: '}${value}`;
+                modalTableBody.innerHTML = '';
+
+                // Find all rows in the document that match (excluding the modal's own table if it was populated)
+                // We look for rows in the main content area.
+                const sourceRows = document.querySelectorAll('.card-body table tbody tr[data-status]');
+
+                let count = 0;
+                sourceRows.forEach(row => {
+                    if ((type === 'status' && row.dataset.status === value) ||
+                        (type === 'tech' && row.dataset.tech === value)) {
+                        const clone = row.cloneNode(true);
+                        modalTableBody.appendChild(clone);
+                        count++;
+                    }
+                });
+
+                if (count === 0) {
+                    modalTableBody.innerHTML = '<tr><td colspan="8" class="text-center">No cases found in the detailed list matching this criteria.</td></tr>';
+                }
+
+                caseListModal.show();
+            });
+        });
+    });
+</script>
+{% endblock %}
+```

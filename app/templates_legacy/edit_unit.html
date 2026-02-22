@@ -1,0 +1,176 @@
+{% extends "_base.html" %}
+
+{% block title %}
+{% if unit and unit.id %}
+Edit Unit {{ unit.serial_number }}
+{% else %}
+Add New Unit
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <a href="{{ url_for('view_case', case_id=case_id) }}" class="btn btn-secondary btn-sm mb-3">← Back to Case #{{
+        case_id }}</a>
+
+    <div class="card">
+        <div class="card-header">
+            <h4 class="mb-0">
+                {% if unit and unit.id %}
+                Editing Unit Information
+                {% else %}
+                Adding New Unit
+                {% endif %}
+            </h4>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('edit_unit', case_id=case_id) }}" method="POST">
+                <input type="hidden" name="unit_id" value="{{ unit.id if unit else 'None' }}">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="serial_number" class="form-label">Serial #</label>
+                        <input type="text" class="form-control" id="serial_number" name="serial_number"
+                            value="{{ serial_number or (unit.serial_number if unit else '') }}" readonly>
+                        <div class="form-text">The serial number cannot be changed after creation.</div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="model_number" class="form-label">Model #</label>
+                        <input type="text" class="form-control" id="model_number" name="model_number"
+                            value="{{ unit.model_number or '' }}">
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="unit-manufacturer" class="form-label">Manufacturer</label>
+                        <select id="unit-manufacturer" class="form-select" name="manufacturer">
+                            <option value="">-- Select --</option>
+                            {% for manu in all_manufacturers %}
+                            <option value="{{ manu }}" {% if unit and unit.manufacturer==manu %}selected{% endif %}>{{
+                                manu }}</option>
+                            {% endfor %}
+                            <option value="__add_new__">** Add New Manufacturer **</option>
+                        </select>
+                        <input type="text" name="new_manufacturer" id="unit-new-manufacturer" class="form-control mt-2"
+                            placeholder="Enter new manufacturer name" style="display: none;">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="unit_hours" class="form-label">Unit Hours</label>
+                        <input type="text" class="form-control" id="unit_hours" name="unit_hours"
+                            value="{{ unit.unit_hours or '' }}">
+                    </div>
+                </div>
+
+                <hr>
+                <h5 class="mb-3">Engine Information</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="engine_model" class="form-label">Engine Model</label>
+                        <input type="text" class="form-control" id="engine_model" name="engine_model"
+                            value="{{ unit.engine_model or '' }}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="engine_serial" class="form-label">Engine Serial</label>
+                        <input type="text" class="form-control" id="engine_serial" name="engine_serial"
+                            value="{{ unit.engine_serial or '' }}">
+                    </div>
+                </div>
+
+                <hr>
+                <h5 class="mb-3">Owner Information</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3"><label class="form-label">Owner Name</label><input type="text"
+                            class="form-control" name="owner_name" value="{{ unit.owner_name or '' }}"></div>
+                    <div class="col-md-6 mb-3"><label class="form-label">Owner Company</label><input type="text"
+                            class="form-control" name="owner_company" value="{{ unit.owner_company or '' }}"></div>
+                    <div class="col-md-12 mb-3"><label class="form-label">Owner Address</label><input type="text"
+                            class="form-control" name="owner_address" value="{{ unit.owner_address or '' }}"></div>
+                    <div class="col-md-6 mb-3"><label class="form-label">Owner Phone</label><input type="text"
+                            class="form-control" name="owner_phone" value="{{ unit.owner_phone or '' }}"></div>
+                    <div class="col-md-6 mb-3"><label class="form-label">Owner Email</label><input type="email"
+                            class="form-control" name="owner_email" value="{{ unit.owner_email or '' }}"></div>
+                </div>
+
+                <div class="d-flex justify-content-end mt-3">
+                    <a href="{{ url_for('view_case', case_id=case_id) }}" class="btn btn-secondary me-2">Cancel</a>
+                    <button type="submit" class="btn btn-primary">Save Unit and Attach to Case</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block body_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const manufacturerSelect = document.getElementById('unit-manufacturer');
+        const newManufacturerInput = document.getElementById('unit-new-manufacturer');
+        if (manufacturerSelect) {
+            manufacturerSelect.addEventListener('change', function () {
+                newManufacturerInput.style.display = (this.value === '__add_new__') ? 'block' : 'none';
+            });
+        }
+
+        // --- NEW: Stolen Unit Check for "Add New Unit" Mode ---
+        const serialInput = document.getElementById('serial_number');
+        // Only verify if the input is NOT read-only (i.e. creating new unit)
+        if (serialInput && !serialInput.hasAttribute('readonly')) {
+            serialInput.addEventListener('blur', function () {
+                const serial = this.value.trim();
+                if (serial.length < 3) return;
+
+                // Remove existing alerts
+                const existingAlert = document.getElementById('stolen-alert-popup');
+                if (existingAlert) existingAlert.remove();
+
+                fetch(`/api/get_unit_by_serial?serial_number=${encodeURIComponent(serial)}`)
+                    .then(res => {
+                        if (!res.ok && res.status !== 404) return null;
+                        return res.json();
+                    })
+                    .then(data => {
+                        if (data && data.is_stolen) {
+                            const alertHtml = `
+                        <div id="stolen-alert-popup" class="alert alert-danger alert-dismissible fade show mt-2 shadow-sm border-2 border-danger" role="alert">
+                            <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> CRITICAL WARNING: STOLEN UNIT</h4>
+                            <p class="mb-0 fw-bold fs-5">${data.stolen_warning}</p>
+                            <hr>
+                            <p class="mb-0">This unit has been reported as stolen. Please verify immediately.</p>
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                        `;
+                            serialInput.insertAdjacentHTML('afterend', alertHtml);
+                        }
+                    })
+                    .catch(console.error);
+            });
+        } else if (serialInput && serialInput.hasAttribute('readonly')) {
+            // Also check on load for existing units? Maybe, but usually we care on ENTRY. 
+            // If the unit was already in the system, it might have been added before it was stolen.
+            // User asked to check pages where unit serial numbers "go" (are entered).
+            // If I'm editing an existing unit, I'm not entering a serial.
+            // BUT, if I just opened this page, it might be good to know.
+            // Let's add a check on load if it's readonly.
+            const serial = serialInput.value.trim();
+            if (serial) {
+                fetch(`/api/get_unit_by_serial?serial_number=${encodeURIComponent(serial)}`)
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data && data.is_stolen) {
+                            const alertHtml = `
+                        <div class="alert alert-danger mt-3 mb-0 shadow-sm border-2 border-danger">
+                            <h4 class="alert-heading"><i class="bi bi-exclamation-triangle-fill"></i> STOLEN UNIT WARNING</h4>
+                            <p class="mb-0 fw-bold">${data.stolen_warning}</p>
+                        </div>
+                        `;
+                            // Prepend to card body
+                            document.querySelector('.card-body').insertAdjacentHTML('afterbegin', alertHtml);
+                        }
+                    })
+                    .catch(console.error);
+            }
+        }
+    });
+</script>
+{% endblock %}
