@@ -5,11 +5,11 @@
 {% block content %}
 <div class="container mt-4">
     <div class="row mb-4">
-        <div class="col-md-8">
+        <div class="col">
             <h1>📸 Media Management</h1>
             <p class="text-muted">Upload images and videos to post across Facebook, Instagram, and your website banner</p>
         </div>
-        <div class="col-md-4 text-end">
+        <div class="col-auto">
             {% if fb_configured %}
                 <span class="badge bg-success">✓ Facebook Connected</span>
             {% else %}
@@ -18,8 +18,12 @@
         </div>
     </div>
 
-    <!-- Upload Form -->
-    <div class="card mb-4">
+    <!-- Two-Column Layout: Form on Left, Recent Promotions on Right -->
+    <div class="row">
+        <!-- LEFT COLUMN: Upload Form -->
+        <div class="col-lg-8">
+            <!-- Upload Form -->
+            <div class="card mb-4">
         <div class="card-header bg-primary text-white">
             <h5 class="mb-0">Upload New Media</h5>
         </div>
@@ -166,10 +170,15 @@
                 </button>
             </form>
         </div>
-    </div>
+            </div>
+            <!-- End Upload Form Card -->
+        </div>
+        <!-- End Left Column -->
 
-    <!-- Recent Promotions -->
-    <div class="card">
+        <!-- RIGHT COLUMN: Recent Promotions -->
+        <div class="col-lg-4">
+            <!-- Recent Promotions -->
+            <div class="card">
         <div class="card-header bg-info text-white">
             <div class="d-flex align-items-center">
                 <span style="font-size: 1.3em; margin-right: 10px;">⏱️</span>
@@ -238,7 +247,12 @@
             </div>
             {% endif %}
         </div>
+            </div>
+            <!-- End Recent Promotions Card -->
+        </div>
+        <!-- End Right Column -->
     </div>
+    <!-- End Row -->
 </div>
 
 <script>
