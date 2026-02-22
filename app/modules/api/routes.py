@@ -91,7 +91,16 @@ def get_site_info():
     Public (Tenant-Scoped) endpoint for Next.js frontend to bootstrap.
     Returns: Branding, Identity, and Safe Integration Flags.
     """
-    org = getattr(g, 'current_org', None)
+    from app.core.models import Organization
+
+    # Try to get org from slug parameter first (for explicit lookups)
+    slug = request.args.get('slug') or request.headers.get('X-Dealer-Slug')
+    if slug:
+        org = Organization.query.filter_by(slug=slug).first()
+    else:
+        # Fall back to context-based lookup (Host header routing)
+        org = getattr(g, 'current_org', None)
+
     if not org:
         return jsonify({"error": "Tenant not found"}), 404
 
