@@ -325,6 +325,7 @@ def complete_chunk_upload():
         thumbnail_url = None
         if media_type == 'video':
             try:
+                import uuid
                 thumbnail_filename = f"{uuid.uuid4().hex}_thumb.jpg"
                 upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'media', str(org.id))
                 thumbnail_path = os.path.join(upload_dir, thumbnail_filename)
@@ -385,6 +386,7 @@ def complete_chunk_upload():
 
         # Create ScheduledPost for banner if selected
         if post_to_banner:
+            from datetime import datetime
             scheduled_post = ScheduledPost(
                 organization_id=org.id,
                 media_content_id=media_content.id,
