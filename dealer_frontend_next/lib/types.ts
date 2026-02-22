@@ -32,6 +32,8 @@ export interface DealerConfig {
 
         // Brands
         brand_logos?: Record<string, string>;
+        brandLogos?: Record<string, string>;
+        brandLogoUrls?: Record<string, string>;
     };
 }
 
