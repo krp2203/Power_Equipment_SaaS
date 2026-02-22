@@ -168,73 +168,73 @@
         </div>
     </div>
 
-    <!-- Media Library -->
+    <!-- Recent Promotions -->
     <div class="card">
-        <div class="card-header bg-secondary text-white">
-            <h5 class="mb-0">📚 Media Library ({{ media_items|length }} items)</h5>
-        </div>
-        <div class="card-body">
-            {% if media_items %}
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Preview</th>
-                            <th>Title</th>
-                            <th>Status</th>
-                            <th>Destinations</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for media in media_items %}
-                        <tr>
-                            <td style="width: 60px;">
-                                {% if media.media_type == 'video' %}
-                                    <span class="badge bg-danger">🎥 Video</span>
-                                {% else %}
-                                    <img src="{{ media.thumbnail_url or media.media_url }}" alt="{{ media.title }}" style="max-width: 50px; max-height: 50px; object-fit: cover; border-radius: 4px;">
-                                {% endif %}
-                            </td>
-                            <td>
-                                <strong>{{ media.title }}</strong>
-                                {% if media.description %}
-                                <br><small class="text-muted">{{ media.description[:50] }}...</small>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if media.status == 'posted' %}
-                                    <span class="badge bg-success">✓ Posted</span>
-                                {% elif media.status == 'scheduled' %}
-                                    <span class="badge bg-info">📅 Scheduled</span>
-                                {% elif media.status == 'draft' %}
-                                    <span class="badge bg-secondary">Draft</span>
-                                {% else %}
-                                    <span class="badge bg-danger">{{ media.status }}</span>
-                                {% endif %}
-                            </td>
-                            <td>
-                                {% if media.post_to_banner %}<span class="badge bg-primary">🌐</span>{% endif %}
-                                {% if media.post_to_facebook %}<span class="badge" style="background-color: #1877F2;">👍</span>{% endif %}
-                                {% if media.post_to_instagram %}<span class="badge" style="background-color: #E4405F;">📱</span>{% endif %}
-                            </td>
-                            <td><small>{{ media.created_at.strftime('%b %d, %Y') }}</small></td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="editMedia({{ media.id }})">Edit</button>
-                                <form method="POST" action="{{ url_for('marketing.delete_media', id=media.id) }}" style="display: inline;" onsubmit="return confirm('Delete this media?');">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
-                                </form>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
+        <div class="card-header bg-info text-white">
+            <div class="d-flex align-items-center">
+                <span style="font-size: 1.3em; margin-right: 10px;">⏱️</span>
+                <h5 class="mb-0">Recent Promotions</h5>
             </div>
+        </div>
+        <div class="card-body" style="max-height: 600px; overflow-y: auto;">
+            {% if media_items %}
+                {% for media in media_items %}
+                <div class="mb-4 pb-3" style="border-bottom: 1px solid #e0e0e0;">
+                    <!-- Promotion Title and Status -->
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="mb-1" style="font-weight: 600; color: #333;">{{ media.title }}</h6>
+                            <small class="text-muted">{{ media.created_at.strftime('%b %d, %I:%M %p') }}</small>
+                        </div>
+                        {% if media.status == 'posted' %}
+                            <span class="badge bg-success" style="font-size: 0.85em;">✓ Posted</span>
+                        {% elif media.status == 'scheduled' %}
+                            <span class="badge bg-info" style="font-size: 0.85em;">📅 Scheduled</span>
+                        {% elif media.status == 'draft' %}
+                            <span class="badge bg-secondary" style="font-size: 0.85em;">Draft</span>
+                        {% else %}
+                            <span class="badge bg-warning" style="font-size: 0.85em;">{{ media.status }}</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Description -->
+                    {% if media.description %}
+                    <p class="small text-muted mb-2">{{ media.description }}</p>
+                    {% endif %}
+
+                    <!-- Destination Badges -->
+                    <div class="mb-2">
+                        {% if media.post_to_facebook %}
+                            <span class="badge me-2" style="background-color: #1877F2; font-size: 0.85em;">👍 FB</span>
+                        {% endif %}
+                        {% if media.post_to_instagram %}
+                            <span class="badge me-2" style="background-color: #E4405F; font-size: 0.85em;">📱 IG</span>
+                        {% endif %}
+                        {% if media.post_to_banner %}
+                            <span class="badge me-2 bg-primary" style="font-size: 0.85em;">🌐 Banner</span>
+                        {% endif %}
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Promotion actions">
+                        <button type="button" class="btn btn-outline-secondary" onclick="editMedia({{ media.id }})" title="Edit">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="viewDetails({{ media.id }})" title="View Details">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <form method="POST" action="{{ url_for('marketing.delete_media', id=media.id) }}" style="display: inline;" onsubmit="return confirm('Delete this promotion?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
             {% else %}
             <div class="text-center py-5">
-                <p class="text-muted">No media uploaded yet. Start by uploading your first image or video above!</p>
+                <p class="text-muted"><small>No promotions created yet. Upload your first one above!</small></p>
             </div>
             {% endif %}
         </div>
@@ -471,6 +471,11 @@ async function uploadFileInChunks(file) {
 function editMedia(id) {
     // TODO: Implement edit modal
     alert('Edit functionality coming soon!');
+}
+
+function viewDetails(id) {
+    // TODO: Implement view details modal
+    alert('View details functionality coming soon!');
 }
 </script>
 
