@@ -478,7 +478,7 @@ document.getElementById('mediaForm').addEventListener('submit', async function(e
         }
 
         try {
-            const response = await fetch('/marketing', {
+            const response = await fetch('/marketing/media', {
                 method: 'POST',
                 body: formData
             });
