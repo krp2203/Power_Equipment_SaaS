@@ -23,10 +23,10 @@ export default function AdvertisementModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-2xl w-full max-w-[85vw] relative"
+        className="bg-white rounded-lg shadow-2xl w-full max-w-[75vw] relative"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxHeight: '85vh',
+          maxHeight: '80vh',
           display: 'flex',
           flexDirection: 'column',
           overflowY: 'auto',

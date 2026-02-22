@@ -41,7 +41,7 @@ export default async function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-3 md:py-4 mx-4 md:mx-8 my-4 rounded-xl shadow-lg">
+      <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-6 md:py-8 mx-4 md:mx-8 my-4 rounded-xl shadow-lg">
         {/* Desktop Layout: Logo, Title/Buttons, Tagline in single row */}
         <div className="hidden md:flex container mx-auto px-4 items-center justify-between gap-4">
           {/* Logo (Left) */}
@@ -50,7 +50,7 @@ export default async function Home() {
               <img
                 src={config.theme.logoUrl}
                 alt={config.name}
-                className="h-32 w-auto object-contain bg-white/10 p-3 rounded-lg backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow"
+                className="h-48 w-auto object-contain bg-white/10 p-4 rounded-lg backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow"
               />
             </div>
           )}
@@ -85,13 +85,13 @@ export default async function Home() {
         </div>
 
         {/* Mobile Layout: Stacked */}
-        <div className="md:hidden container mx-auto px-4 flex flex-col items-center gap-4 py-4">
+        <div className="md:hidden container mx-auto px-4 flex flex-col items-center gap-4 py-6">
           {/* Mobile Logo */}
           {config.theme.hero_show_logo && config.theme.logoUrl && (
             <img
               src={config.theme.logoUrl}
               alt={config.name}
-              className="h-32 w-auto object-contain bg-white/10 p-3 rounded-lg backdrop-blur-sm shadow-lg"
+              className="h-40 w-auto object-contain bg-white/10 p-4 rounded-lg backdrop-blur-sm shadow-lg"
             />
           )}
 
