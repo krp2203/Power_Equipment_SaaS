@@ -53,27 +53,27 @@ export async function getDealerConfig(): Promise<DealerConfig> {
                 logoUrl: data.theme?.logoUrl,
 
                 // Hero
-                hero_title: data.theme?.hero_title,
-                hero_tagline: data.theme?.hero_tagline,
-                hero_show_logo: true, // Default to true if not specified
+                hero_title: data.theme?.heroTitle,
+                hero_tagline: data.theme?.heroTagline,
+                hero_show_logo: data.theme?.heroShowLogo !== undefined ? data.theme.heroShowLogo : true, // Use API value or default to true
 
-                // Features
-                feat_inventory_title: data.theme?.feat_inventory_title,
-                feat_inventory_text: data.theme?.feat_inventory_text,
-                feat_parts_title: data.theme?.feat_parts_title,
-                feat_parts_text: data.theme?.feat_parts_text,
-                feat_service_title: data.theme?.feat_service_title,
-                feat_service_text: data.theme?.feat_service_text,
+                // Features (API returns camelCase)
+                feat_inventory_title: data.theme?.featInventoryTitle,
+                feat_inventory_text: data.theme?.featInventoryText,
+                feat_parts_title: data.theme?.featPartsTitle,
+                feat_parts_text: data.theme?.featPartsText,
+                feat_service_title: data.theme?.featServiceTitle,
+                feat_service_text: data.theme?.featServiceText,
 
-                // Contact
-                contact_phone: data.theme?.contact_phone,
-                contact_email: data.theme?.contact_email,
-                contact_address: data.theme?.contact_address,
-                contact_text: data.theme?.contact_text,
+                // Contact (API returns camelCase)
+                contact_phone: data.theme?.contactPhone,
+                contact_email: data.theme?.contactEmail,
+                contact_address: data.theme?.contactAddress,
+                contact_text: data.theme?.contactText,
 
-                // Brands
-                brand_logos: data.theme?.brand_logos || data.theme?.brandLogos,
-                brandLogos: data.theme?.brandLogos || data.theme?.brand_logos,
+                // Brands (API returns camelCase)
+                brand_logos: data.theme?.brandLogos, // Fallback for snake_case
+                brandLogos: data.theme?.brandLogos, // Use camelCase from API
                 brandLogoUrls: data.theme?.brandLogoUrls
             }
         };
