@@ -4,13 +4,15 @@ import type { NextRequest } from 'next/server';
 export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
 
-  // Extract the base domain (pes.bentcrankshaft.com)
-  const isMainDomain = hostname === 'pes.bentcrankshaft.com' ||
+  // Extract the base domain (bentcrankshaft.com or demo.bentcrankshaft.com)
+  const isMainDomain = hostname === 'bentcrankshaft.com' ||
+    hostname === 'www.bentcrankshaft.com' ||
     hostname === 'localhost:3005' ||
     hostname === 'localhost:3000';
 
-  const isSubdomain = hostname.includes('.pes.bentcrankshaft.com') &&
-    hostname !== 'pes.bentcrankshaft.com';
+  const isSubdomain = hostname.includes('.bentcrankshaft.com') &&
+    hostname !== 'bentcrankshaft.com' &&
+    hostname !== 'www.bentcrankshaft.com';
 
   const pathname = request.nextUrl.pathname;
   const isImpersonating = request.cookies.get('is_impersonating')?.value === 'true';

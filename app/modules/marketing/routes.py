@@ -437,9 +437,9 @@ def download_bridge():
 
     # 1. Generate Config
     # Force the server URL to be the dealer's specific subdomain to avoid cross-domain/405 issues
-    base_domain = "pes.bentcrankshaft.com"
+    base_domain = "bentcrankshaft.com"
     scheme = request.scheme # 'https' or 'http'
-    
+
     # If the current host isn't already the dealer subdomain, construct it
     if org.slug and org.id != 1:
         server_url = f"{scheme}://{org.slug}.{base_domain}"
