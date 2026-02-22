@@ -465,6 +465,18 @@ document.getElementById('mediaForm').addEventListener('submit', async function(e
             formData.append('thumbnail', generatedThumbnailBlob, 'thumbnail.jpg');
         }
 
+        // Include scheduled date/time if scheduling for later
+        const scheduleLaterRadio = document.getElementById('schedule_later');
+        if (scheduleLaterRadio && scheduleLaterRadio.checked) {
+            formData.set('schedule_mode', 'scheduled');  // Override form value
+            const scheduledDate = document.getElementById('scheduled_date')?.value;
+            const scheduledTime = document.getElementById('scheduled_time')?.value;
+            if (scheduledDate) formData.set('scheduled_date', scheduledDate);
+            if (scheduledTime) formData.set('scheduled_time', scheduledTime);
+        } else {
+            formData.set('schedule_mode', 'now');  // Ensure schedule_mode is set to 'now'
+        }
+
         try {
             const response = await fetch('/marketing', {
                 method: 'POST',
@@ -472,7 +484,12 @@ document.getElementById('mediaForm').addEventListener('submit', async function(e
             });
 
             if (response.ok) {
-                alert('File uploaded successfully and queued for posting!');
+                // Check if this was scheduled for later
+                const scheduleLater = document.getElementById('schedule_later')?.checked;
+                const successMessage = scheduleLater
+                    ? 'File uploaded successfully and scheduled for later posting!'
+                    : 'File uploaded successfully and queued for posting!';
+                alert(successMessage);
                 window.location.reload();
             } else {
                 throw new Error('Upload failed with status ' + response.status);
@@ -560,10 +577,13 @@ async function uploadFileInChunks(file) {
         // Include scheduled date/time if scheduling for later
         const scheduleLaterRadio = document.getElementById('schedule_later');
         if (scheduleLaterRadio && scheduleLaterRadio.checked) {
+            formData.append('schedule_mode', 'scheduled');
             const scheduledDate = document.getElementById('scheduled_date')?.value;
             const scheduledTime = document.getElementById('scheduled_time')?.value;
             if (scheduledDate) formData.append('scheduled_date', scheduledDate);
             if (scheduledTime) formData.append('scheduled_time', scheduledTime);
+        } else {
+            formData.append('schedule_mode', 'now');
         }
 
         // Include thumbnail if we generated one (for videos)

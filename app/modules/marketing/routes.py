@@ -328,11 +328,16 @@ def complete_chunk_upload():
 
         # Parse scheduled date/time if provided
         scheduled_post_time = None
+        schedule_mode = request.form.get('schedule_mode') if request.form else request.json.get('schedule_mode', 'now')
+
         if request.is_json:
             scheduled_date = request.json.get('scheduled_date')
             scheduled_time = request.json.get('scheduled_time')
+        else:
+            scheduled_date = request.form.get('scheduled_date')
+            scheduled_time = request.form.get('scheduled_time')
 
-        if scheduled_date and scheduled_time:
+        if schedule_mode == 'scheduled' and scheduled_date and scheduled_time:
             try:
                 scheduled_post_time = datetime.strptime(f"{scheduled_date} {scheduled_time}", '%Y-%m-%d %H:%M')
             except ValueError:
