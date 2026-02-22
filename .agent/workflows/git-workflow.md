@@ -25,9 +25,10 @@ git push origin dev
 ```
 
 ## 2. Promoting to CT 101 (Production)
-Once changes are tested and verified on CT 106, merge them into `main`.
+For a safe deployment, follow the **[Safety-First Production Deployment Guide](file:///root/power_equip_saas/.agent/workflows/deploy-prod.md)**. 
 
-### Database Schema Changes
+### Quick Summary of Promotion:
+1.  **On CT 106**: Generate migrations (`flask db migrate`) and push to `origin dev`.
 If you made changes to models on Dev:
 1.  **On CT 106**: Generate the migration: `flask db migrate -m "Description"`
 2.  **Commit**: Git add/commit the new migration file in `migrations/versions/`.
