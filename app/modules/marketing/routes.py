@@ -5,6 +5,7 @@ import io
 import json
 import os
 import subprocess
+from datetime import datetime
 from . import marketing_bp
 from .forms import MarketingPostForm
 from app.integrations.facebook import get_facebook_service
