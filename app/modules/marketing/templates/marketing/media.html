@@ -539,9 +539,15 @@ async function uploadFileInChunks(file) {
         formData.append('title', document.getElementById('title').value);
         formData.append('content', document.getElementById('description').value);
         formData.append('link_url', document.getElementById('link_url').value);
-        formData.append('post_to_facebook', document.getElementById('post_to_facebook').checked);
-        formData.append('post_to_instagram', document.getElementById('post_to_instagram').checked);
-        formData.append('post_to_banner', document.getElementById('post_to_banner').checked);
+
+        // Safely append checkbox values with null checks
+        const facebookCheckbox = document.getElementById('post_to_facebook');
+        const instagramCheckbox = document.getElementById('post_to_instagram');
+        const bannerCheckbox = document.getElementById('post_to_banner');
+
+        formData.append('post_to_facebook', facebookCheckbox ? facebookCheckbox.checked : false);
+        formData.append('post_to_instagram', instagramCheckbox ? instagramCheckbox.checked : false);
+        formData.append('post_to_banner', bannerCheckbox ? bannerCheckbox.checked : false);
 
         // Include thumbnail if we generated one (for videos)
         if (generatedThumbnailBlob) {
