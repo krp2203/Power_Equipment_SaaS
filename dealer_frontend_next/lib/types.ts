@@ -59,3 +59,12 @@ export interface PartItem {
     stock: number;
     image?: string;
 }
+
+export interface Advertisement {
+    id: number;
+    title: string;
+    description?: string;
+    image: string;
+    thumbnail?: string;
+    link_url?: string;
+}
