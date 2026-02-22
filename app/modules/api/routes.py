@@ -116,16 +116,21 @@ def get_site_info():
 
         # Convert relative URLs to absolute URLs for images (logoUrl, brand_logos)
         if camel_key in ('logoUrl', 'brandLogos') and value:
+            # Determine the correct host to use
+            current_host = request.host
+            # Use current request host (respects if accessed via bentcrankshaft.com or subdomain)
+            # Otherwise fall back to subdomain if org has a slug
+            use_host = current_host if 'bentcrankshaft.com' in current_host else f"{org.slug}.bentcrankshaft.com"
+
             if camel_key == 'logoUrl' and isinstance(value, str):
                 if value.startswith('/'):
-                    # Convert relative path to absolute URL using dealer's subdomain
-                    value = f"https://{org.slug}.bentcrankshaft.com{value}" if org.slug else f"{request.scheme}://{request.host}{value}"
+                    value = f"{request.scheme}://{use_host}{value}"
             elif camel_key == 'brandLogos' and isinstance(value, dict):
                 # Convert each brand logo URL
                 converted_logos = {}
                 for idx, logo_url in value.items():
                     if logo_url and logo_url.startswith('/'):
-                        converted_logos[idx] = f"https://{org.slug}.bentcrankshaft.com{logo_url}" if org.slug else f"{request.scheme}://{request.host}{logo_url}"
+                        converted_logos[idx] = f"{request.scheme}://{use_host}{logo_url}"
                     else:
                         converted_logos[idx] = logo_url
                 value = converted_logos
