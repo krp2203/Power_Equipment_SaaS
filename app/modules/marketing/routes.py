@@ -303,11 +303,11 @@ def complete_chunk_upload():
         # Assemble chunks
         unique_filename, file_path = chunk_upload.assemble_chunks(upload_id, org.id)
 
-        # Construct public URL
+        # Construct public URL (use 'media' path to match where file is saved)
         if org.slug:
-            media_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/marketing/{org.id}/{unique_filename}"
+            media_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/media/{org.id}/{unique_filename}"
         else:
-            media_url = f"{request.scheme}://{request.host}/static/uploads/marketing/{org.id}/{unique_filename}"
+            media_url = f"{request.scheme}://{request.host}/static/uploads/media/{org.id}/{unique_filename}"
 
         # Create FacebookPost record to track status
         fb_post = FacebookPost(

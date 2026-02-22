@@ -84,7 +84,7 @@ def assemble_chunks(upload_id, org_id):
         # Create permanent filename with UUID
         unique_filename = f"{uuid.uuid4().hex}.mp4"
 
-        # Create permanent upload directory
+        # Create permanent upload directory (must match URL path in routes.py - use 'media' like regular uploads)
         upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'media', str(org_id))
         os.makedirs(upload_dir, exist_ok=True)
 
