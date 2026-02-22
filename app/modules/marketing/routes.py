@@ -292,6 +292,9 @@ def upload_chunk():
 def complete_chunk_upload():
     """Complete chunked upload and create MediaContent record"""
     try:
+        # Log the entire request JSON for debugging
+        current_app.logger.info(f"Complete chunk upload request: {request.json}")
+
         upload_id = request.json.get('uploadId')
         title = request.json.get('title')
         description = request.json.get('content')
@@ -299,6 +302,9 @@ def complete_chunk_upload():
         post_to_facebook = request.json.get('post_to_facebook', False)
         post_to_instagram = request.json.get('post_to_instagram', False)
         post_to_banner = request.json.get('post_to_banner', False)
+
+        # Debug logging
+        current_app.logger.info(f"Complete chunk upload - title: {title}, post_to_facebook: {post_to_facebook}, post_to_instagram: {post_to_instagram}, post_to_banner: {post_to_banner}")
 
         org = g.current_org
         if not org:
@@ -335,9 +341,13 @@ def complete_chunk_upload():
                         thumbnail_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/media/{org.id}/{thumbnail_filename}"
                     else:
                         thumbnail_url = f"{request.scheme}://{request.host}/static/uploads/media/{org.id}/{thumbnail_filename}"
+                else:
+                    # If thumbnail generation failed, use the video URL as fallback
+                    thumbnail_url = media_url
             except Exception as e:
-                current_app.logger.error(f"Failed to generate video thumbnail: {str(e)}")
-                # If thumbnail generation fails, fall back to not having a thumbnail
+                current_app.logger.warning(f"Video thumbnail generation unavailable: {str(e)} - using video URL as thumbnail fallback")
+                # If thumbnail generation fails (e.g., FFmpeg not installed), fall back to using video URL as thumbnail
+                thumbnail_url = media_url
 
         # Check if at least one destination is selected
         if not (post_to_facebook or post_to_instagram or post_to_banner):
