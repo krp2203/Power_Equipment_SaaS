@@ -26,7 +26,14 @@ export async function getDealerConfig(): Promise<DealerConfig> {
     }
 
     try {
-        const res = await fetch(`${API_BASE}/site-info`, {
+        // Extract slug from targetHost (e.g., 'demo.bentcrankshaft.com' -> 'demo')
+        const hostParts = targetHost.split('.');
+        let slug = '';
+        if (hostParts.length > 1 && !targetHost.includes('localhost')) {
+            slug = hostParts[0]; // First part is the slug
+        }
+
+        const res = await fetch(`${API_BASE}/site-info${slug ? `?slug=${slug}` : ''}`, {
             cache: 'no-store',
             headers: {
                 'Cookie': cookieHeader,
