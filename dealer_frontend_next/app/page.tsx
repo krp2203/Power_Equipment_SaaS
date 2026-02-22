@@ -41,7 +41,7 @@ export default async function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-6 md:py-8 mx-4 md:mx-8 mt-0 mb-4 rounded-xl shadow-lg">
+      <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-6 md:py-8 mx-4 md:mx-8 mt-2 mb-4 rounded-xl shadow-lg">
         {/* Desktop Layout: Logo, Title/Buttons, Tagline in single row */}
         <div className="hidden md:flex container mx-auto px-4 items-center justify-between gap-4">
           {/* Logo (Left) */}
