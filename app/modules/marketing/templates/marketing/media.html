@@ -193,7 +193,15 @@
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <div>
                             <h6 class="mb-1" style="font-weight: 600; color: #333;">{{ media.title }}</h6>
-                            <small class="text-muted">{{ media.created_at.strftime('%b %d, %I:%M %p') }}</small>
+                            <small class="text-muted">
+                                {% if media.status == 'posted' %}
+                                    Posted: {{ media.created_at.strftime('%b %d, %I:%M %p') }}
+                                {% elif media.status == 'scheduled' and media.scheduled_post_time %}
+                                    Scheduled: {{ media.scheduled_post_time.strftime('%b %d, %I:%M %p') }}
+                                {% else %}
+                                    Created: {{ media.created_at.strftime('%b %d, %I:%M %p') }}
+                                {% endif %}
+                            </small>
                         </div>
                         {% if media.status == 'posted' %}
                             <span class="badge bg-success" style="font-size: 0.85em;">✓ Posted</span>
