@@ -1,10 +1,26 @@
 import Link from 'next/link';
 import { getDealerConfig } from '@/lib/api';
 import BrandCarousel from '@/components/BrandCarousel';
+import AdvertisementCarousel from '@/components/AdvertisementCarousel';
 
 export default async function Home() {
   const config = await getDealerConfig();
   const primaryColor = config.theme.primaryColor || '#2563EB';
+
+  // Fetch advertisements from API
+  let advertisements = [];
+  try {
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/advertisements`, {
+      headers: {
+        'Host': config.slug ? `${config.slug}.bentcrankshaft.com` : 'localhost',
+      },
+    });
+    if (response.ok) {
+      advertisements = await response.json();
+    }
+  } catch (error) {
+    console.error('Failed to fetch advertisements:', error);
+  }
 
   // Fallbacks for customization
   const heroTitle = config.theme.hero_title || `Welcome to ${config.name}`;
@@ -60,6 +76,11 @@ export default async function Home() {
           </div>
         </div>
       </section>
+
+      {/* Advertisement Carousel */}
+      {advertisements && advertisements.length > 0 && (
+        <AdvertisementCarousel advertisements={advertisements} />
+      )}
 
       {/* Features Grid */}
       <section className="py-8 bg-white">
