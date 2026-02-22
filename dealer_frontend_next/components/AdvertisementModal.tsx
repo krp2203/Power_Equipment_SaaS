@@ -19,17 +19,22 @@ export default function AdvertisementModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-xl max-w-2xl w-full overflow-hidden"
+        className="bg-white rounded-lg shadow-2xl w-full max-w-[90vw] h-auto overflow-hidden my-auto relative"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+        }}
       >
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-900 text-white rounded-full p-2 transition-colors"
+          className="absolute top-4 right-4 z-10 bg-gray-800 hover:bg-gray-900 text-white rounded-full p-2 transition-colors shadow-lg"
           aria-label="Close modal"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -37,13 +42,20 @@ export default function AdvertisementModal({
           </svg>
         </button>
 
-        {/* Media - Image or Video */}
-        <div className="bg-gray-900 flex items-center justify-center">
+        {/* Media - Image or Video - Auto-sizing container */}
+        <div
+          className="bg-gray-900 flex items-center justify-center overflow-hidden"
+          style={{
+            flex: '1 1 auto',
+            maxHeight: '60vh',
+            minHeight: '300px',
+          }}
+        >
           {advertisement.media_type === 'video' ? (
             <video
               src={advertisement.image}
               poster={advertisement.thumbnail}
-              className="max-h-96 w-auto object-contain"
+              className="w-full h-full object-contain"
               controls={true}
               autoPlay={true}
             />
@@ -51,13 +63,19 @@ export default function AdvertisementModal({
             <img
               src={advertisement.image}
               alt={advertisement.title}
-              className="max-h-96 w-auto object-contain"
+              className="w-full h-full object-contain"
             />
           )}
         </div>
 
-        {/* Content */}
-        <div className="p-6">
+        {/* Content - Scrollable if needed */}
+        <div
+          className="p-6 bg-white overflow-y-auto"
+          style={{
+            flex: '0 1 auto',
+            maxHeight: '30vh',
+          }}
+        >
           <h2 className="text-2xl font-bold mb-2">{advertisement.title}</h2>
           <p className="text-gray-600 mb-4">{advertisement.description}</p>
 
