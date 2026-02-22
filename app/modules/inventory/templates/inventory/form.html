@@ -95,17 +95,28 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        const conditionSelect = document.getElementById('condition-select');
+        console.log("Serial number toggle script initializing...");
+
+        // Use both ID and name as fallback
+        const conditionSelect = document.getElementById('condition-select') || document.querySelector('[name="condition"]');
         const serialContainer = document.getElementById('serial-number-container');
-        const serialInput = serialContainer.querySelector('input');
+
+        if (!conditionSelect || !serialContainer) {
+            console.error("Could not find condition select or serial container", { conditionSelect, serialContainer });
+            return;
+        }
 
         function toggleSerialField() {
-            if (conditionSelect.value === 'New') {
-                serialContainer.style.display = 'none';
-                // Optionally clear the value when hiding
-                // serialInput.value = ''; 
+            if (!conditionSelect || !serialContainer) return;
+            const val = (conditionSelect.value || "").trim().toLowerCase();
+            console.log("Toggling serial field. Current matching value:", val);
+
+            if (val === 'new') {
+                serialContainer.style.setProperty('display', 'none', 'important');
+                console.log("Hiding serial container");
             } else {
-                serialContainer.style.display = 'block';
+                serialContainer.style.setProperty('display', 'block', 'important');
+                console.log("Showing serial container");
             }
         }
 
@@ -113,7 +124,10 @@
         toggleSerialField();
 
         // Listen for changes
-        conditionSelect.addEventListener('change', toggleSerialField);
+        conditionSelect.addEventListener('change', function () {
+            console.log("Condition changed to:", this.value);
+            toggleSerialField();
+        });
     });
 </script>
 {% endblock %}
