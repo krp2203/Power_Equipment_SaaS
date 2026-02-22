@@ -41,39 +41,39 @@ export default async function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-4 md:py-6">
+      <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-3 md:py-4">
         {/* Desktop Layout: Logo, Title/Buttons, Tagline in single row */}
-        <div className="hidden md:flex container mx-auto px-4 items-center justify-between gap-4 min-h-[200px]">
+        <div className="hidden md:flex container mx-auto px-4 items-center justify-between gap-4">
           {/* Logo (Left) */}
           {config.theme.hero_show_logo && config.theme.logoUrl && (
             <div className="flex-shrink-0">
               <img
                 src={config.theme.logoUrl}
                 alt={config.name}
-                className="h-40 w-auto object-contain bg-white/10 p-4 rounded-lg backdrop-blur-sm shadow-xl hover:shadow-2xl transition-shadow"
+                className="h-32 w-auto object-contain bg-white/10 p-3 rounded-lg backdrop-blur-sm shadow-lg hover:shadow-xl transition-shadow"
               />
             </div>
           )}
 
           {/* Center Content */}
           <div className="flex-1 flex flex-col items-center text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-3 drop-shadow-lg leading-tight">
+            <h1 className="text-3xl md:text-4xl font-bold mb-2 drop-shadow-lg leading-tight">
               {heroTitle}
             </h1>
-            <p className="text-base md:text-lg mb-4 text-gray-200 drop-shadow-md">
+            <p className="text-sm md:text-base mb-3 text-gray-200 drop-shadow-md">
               {heroTagline}
             </p>
-            <div className="flex flex-row gap-3 justify-center">
+            <div className="flex flex-row gap-2 justify-center">
               <Link
                 href="/inventory"
-                className="px-6 py-3 rounded-lg font-bold text-sm text-white transition-all hover:shadow-lg transform hover:scale-105 text-center shadow-lg"
+                className="px-5 py-2 rounded-lg font-bold text-xs md:text-sm text-white transition-all hover:shadow-lg transform hover:scale-105 text-center shadow-lg"
                 style={{ backgroundColor: primaryColor }}
               >
                 Shop Inventory
               </Link>
               <Link
                 href="/service"
-                className="px-6 py-3 rounded-lg font-bold text-sm bg-white text-gray-900 hover:bg-gray-100 text-center shadow-lg transition-all hover:shadow-lg transform hover:scale-105"
+                className="px-5 py-2 rounded-lg font-bold text-xs md:text-sm bg-white text-gray-900 hover:bg-gray-100 text-center shadow-lg transition-all hover:shadow-lg transform hover:scale-105"
               >
                 Schedule Service
               </Link>
