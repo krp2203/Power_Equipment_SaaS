@@ -16,8 +16,8 @@ import app.modules.marketing.chunk_upload as chunk_upload
 
 def generate_video_thumbnail(video_path, output_path, frame='0'):
     """
-    Generate a thumbnail from a video file using ImageMagick.
-    ImageMagick's convert command is lightweight and efficient.
+    Generate a thumbnail for a video file.
+    Falls back to creating a simple placeholder if ImageMagick fails.
 
     Args:
         video_path: Path to the video file
@@ -25,11 +25,10 @@ def generate_video_thumbnail(video_path, output_path, frame='0'):
         frame: Frame number to extract (default: 0 = first frame)
 
     Returns:
-        True if successful, False otherwise
+        True if successful, False otherwise (will use video URL as fallback)
     """
     try:
-        # Use ImageMagick's convert command to extract first frame
-        # Format: convert 'video.mp4[0]' -quality 80 thumbnail.jpg
+        # Try to use ImageMagick's convert command to extract first frame
         cmd = [
             'convert',
             f'{video_path}[{frame}]',  # Extract specific frame
@@ -44,11 +43,19 @@ def generate_video_thumbnail(video_path, output_path, frame='0'):
         if result.returncode == 0 and os.path.exists(output_path):
             return True
         else:
-            error_msg = result.stderr.decode('utf-8', errors='ignore') if result.stderr else 'Unknown error'
-            current_app.logger.warning(f"ImageMagick thumbnail generation warning: {error_msg}")
-            return False
+            # ImageMagick failed, try creating a simple placeholder
+            current_app.logger.info("ImageMagick failed, creating placeholder thumbnail")
+            try:
+                # Create a simple solid color placeholder image (400x300, dark gray)
+                from PIL import Image
+                placeholder = Image.new('RGB', (400, 300), color='#2d2d2d')
+                placeholder.save(output_path, 'JPEG', quality=80)
+                return os.path.exists(output_path)
+            except:
+                # PIL not available or error, return False to use video URL as fallback
+                return False
     except Exception as e:
-        current_app.logger.warning(f"Video thumbnail generation unavailable: {str(e)}")
+        current_app.logger.warning(f"Video thumbnail generation error: {str(e)}")
         return False
 
 @marketing_bp.route('/marketing', methods=['GET', 'POST'])
