@@ -210,4 +210,22 @@ def create_app(config_name=None):
         from flask import redirect, url_for
         return redirect(url_for('auth.login', next=request.url))
 
+    # Video Streaming Optimization
+    @app.after_request
+    def add_video_headers(response):
+        """Add proper headers for video streaming and caching"""
+        # Check if this is a video file
+        if response.content_type and response.content_type.startswith('video/'):
+            # Enable byte range requests for streaming (critical for buffering!)
+            response.headers['Accept-Ranges'] = 'bytes'
+
+            # Cache video files for 7 days (they're immutable after upload)
+            response.headers['Cache-Control'] = 'public, max-age=604800'
+
+            # Allow conditional requests for efficient caching
+            response.headers['ETag'] = response.headers.get('ETag', '')
+            response.headers['Vary'] = 'Accept-Encoding'
+
+        return response
+
     return app

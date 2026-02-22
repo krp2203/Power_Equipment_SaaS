@@ -60,6 +60,7 @@ export default function AdvertisementModal({
               className="w-full h-full object-contain"
               controls={true}
               autoPlay={true}
+              preload="metadata"
             />
           ) : (
             <img

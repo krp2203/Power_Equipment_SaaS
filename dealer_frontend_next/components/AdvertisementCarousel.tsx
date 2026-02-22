@@ -75,6 +75,7 @@ export default function AdvertisementCarousel({
                   poster={currentAd.thumbnail}
                   className="h-80 w-auto object-cover hover:opacity-80 transition-opacity"
                   controls={false}
+                  preload="none"
                 />
               ) : (
                 <img
