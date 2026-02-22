@@ -41,8 +41,8 @@ export default async function Home() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-8 md:py-12">
-        <div className="container mx-auto px-4 relative min-h-[280px] md:min-h-[320px] flex items-center">
+      <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-6 md:py-8">
+        <div className="container mx-auto px-4 relative min-h-[240px] md:min-h-[280px] flex items-center">
           {/* Logo (Absolute Left Positioning) */}
           {config.theme.hero_show_logo && config.theme.logoUrl && (
             <div className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2">

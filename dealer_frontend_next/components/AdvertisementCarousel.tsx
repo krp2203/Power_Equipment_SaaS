@@ -72,7 +72,7 @@ export default function AdvertisementCarousel({
               <img
                 src={currentAd.thumbnail || currentAd.image}
                 alt={currentAd.title}
-                className="h-96 w-auto object-cover hover:opacity-80 transition-opacity"
+                className="h-80 w-auto object-cover hover:opacity-80 transition-opacity"
               />
             </button>
           </div>
