@@ -1,5 +1,88 @@
 from flask import jsonify, g, request
 from . import api_bp
+from app.core.extensions import db
+
+@api_bp.route('/v1/advertisements', methods=['GET'])
+def get_advertisements():
+    """Public API endpoint for fetching advertisements for carousel"""
+    try:
+        import sys
+        from app.core.models import Organization, MediaContent
+
+        # Get organization from request context or query parameter
+        org = g.current_org
+        slug = request.args.get('slug') or request.headers.get('X-Dealer-Slug')
+
+        print(f"[ADS-START] g.current_org={org}, slug={slug}", file=sys.stderr)
+
+        # If we have a slug, always use it (even if g.current_org is set to Master fallback)
+        org_id = None
+        if slug:
+            print(f"[ADS-LOOKUP] Looking up org by slug={slug}", file=sys.stderr)
+            org = Organization.query.filter_by(slug=slug).first()
+            print(f"[ADS-FOUND] Found org: {org}", file=sys.stderr)
+            if org:
+                org_id = org.id
+        elif org and org.id != 1:
+            org_id = org.id
+        else:
+            # If no slug and no valid org context, return empty
+            print(f"[ADS-NOORG] No slug and no valid org context, returning empty list", file=sys.stderr)
+            return jsonify([]), 200
+
+        if not org_id:
+            print(f"[ADS-NOORG] No organization ID found, returning empty list", file=sys.stderr)
+            return jsonify([]), 200
+
+        print(f"[ADS-QUERY] Getting ads for org_id={org_id}", file=sys.stderr)
+
+        # Fetch active media marked for banner display using raw SQL to bypass any session issues
+        try:
+            from sqlalchemy import text
+            sql = text("""
+                SELECT id, title, description, media_url, thumbnail_url, link_url
+                FROM media_content
+                WHERE organization_id = :org_id
+                AND post_to_banner = true
+                AND status = 'posted'
+            """)
+            print(f"[ADS-RAW SQL] Executing raw SQL for org_id={org_id}", file=sys.stderr)
+            result = db.session.execute(sql, {"org_id": org_id})
+            advertisements = result.fetchall()
+            print(f"[ADS-RAW-FOUND-{len(advertisements)}] Found {len(advertisements)} advertisements", file=sys.stderr)
+        except Exception as qe:
+            print(f"[ADS-QUERYERROR] Query failed: {qe}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            advertisements = []
+
+        # Convert to JSON format for carousel
+        result = []
+        for row in advertisements:
+            # Handle both ORM objects and raw SQL tuples
+            if hasattr(row, 'id'):
+                # ORM object
+                ad_id, ad_title, ad_desc, ad_media, ad_thumb, ad_link = row.id, row.title, row.description, row.media_url, row.thumbnail_url, row.link_url
+            else:
+                # Raw SQL tuple
+                ad_id, ad_title, ad_desc, ad_media, ad_thumb, ad_link = row
+
+            result.append({
+                'id': ad_id,
+                'title': ad_title,
+                'description': ad_desc or '',
+                'image': ad_media,  # Use original image (high quality)
+                'thumbnail': ad_thumb or ad_media,  # Fallback to original if no thumb
+                'link_url': ad_link or ''
+            })
+
+        print(f"[ADS-RETURN] Returning {len(result)} ads in JSON", file=sys.stderr)
+        return jsonify(result), 200
+
+    except Exception as e:
+        import sys
+        print(f"[ADS-ERROR] {str(e)}", file=sys.stderr)
+        return jsonify([]), 200
 
 @api_bp.route('/v1/site-info', methods=['GET'])
 def get_site_info():

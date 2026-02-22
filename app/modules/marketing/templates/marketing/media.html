@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Media Management - {{ config.name }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1>📸 Media Management</h1>
+            <p class="text-muted">Upload images and videos to post across Facebook, Instagram, and your website banner</p>
+        </div>
+        <div class="col-md-4 text-end">
+            {% if fb_configured %}
+                <span class="badge bg-success">✓ Facebook Connected</span>
+            {% else %}
+                <span class="badge bg-warning">⚠ Facebook Not Connected</span>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Upload Form -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">Upload New Media</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" enctype="multipart/form-data" id="mediaForm">
+                {{ form.hidden_tag() }}
+
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="title" class="form-label">Title *</label>
+                        <input type="text" class="form-control" id="title" name="title" placeholder="e.g., Summer Sale 2026" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" name="description" placeholder="Optional description">
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label for="link_url" class="form-label">Click-Through URL</label>
+                        <input type="url" class="form-control" id="link_url" name="link_url" placeholder="https://example.com">
+                    </div>
+                </div>
+
+                <!-- File Upload -->
+                <div class="mb-3">
+                    <label for="media" class="form-label">Select Image or Video *</label>
+                    <div class="input-group">
+                        <input type="file" class="form-control" id="media" name="media" accept="image/*,video/*" required>
+                        <button class="btn btn-outline-secondary" type="button" id="browseBtn">Browse</button>
+                    </div>
+                    <small class="text-muted d-block mt-2">
+                        Supported: JPG, PNG, GIF (images) or MP4, MOV, AVI (videos)
+                    </small>
+                    <div id="filePreview" class="mt-2"></div>
+                </div>
+
+                <!-- Destinations -->
+                <div class="mb-3">
+                    <label class="form-label">Where should this appear? *</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="post_to_banner" name="post_to_banner" value="on" checked>
+                        <label class="form-check-label" for="post_to_banner">
+                            <strong>🌐 Website Banner</strong> - Display on dealer homepage carousel
+                        </label>
+                    </div>
+                    {% if fb_configured %}
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="post_to_facebook" name="post_to_facebook" value="on">
+                        <label class="form-check-label" for="post_to_facebook">
+                            <strong>👍 Facebook</strong> - Post to Facebook page
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="post_to_instagram" name="post_to_instagram" value="on">
+                        <label class="form-check-label" for="post_to_instagram">
+                            <strong>📱 Instagram</strong> - Cross-post to Instagram
+                        </label>
+                    </div>
+                    {% else %}
+                    <p class="text-warning"><small>⚠ Connect Facebook to post to social media</small></p>
+                    {% endif %}
+                </div>
+
+                <!-- Scheduling -->
+                <div class="mb-3">
+                    <label class="form-label">When should it post?</label>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="schedule_mode" id="schedule_now" value="now" checked>
+                        <label class="form-check-label" for="schedule_now">
+                            Post Immediately
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="schedule_mode" id="schedule_later" value="scheduled">
+                        <label class="form-check-label" for="schedule_later">
+                            Schedule for Later
+                        </label>
+                    </div>
+                    <div id="scheduleOptions" style="display: none; margin-top: 10px;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="date" class="form-control" id="scheduled_date" name="scheduled_date">
+                            </div>
+                            <div class="col-md-6">
+                                <input type="time" class="form-control" id="scheduled_time" name="scheduled_time">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-lg">
+                    <i class="bi bi-upload"></i> Upload & Post
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Media Library -->
+    <div class="card">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">📚 Media Library ({{ media_items|length }} items)</h5>
+        </div>
+        <div class="card-body">
+            {% if media_items %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Preview</th>
+                            <th>Title</th>
+                            <th>Status</th>
+                            <th>Destinations</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for media in media_items %}
+                        <tr>
+                            <td style="width: 60px;">
+                                {% if media.media_type == 'video' %}
+                                    <span class="badge bg-danger">🎥 Video</span>
+                                {% else %}
+                                    <img src="{{ media.thumbnail_url or media.media_url }}" alt="{{ media.title }}" style="max-width: 50px; max-height: 50px; object-fit: cover; border-radius: 4px;">
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ media.title }}</strong>
+                                {% if media.description %}
+                                <br><small class="text-muted">{{ media.description[:50] }}...</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if media.status == 'posted' %}
+                                    <span class="badge bg-success">✓ Posted</span>
+                                {% elif media.status == 'scheduled' %}
+                                    <span class="badge bg-info">📅 Scheduled</span>
+                                {% elif media.status == 'draft' %}
+                                    <span class="badge bg-secondary">Draft</span>
+                                {% else %}
+                                    <span class="badge bg-danger">{{ media.status }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if media.post_to_banner %}<span class="badge bg-primary">🌐</span>{% endif %}
+                                {% if media.post_to_facebook %}<span class="badge" style="background-color: #1877F2;">👍</span>{% endif %}
+                                {% if media.post_to_instagram %}<span class="badge" style="background-color: #E4405F;">📱</span>{% endif %}
+                            </td>
+                            <td><small>{{ media.created_at.strftime('%b %d, %Y') }}</small></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-primary" onclick="editMedia({{ media.id }})">Edit</button>
+                                <form method="POST" action="{{ url_for('marketing.delete_media', id=media.id) }}" style="display: inline;" onsubmit="return confirm('Delete this media?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <p class="text-muted">No media uploaded yet. Start by uploading your first image or video above!</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<script>
+// Toggle schedule options
+document.getElementById('schedule_later').addEventListener('change', function() {
+    document.getElementById('scheduleOptions').style.display = this.checked ? 'block' : 'none';
+});
+
+document.getElementById('schedule_now').addEventListener('change', function() {
+    document.getElementById('scheduleOptions').style.display = !this.checked ? 'block' : 'none';
+});
+
+// File preview
+document.getElementById('media').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const preview = document.getElementById('filePreview');
+    if (file) {
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            preview.innerHTML = `<small>Selected: ${file.name} (${(file.size/1024/1024).toFixed(2)}MB)</small>`;
+        };
+        reader.readAsDataURL(file);
+    }
+});
+
+function editMedia(id) {
+    // TODO: Implement edit modal
+    alert('Edit functionality coming soon!');
+}
+</script>
+
+<style>
+.badge { margin-right: 4px; }
+.table-responsive { margin-top: 20px; }
+</style>
+{% endblock %}

@@ -373,3 +373,83 @@ class FacebookPost(db.Model):
     # Relationships
     organization = db.relationship('Organization', backref='facebook_posts')
     user = db.relationship('User', backref='facebook_posts')
+
+class MediaContent(db.Model):
+    """Unified media assets for promotions across all channels (FB, IG, Website Banner)"""
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+
+    # Content
+    title = db.Column(db.String(150), nullable=False)
+    description = db.Column(db.Text)
+    media_url = db.Column(db.String(500), nullable=False)  # Image or video
+    thumbnail_url = db.Column(db.String(500))  # Auto-generated from image or provided for video
+    media_type = db.Column(db.String(20), default='image')  # 'image' or 'video'
+    link_url = db.Column(db.String(500))  # Optional click-through URL
+
+    # Destination Flags
+    post_to_facebook = db.Column(db.Boolean, default=False)
+    post_to_instagram = db.Column(db.Boolean, default=False)
+    post_to_banner = db.Column(db.Boolean, default=False)
+
+    # Scheduling
+    scheduled_post_time = db.Column(db.DateTime, nullable=True)  # NULL = post now
+    status = db.Column(db.String(50), default='draft')  # 'draft', 'scheduled', 'posted', 'failed'
+
+    # Metadata
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    organization = db.relationship('Organization', backref='media_content')
+    scheduled_posts = db.relationship('ScheduledPost', backref='media_content', cascade='all, delete-orphan')
+
+
+class ScheduledPost(db.Model):
+    """Tracks where and when media content has been posted"""
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    media_content_id = db.Column(db.Integer, db.ForeignKey('media_content.id'), nullable=False)
+
+    # Destination
+    destination = db.Column(db.String(20), nullable=False)  # 'facebook', 'instagram', 'banner'
+
+    # Timing
+    scheduled_time = db.Column(db.DateTime, nullable=False)
+    posted_time = db.Column(db.DateTime, nullable=True)
+
+    # Status & Tracking
+    status = db.Column(db.String(50), default='pending')  # 'pending', 'posted', 'failed'
+    facebook_post_id = db.Column(db.String(100), nullable=True)  # Reference to FB post
+    error_message = db.Column(db.Text, nullable=True)
+
+    # Metadata
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Relationships
+    organization = db.relationship('Organization', backref='scheduled_posts')
+
+
+class Banner(db.Model):
+    """Website banner management"""
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+
+    # Content
+    image_url = db.Column(db.String(500), nullable=False)  # Full-size image URL
+    thumbnail_url = db.Column(db.String(500))  # Small preview
+    title = db.Column(db.String(200), nullable=False)
+    link_url = db.Column(db.String(500))  # Click destination
+
+    # Display Control
+    sort_order = db.Column(db.Integer, default=0)  # Display order
+    start_date = db.Column(db.Date, nullable=True)  # Active period start
+    end_date = db.Column(db.Date, nullable=True)  # Active period end
+    is_active = db.Column(db.Boolean, default=True)
+
+    # Metadata
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # Relationships
+    organization = db.relationship('Organization', backref='banners')

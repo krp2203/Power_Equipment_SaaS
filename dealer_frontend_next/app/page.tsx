@@ -3,6 +3,8 @@ import { getDealerConfig } from '@/lib/api';
 import BrandCarousel from '@/components/BrandCarousel';
 import AdvertisementCarousel from '@/components/AdvertisementCarousel';
 
+export const dynamic = 'force-dynamic';
+
 export default async function Home() {
   const config = await getDealerConfig();
   const primaryColor = config.theme.primaryColor || '#2563EB';
@@ -10,9 +12,10 @@ export default async function Home() {
   // Fetch advertisements from API
   let advertisements = [];
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/advertisements`, {
+    const response = await fetch(`http://web:5000/api/v1/advertisements?slug=${config.slug}`, {
       headers: {
         'Host': config.slug ? `${config.slug}.bentcrankshaft.com` : 'localhost',
+        'X-Dealer-Slug': config.slug || '',
       },
     });
     if (response.ok) {
