@@ -16,12 +16,12 @@ export async function getDealerConfig(): Promise<DealerConfig> {
     // In a real multi-tenant app, we'd pass the Host header or use a specific subdomain.
     // For dev, we'll hit the localhost API directly AND forward cookies (for impersonation).
 
-    // Map root domain to master organization (slug: pes)
+    // Map root domain to Demo Dealer organization (slug: demo)
     let targetHost = host;
     if (host === 'bentcrankshaft.com' || host === 'www.bentcrankshaft.com') {
-        targetHost = 'pes.bentcrankshaft.com';
+        targetHost = 'demo.bentcrankshaft.com';
     } else if (host.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/)) {
-        // If accessing via IP (local dev), pretend to be localhost so Backend loads Org 1
+        // If accessing via IP (local dev), pretend to be localhost so Backend loads Org 1 (Demo Dealer)
         targetHost = 'localhost';
     }
 
