@@ -2,6 +2,7 @@
 Marketing tasks module for async posting to Facebook, Instagram, and other platforms.
 """
 from celery import shared_task
+from datetime import datetime
 from app.core.extensions import db
 from app.core.models import FacebookPost, MediaContent, Organization
 from app.integrations.facebook import get_facebook_service
@@ -99,4 +100,72 @@ def post_media_task(org_id, message, media_url, title, media_content_id, post_to
                     db.session.commit()
             except:
                 pass
+        return {'success': False, 'error': str(e)}
+
+@shared_task
+def process_scheduled_posts():
+    """
+    Periodic task to check for scheduled posts that are due and post them.
+    This should be called every minute via Celery Beat.
+    """
+    try:
+        current_app.logger.info("Processing scheduled posts...")
+
+        # Find all scheduled posts where scheduled_post_time <= now
+        now = datetime.utcnow()
+        due_posts = MediaContent.query.filter(
+            MediaContent.status == 'scheduled',
+            MediaContent.scheduled_post_time <= now
+        ).all()
+
+        current_app.logger.info(f"Found {len(due_posts)} posts due for posting")
+
+        posted_count = 0
+        for media in due_posts:
+            try:
+                # Check if organization exists and has Facebook configured
+                org = Organization.query.get(media.organization_id)
+                if not org:
+                    current_app.logger.warning(f"Organization {media.organization_id} not found for media {media.id}")
+                    continue
+
+                fb_configured = bool(org.facebook_page_id and org.facebook_access_token)
+
+                # Build message
+                message = f"{media.title}"
+                if media.description:
+                    message += f"\n\n{media.description}"
+
+                # Post to Facebook if enabled
+                if media.post_to_facebook and fb_configured:
+                    current_app.logger.info(f"Posting media {media.id} to Facebook...")
+                    post_media_task.delay(
+                        org.id,
+                        message,
+                        media.media_url,
+                        media.title,
+                        media.id,
+                        post_to_instagram=media.post_to_instagram,
+                        media_type=media.media_type
+                    )
+                    posted_count += 1
+
+                # Update status to posted (or pending if still posting)
+                media.status = 'posted'
+                db.session.commit()
+                current_app.logger.info(f"Marked media {media.id} as posted and queued for social posting")
+
+            except Exception as e:
+                current_app.logger.error(f"Error processing scheduled post {media.id}: {str(e)}")
+                try:
+                    media.status = 'failed'
+                    db.session.commit()
+                except:
+                    pass
+
+        current_app.logger.info(f"Processed {posted_count} scheduled posts")
+        return {'processed': posted_count}
+
+    except Exception as e:
+        current_app.logger.error(f"Error in process_scheduled_posts: {str(e)}")
         return {'success': False, 'error': str(e)}

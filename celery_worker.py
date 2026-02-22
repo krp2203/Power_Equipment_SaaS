@@ -10,6 +10,8 @@ from app.core.extensions import celery
 app = create_app(os.getenv('FLASK_CONFIG') or 'prod')
 
 # Configure Celery with Flask app context
+from celery.schedules import crontab
+
 celery.conf.update(
     broker_url=os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0'),
     result_backend=os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/0'),
@@ -18,6 +20,12 @@ celery.conf.update(
     result_serializer='json',
     timezone='UTC',
     enable_utc=True,
+    beat_schedule={
+        'process-scheduled-posts': {
+            'task': 'app.tasks.marketing.process_scheduled_posts',
+            'schedule': crontab(minute='*'),  # Run every minute
+        },
+    },
 )
 
 @celery.task(bind=True)
