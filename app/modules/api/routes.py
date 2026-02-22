@@ -116,11 +116,9 @@ def get_site_info():
 
         # Convert relative URLs to absolute URLs for images (logoUrl, brand_logos)
         if camel_key in ('logoUrl', 'brandLogos') and value:
-            # Determine the correct host to use
-            current_host = request.host
-            # Use current request host (respects if accessed via bentcrankshaft.com or subdomain)
-            # Otherwise fall back to subdomain if org has a slug
-            use_host = current_host if 'bentcrankshaft.com' in current_host else f"{org.slug}.bentcrankshaft.com"
+            # Use current request host - all dealers use their own subdomain
+            # No special cases needed anymore since bentcrankshaft.com redirects to demo.bentcrankshaft.com
+            use_host = request.host
 
             if camel_key == 'logoUrl' and isinstance(value, str):
                 if value.startswith('/'):

@@ -16,20 +16,16 @@ export async function getDealerConfig(): Promise<DealerConfig> {
     // In a real multi-tenant app, we'd pass the Host header or use a specific subdomain.
     // For dev, we'll hit the localhost API directly AND forward cookies (for impersonation).
 
-    // Map root domain to Demo Dealer organization (slug: demo)
+    // Extract slug from host (e.g., 'demo.bentcrankshaft.com' -> 'demo')
     let targetHost = host;
     let slug = '';
 
-    // Determine slug based on the host
-    if (host === 'bentcrankshaft.com' || host === 'www.bentcrankshaft.com') {
-        slug = 'demo'; // Root domain is Demo Dealer
-        // Keep targetHost as bentcrankshaft.com so API responses use correct host
-    } else if (host.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/)) {
-        // If accessing via IP (local dev), pretend to be localhost so Backend loads Org 1 (Demo Dealer)
-        slug = '';
+    if (host.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/)) {
+        // If accessing via IP (local dev), use localhost
         targetHost = 'localhost';
+        slug = '';
     } else {
-        // Extract slug from host (e.g., 'kens-mowers.bentcrankshaft.com' -> 'kens-mowers')
+        // Extract slug from subdomain (e.g., 'kens-mowers.bentcrankshaft.com' -> 'kens-mowers')
         const hostParts = host.split('.');
         if (hostParts.length > 1 && !host.includes('localhost')) {
             slug = hostParts[0]; // First part is the slug
@@ -42,7 +38,7 @@ export async function getDealerConfig(): Promise<DealerConfig> {
             headers: {
                 'Cookie': cookieHeader,
                 'X-Forwarded-Host': targetHost,
-                'Host': targetHost // Pass the actual host so API uses correct domain
+                'Host': targetHost // Pass the actual host for consistent behavior
             }
         });
         if (!res.ok) throw new Error('Failed to fetch config');
