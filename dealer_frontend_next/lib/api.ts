@@ -72,7 +72,9 @@ export async function getDealerConfig(): Promise<DealerConfig> {
                 contact_text: data.theme?.contact_text,
 
                 // Brands
-                brand_logos: data.theme?.brand_logos
+                brand_logos: data.theme?.brand_logos || data.theme?.brandLogos,
+                brandLogos: data.theme?.brandLogos || data.theme?.brand_logos,
+                brandLogoUrls: data.theme?.brandLogoUrls
             }
         };
     } catch (err) {
