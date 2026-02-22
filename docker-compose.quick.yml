@@ -21,7 +21,7 @@ services:
     image: python:3.11-slim
     restart: unless-stopped
     working_dir: /app
-    command: sh -c "pip install -q --no-cache-dir -r requirements.txt && celery -A celery_worker.celery worker --loglevel=info"
+    command: sh -c "apt-get update && apt-get install -y imagemagick && pip install -q --no-cache-dir -r requirements.txt && celery -A celery_worker.celery worker --loglevel=info"
     volumes:
       - .:/app
     env_file:
@@ -39,7 +39,7 @@ services:
     image: python:3.11-slim
     restart: unless-stopped
     working_dir: /app
-    command: sh -c "pip install -q --no-cache-dir -r requirements.txt && gunicorn --bind 0.0.0.0:5000 run:app"
+    command: sh -c "apt-get update && apt-get install -y imagemagick && pip install -q --no-cache-dir -r requirements.txt && gunicorn --bind 0.0.0.0:5000 run:app"
     volumes:
       - .:/app
     ports:

@@ -14,37 +14,41 @@ from app.core.models import FacebookPost, MediaContent, ScheduledPost, Banner
 import app.modules.marketing.chunk_upload as chunk_upload
 
 
-def generate_video_thumbnail(video_path, output_path, timestamp='00:00:01'):
+def generate_video_thumbnail(video_path, output_path, frame='0'):
     """
-    Generate a thumbnail from a video file at the specified timestamp.
-    Uses FFmpeg if available, otherwise returns False gracefully.
+    Generate a thumbnail from a video file using ImageMagick.
+    ImageMagick's convert command is lightweight and efficient.
 
     Args:
         video_path: Path to the video file
         output_path: Path to save the thumbnail
-        timestamp: Timestamp to extract (default: 1 second)
+        frame: Frame number to extract (default: 0 = first frame)
 
     Returns:
         True if successful, False otherwise
     """
     try:
+        # Use ImageMagick's convert command to extract first frame
+        # Format: convert 'video.mp4[0]' -quality 80 thumbnail.jpg
         cmd = [
-            'ffmpeg',
-            '-i', video_path,
-            '-ss', timestamp,
-            '-vframes', '1',
-            '-vf', 'scale=400:300',
-            '-q:v', '5',
-            '-y',  # Overwrite output file
+            'convert',
+            f'{video_path}[{frame}]',  # Extract specific frame
+            '-quality', '80',            # JPEG quality
+            '-resize', '400x300',        # Resize to standard thumbnail size
             output_path
         ]
 
-        # Run ffmpeg with stderr/stdout suppressed
-        subprocess.run(cmd, capture_output=True, timeout=30)
+        # Run convert with stderr/stdout suppressed
+        result = subprocess.run(cmd, capture_output=True, timeout=30)
 
-        return os.path.exists(output_path)
+        if result.returncode == 0 and os.path.exists(output_path):
+            return True
+        else:
+            error_msg = result.stderr.decode('utf-8', errors='ignore') if result.stderr else 'Unknown error'
+            current_app.logger.warning(f"ImageMagick thumbnail generation warning: {error_msg}")
+            return False
     except Exception as e:
-        current_app.logger.error(f"Video thumbnail generation failed: {str(e)}")
+        current_app.logger.warning(f"Video thumbnail generation unavailable: {str(e)}")
         return False
 
 @marketing_bp.route('/marketing', methods=['GET', 'POST'])
