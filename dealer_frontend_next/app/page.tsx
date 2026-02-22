@@ -43,29 +43,37 @@ export default async function Home() {
       {/* Hero Section */}
       <section className="bg-gradient-to-b from-gray-900 to-gray-800 text-white py-8 md:py-12">
         <div className="container mx-auto px-4 relative min-h-[280px] md:min-h-[320px] flex items-center">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full items-center">
-            {/* Logo (Left Side) */}
-            {config.theme.hero_show_logo && config.theme.logoUrl && (
-              <div className="flex justify-center md:justify-start items-center order-first md:order-none">
-                <div className="flex-shrink-0">
-                  <img
-                    src={config.theme.logoUrl}
-                    alt={config.name}
-                    className="h-48 md:h-56 w-auto object-contain bg-white/5 p-4 rounded-lg backdrop-blur-sm shadow-lg hover:shadow-lg transition-shadow"
-                  />
-                </div>
-              </div>
-            )}
+          {/* Logo (Absolute Left Positioning) */}
+          {config.theme.hero_show_logo && config.theme.logoUrl && (
+            <div className="hidden md:flex absolute left-4 top-1/2 -translate-y-1/2">
+              <img
+                src={config.theme.logoUrl}
+                alt={config.name}
+                className="h-48 md:h-64 w-auto object-contain bg-white/10 p-6 rounded-lg backdrop-blur-sm shadow-xl hover:shadow-2xl transition-shadow"
+              />
+            </div>
+          )}
 
-            {/* Content (Right Side / Center if no logo) */}
-            <div className="flex flex-col items-center md:items-start text-center md:text-left z-10">
-              <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg leading-tight">
-                {heroTitle}
-              </h1>
-              <p className="text-lg md:text-xl mb-6 text-gray-200 drop-shadow-md">
-                {heroTagline}
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start w-full">
+          {/* Mobile Logo - Centered above text */}
+          {config.theme.hero_show_logo && config.theme.logoUrl && (
+            <div className="md:hidden flex justify-center mb-6 w-full">
+              <img
+                src={config.theme.logoUrl}
+                alt={config.name}
+                className="h-40 w-auto object-contain bg-white/10 p-4 rounded-lg backdrop-blur-sm shadow-lg"
+              />
+            </div>
+          )}
+
+          {/* Content - Centered */}
+          <div className="flex flex-col items-center text-center w-full z-10">
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 drop-shadow-lg leading-tight">
+              {heroTitle}
+            </h1>
+            <p className="text-lg md:text-xl mb-6 text-gray-200 drop-shadow-md">
+              {heroTagline}
+            </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center w-full">
                 <Link
                   href="/inventory"
                   className="px-10 py-4 rounded-lg font-bold text-lg text-white transition-all hover:shadow-lg transform hover:scale-105 text-center shadow-xl"
@@ -81,7 +89,6 @@ export default async function Home() {
                 </Link>
               </div>
             </div>
-          </div>
         </div>
       </section>
 
