@@ -172,8 +172,8 @@ export default async function Home() {
       </section>
 
       {/* Brand Carousel */}
-      {config.theme.brand_logos && Object.keys(config.theme.brand_logos).length > 0 && (
-        <BrandCarousel logos={Object.values(config.theme.brand_logos)} />
+      {config.theme.brandLogos && Object.keys(config.theme.brandLogos).length > 0 && (
+        <BrandCarousel logos={config.theme.brandLogos} logoUrls={config.theme.brandLogoUrls} />
       )}
     </div>
   );

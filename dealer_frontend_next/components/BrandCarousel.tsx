@@ -2,13 +2,47 @@
 
 import { useEffect, useState } from 'react';
 
-interface BrandCarouselProps {
-    logos: string[];
+interface BrandLogoItem {
+    id: string | number;
+    logo: string;
+    url?: string;
 }
 
-export default function BrandCarousel({ logos }: BrandCarouselProps) {
+interface BrandCarouselProps {
+    logos?: string[] | Record<string, string>; // Support old format (array) and new format (object)
+    logoUrls?: Record<string, string>; // Separate URLs for each logo
+}
+
+export default function BrandCarousel({ logos, logoUrls }: BrandCarouselProps) {
     // If no logos, don't render anything
-    if (!logos || logos.length === 0) return null;
+    if (!logos || (Array.isArray(logos) && logos.length === 0) || (typeof logos === 'object' && !Array.isArray(logos) && Object.keys(logos).length === 0)) {
+        return null;
+    }
+
+    // Convert logos to array of objects with URL support
+    let brandItems: BrandLogoItem[] = [];
+
+    if (Array.isArray(logos)) {
+        // Old format: array of URLs
+        brandItems = logos.map((logo, index) => ({
+            id: index,
+            logo,
+            url: undefined,
+        }));
+    } else if (typeof logos === 'object') {
+        // New format: object with index keys
+        brandItems = Object.entries(logos).map(([id, logo]) => ({
+            id,
+            logo,
+            url: logoUrls?.[id],
+        }));
+    }
+
+    const handleLogoClick = (url?: string) => {
+        if (url) {
+            window.open(url, '_blank', 'noopener,noreferrer');
+        }
+    };
 
     return (
         <section className="py-8 bg-white overflow-hidden border-t border-gray-100">
@@ -24,14 +58,20 @@ export default function BrandCarousel({ logos }: BrandCarouselProps) {
                 {/* Scrolling Track */}
                 <div className="flex gap-16 animate-scroll whitespace-nowrap py-4">
                     {/* Double the logos to create seamless loop */}
-                    {[...logos, ...logos].map((logo, index) => (
-                        <div key={index} className="flex-shrink-0 h-16 w-32 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-60 hover:opacity-100">
+                    {[...brandItems, ...brandItems].map((item, index) => (
+                        <button
+                            key={index}
+                            onClick={() => handleLogoClick(item.url)}
+                            className="flex-shrink-0 h-16 w-32 flex items-center justify-center grayscale hover:grayscale-0 transition-all duration-300 opacity-60 hover:opacity-100"
+                            style={{ cursor: item.url ? 'pointer' : 'default' }}
+                            title={item.url ? 'Click to visit' : ''}
+                        >
                             <img
-                                src={logo}
-                                alt={`Brand ${index}`}
+                                src={item.logo}
+                                alt={`Brand ${item.id}`}
                                 className="h-full w-full object-contain"
                             />
-                        </div>
+                        </button>
                     ))}
                 </div>
             </div>

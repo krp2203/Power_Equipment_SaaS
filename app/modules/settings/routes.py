@@ -109,6 +109,8 @@ def organization():
         
         # Handle Brand Logos
         brand_logos = new_theme.get('brand_logos', {})
+        brand_logo_urls = new_theme.get('brand_logo_urls', {})
+
         for i in range(1, 9):
             field_name = f'brand_logo_{i}'
             field = getattr(form, field_name)
@@ -120,7 +122,18 @@ def organization():
                 file_path = os.path.join(upload_dir, filename)
                 f.save(file_path)
                 brand_logos[str(i)] = f"/static/uploads/brands/{filename}"
+
+            # Handle brand logo URL links
+            url_field_name = f'brand_logo_url_{i}'
+            if url_field_name in request.form:
+                url_value = request.form.get(url_field_name, '').strip()
+                if url_value:
+                    brand_logo_urls[str(i)] = url_value
+                elif str(i) in brand_logo_urls:
+                    del brand_logo_urls[str(i)]
+
         new_theme['brand_logos'] = brand_logos
+        new_theme['brand_logo_urls'] = brand_logo_urls
             
         # Save Text Customizations
         new_theme['hero_title'] = form.hero_title.data

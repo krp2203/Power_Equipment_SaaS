@@ -30,14 +30,14 @@ class OrganizationSettingsForm(FlaskForm):
     hero_show_logo = BooleanField('Show Logo in Hero Section', description="Display the company logo above the title")
     
     # Brands Customization
-    brand_logo_1 = FileField('Brand Logo 1', validators=[FileAllowed(['jpg', 'png', 'webp'], 'Images only!')])
-    brand_logo_2 = FileField('Brand Logo 2', validators=[FileAllowed(['jpg', 'png', 'webp'], 'Images only!')])
-    brand_logo_3 = FileField('Brand Logo 3', validators=[FileAllowed(['jpg', 'png', 'webp'], 'Images only!')])
-    brand_logo_4 = FileField('Brand Logo 4', validators=[FileAllowed(['jpg', 'png', 'webp'], 'Images only!')])
-    brand_logo_5 = FileField('Brand Logo 5', validators=[FileAllowed(['jpg', 'png', 'webp'], 'Images only!')])
-    brand_logo_6 = FileField('Brand Logo 6', validators=[FileAllowed(['jpg', 'png', 'webp'], 'Images only!')])
-    brand_logo_7 = FileField('Brand Logo 7', validators=[FileAllowed(['jpg', 'png', 'webp'], 'Images only!')])
-    brand_logo_8 = FileField('Brand Logo 8', validators=[FileAllowed(['jpg', 'png', 'webp'], 'Images only!')])
+    brand_logo_1 = FileField('Brand Logo 1', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_2 = FileField('Brand Logo 2', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_3 = FileField('Brand Logo 3', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_4 = FileField('Brand Logo 4', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_5 = FileField('Brand Logo 5', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_6 = FileField('Brand Logo 6', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_7 = FileField('Brand Logo 7', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_8 = FileField('Brand Logo 8', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
 
     # Features Customization
     feat_inventory_title = StringField('Inventory Section Title')
