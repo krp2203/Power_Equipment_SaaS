@@ -23,10 +23,10 @@ export default function AdvertisementModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-2xl w-full max-w-[95vw] relative"
+        className="bg-white rounded-lg shadow-2xl w-full max-w-[85vw] relative"
         onClick={(e) => e.stopPropagation()}
         style={{
-          maxHeight: '95vh',
+          maxHeight: '85vh',
           display: 'flex',
           flexDirection: 'column',
           overflowY: 'auto',
@@ -49,8 +49,8 @@ export default function AdvertisementModal({
           style={{
             width: '100%',
             aspectRatio: '16 / 9',
-            maxHeight: '70vh',
-            minHeight: '300px',
+            maxHeight: '60vh',
+            minHeight: '250px',
           }}
         >
           {advertisement.media_type === 'video' ? (
