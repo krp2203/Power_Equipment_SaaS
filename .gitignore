@@ -99,3 +99,4 @@ seed_dev_db.py
 # Sample/upload directories
 Samples/
 migrations/
+backups/
