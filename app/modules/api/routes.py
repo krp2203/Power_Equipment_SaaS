@@ -93,17 +93,42 @@ def get_site_info():
     org = getattr(g, 'current_org', None)
     if not org:
         return jsonify({"error": "Tenant not found"}), 404
-    
+
     # Marketing Flags (Safe subsets)
     modules = org.modules or {}
-    
+
+    # Convert theme config keys to camelCase for frontend
+    theme_config = org.theme_config or {}
+    converted_theme = {}
+    for key, value in theme_config.items():
+        # Convert snake_case to camelCase
+        camel_key = ''.join(word if i == 0 else word.capitalize() for i, word in enumerate(key.split('_')))
+
+        # Convert relative URLs to absolute URLs for images (logoUrl, brand_logos)
+        if camel_key in ('logoUrl', 'brandLogos') and value:
+            if camel_key == 'logoUrl' and isinstance(value, str):
+                if value.startswith('/'):
+                    # Convert relative path to absolute URL using dealer's subdomain
+                    value = f"https://{org.slug}.bentcrankshaft.com{value}" if org.slug else f"{request.scheme}://{request.host}{value}"
+            elif camel_key == 'brandLogos' and isinstance(value, dict):
+                # Convert each brand logo URL
+                converted_logos = {}
+                for idx, logo_url in value.items():
+                    if logo_url and logo_url.startswith('/'):
+                        converted_logos[idx] = f"https://{org.slug}.bentcrankshaft.com{logo_url}" if org.slug else f"{request.scheme}://{request.host}{logo_url}"
+                    else:
+                        converted_logos[idx] = logo_url
+                value = converted_logos
+
+        converted_theme[camel_key] = value
+
     response = {
         "identity": {
             "name": org.name,
             "slug": org.slug,
         },
         "is_active": org.is_active,  # Include active status for suspension check
-        "theme": org.theme_config or {},
+        "theme": converted_theme,
         "integrations": {
             "ari": {
                 "enabled": modules.get('ari', False),
@@ -121,7 +146,7 @@ def get_site_info():
             }
         }
     }
-    
+
     return jsonify(response)
 
 @api_bp.route('/v1/inventory', methods=['GET'])
