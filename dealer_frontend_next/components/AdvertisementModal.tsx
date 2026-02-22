@@ -37,13 +37,23 @@ export default function AdvertisementModal({
           </svg>
         </button>
 
-        {/* Image */}
+        {/* Media - Image or Video */}
         <div className="bg-gray-900 flex items-center justify-center">
-          <img
-            src={advertisement.image}
-            alt={advertisement.title}
-            className="max-h-96 w-auto object-contain"
-          />
+          {advertisement.media_type === 'video' ? (
+            <video
+              src={advertisement.image}
+              poster={advertisement.thumbnail}
+              className="max-h-96 w-auto object-contain"
+              controls={true}
+              autoPlay={true}
+            />
+          ) : (
+            <img
+              src={advertisement.image}
+              alt={advertisement.title}
+              className="max-h-96 w-auto object-contain"
+            />
+          )}
         </div>
 
         {/* Content */}

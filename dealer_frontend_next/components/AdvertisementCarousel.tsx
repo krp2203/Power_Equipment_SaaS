@@ -69,11 +69,20 @@ export default function AdvertisementCarousel({
               onClick={() => handleThumbnailClick(currentAd)}
               className="overflow-hidden rounded-lg hover:shadow-lg transition-shadow"
             >
-              <img
-                src={currentAd.thumbnail || currentAd.image}
-                alt={currentAd.title}
-                className="h-80 w-auto object-cover hover:opacity-80 transition-opacity"
-              />
+              {currentAd.media_type === 'video' ? (
+                <video
+                  src={currentAd.image}
+                  poster={currentAd.thumbnail}
+                  className="h-80 w-auto object-cover hover:opacity-80 transition-opacity"
+                  controls={false}
+                />
+              ) : (
+                <img
+                  src={currentAd.thumbnail || currentAd.image}
+                  alt={currentAd.title}
+                  className="h-80 w-auto object-cover hover:opacity-80 transition-opacity"
+                />
+              )}
             </button>
           </div>
 

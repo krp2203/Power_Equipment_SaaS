@@ -70,4 +70,5 @@ export interface Advertisement {
     image: string;
     thumbnail?: string;
     link_url?: string;
+    media_type?: 'image' | 'video';
 }

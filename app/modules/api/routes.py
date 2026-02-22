@@ -40,7 +40,7 @@ def get_advertisements():
         try:
             from sqlalchemy import text
             sql = text("""
-                SELECT id, title, description, media_url, thumbnail_url, link_url
+                SELECT id, title, description, media_url, thumbnail_url, link_url, media_type
                 FROM media_content
                 WHERE organization_id = :org_id
                 AND post_to_banner = true
@@ -62,10 +62,10 @@ def get_advertisements():
             # Handle both ORM objects and raw SQL tuples
             if hasattr(row, 'id'):
                 # ORM object
-                ad_id, ad_title, ad_desc, ad_media, ad_thumb, ad_link = row.id, row.title, row.description, row.media_url, row.thumbnail_url, row.link_url
+                ad_id, ad_title, ad_desc, ad_media, ad_thumb, ad_link, ad_type = row.id, row.title, row.description, row.media_url, row.thumbnail_url, row.link_url, row.media_type
             else:
                 # Raw SQL tuple
-                ad_id, ad_title, ad_desc, ad_media, ad_thumb, ad_link = row
+                ad_id, ad_title, ad_desc, ad_media, ad_thumb, ad_link, ad_type = row
 
             result.append({
                 'id': ad_id,
@@ -73,7 +73,8 @@ def get_advertisements():
                 'description': ad_desc or '',
                 'image': ad_media,  # Use original image (high quality)
                 'thumbnail': ad_thumb or ad_media,  # Fallback to original if no thumb
-                'link_url': ad_link or ''
+                'link_url': ad_link or '',
+                'media_type': ad_type  # Include media type so frontend knows if it's a video
             })
 
         print(f"[ADS-RETURN] Returning {len(result)} ads in JSON", file=sys.stderr)
