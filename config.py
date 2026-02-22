@@ -35,6 +35,9 @@ class Config:
     gcs_bucket = os.environ.get('GCS_BUCKET')  # Renamed to gcs_bucket for Celery compatibility
     MAX_CONTENT_LENGTH = 500 * 1024 * 1024  # 500MB for video uploads
 
+    # CSRF Protection
+    WTF_CSRF_ENABLED = False  # Disabled for multi-tenant setup with custom domains and proxies
+
     # Facebook
     FACEBOOK_APP_ID = os.environ.get('FACEBOOK_APP_ID')
     FACEBOOK_APP_SECRET = os.environ.get('FACEBOOK_APP_SECRET')
