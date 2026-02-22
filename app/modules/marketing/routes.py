@@ -303,16 +303,26 @@ def upload_chunk():
 def complete_chunk_upload():
     """Complete chunked upload and create MediaContent record"""
     try:
-        # Log the entire request JSON for debugging
-        current_app.logger.info(f"Complete chunk upload request: {request.json}")
-
-        upload_id = request.json.get('uploadId')
-        title = request.json.get('title')
-        description = request.json.get('content')
-        link_url = request.json.get('link_url')
-        post_to_facebook = request.json.get('post_to_facebook', False)
-        post_to_instagram = request.json.get('post_to_instagram', False)
-        post_to_banner = request.json.get('post_to_banner', False)
+        # Handle both JSON and FormData requests
+        if request.is_json:
+            upload_id = request.json.get('uploadId')
+            title = request.json.get('title')
+            description = request.json.get('content')
+            link_url = request.json.get('link_url')
+            post_to_facebook = request.json.get('post_to_facebook', False)
+            post_to_instagram = request.json.get('post_to_instagram', False)
+            post_to_banner = request.json.get('post_to_banner', False)
+            thumbnail_file = None
+        else:
+            # FormData request (includes thumbnail file)
+            upload_id = request.form.get('uploadId')
+            title = request.form.get('title')
+            description = request.form.get('content')
+            link_url = request.form.get('link_url')
+            post_to_facebook = request.form.get('post_to_facebook') == 'true'
+            post_to_instagram = request.form.get('post_to_instagram') == 'true'
+            post_to_banner = request.form.get('post_to_banner') == 'true'
+            thumbnail_file = request.files.get('thumbnail')
 
         # Debug logging
         current_app.logger.info(f"Complete chunk upload - title: {title}, post_to_facebook: {post_to_facebook}, post_to_instagram: {post_to_instagram}, post_to_banner: {post_to_banner}")
@@ -338,26 +348,41 @@ def complete_chunk_upload():
         else:
             media_url = f"{request.scheme}://{request.host}/static/uploads/media/{org.id}/{unique_filename}"
 
-        # Generate thumbnails for videos
+        # Generate/Use thumbnails for videos
         thumbnail_url = None
         if media_type == 'video':
             try:
                 import uuid
                 thumbnail_filename = f"{uuid.uuid4().hex}_thumb.jpg"
                 upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'media', str(org.id))
+                os.makedirs(upload_dir, exist_ok=True)
                 thumbnail_path = os.path.join(upload_dir, thumbnail_filename)
 
-                if generate_video_thumbnail(file_path, thumbnail_path):
-                    if org.slug:
-                        thumbnail_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/media/{org.id}/{thumbnail_filename}"
-                    else:
-                        thumbnail_url = f"{request.scheme}://{request.host}/static/uploads/media/{org.id}/{thumbnail_filename}"
+                # If thumbnail was provided from frontend (generated client-side), use it
+                if thumbnail_file:
+                    thumbnail_file.save(thumbnail_path)
+                    current_app.logger.info(f"Using client-generated thumbnail for video: {thumbnail_filename}")
+                    thumbnail_url_path = thumbnail_filename
+                # Otherwise, try to generate thumbnail server-side
+                elif generate_video_thumbnail(file_path, thumbnail_path):
+                    current_app.logger.info(f"Generated server-side thumbnail for video: {thumbnail_filename}")
+                    thumbnail_url_path = thumbnail_filename
                 else:
                     # If thumbnail generation failed, use the video URL as fallback
+                    current_app.logger.warning("Could not generate thumbnail, using video URL as fallback")
                     thumbnail_url = media_url
+                    thumbnail_url_path = None
+
+                # Construct thumbnail URL if thumbnail was created
+                if thumbnail_url_path:
+                    if org.slug:
+                        thumbnail_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/media/{org.id}/{thumbnail_url_path}"
+                    else:
+                        thumbnail_url = f"{request.scheme}://{request.host}/static/uploads/media/{org.id}/{thumbnail_url_path}"
+
             except Exception as e:
-                current_app.logger.warning(f"Video thumbnail generation unavailable: {str(e)} - using video URL as thumbnail fallback")
-                # If thumbnail generation fails (e.g., FFmpeg not installed), fall back to using video URL as thumbnail
+                current_app.logger.warning(f"Video thumbnail processing error: {str(e)} - using video URL as thumbnail fallback")
+                # If thumbnail processing fails, fall back to using video URL as thumbnail
                 thumbnail_url = media_url
 
         # Check if at least one destination is selected

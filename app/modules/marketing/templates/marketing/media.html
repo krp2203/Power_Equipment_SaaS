@@ -323,6 +323,8 @@ dropZone.addEventListener('click', function(e) {
 });
 
 // ===== FILE PREVIEW & SELECTION =====
+let generatedThumbnailBlob = null; // Store thumbnail for upload
+
 fileInput.addEventListener('change', function(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -343,6 +345,7 @@ fileInput.addEventListener('change', function(e) {
     const isVideo = file.type.startsWith('video/');
 
     if (isImage) {
+        generatedThumbnailBlob = null; // No thumbnail needed for images
         const reader = new FileReader();
         reader.onload = function(event) {
             previewImage.innerHTML = `<img src="${event.target.result}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">`;
@@ -359,6 +362,13 @@ fileInput.addEventListener('change', function(e) {
                 canvas.height = video.videoHeight;
                 const ctx = canvas.getContext('2d');
                 ctx.drawImage(video, 0, 0);
+
+                // Save thumbnail as blob for later upload
+                canvas.toBlob(function(blob) {
+                    generatedThumbnailBlob = blob;
+                    console.log('Thumbnail generated:', blob.size, 'bytes');
+                }, 'image/jpeg', 0.8);
+
                 previewImage.innerHTML = `<img src="${canvas.toDataURL()}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px;">`;
             });
         };
@@ -449,20 +459,23 @@ async function uploadFileInChunks(file) {
         }
 
         // Step 3: Complete upload and process
+        const formData = new FormData();
+        formData.append('uploadId', uploadId);
+        formData.append('title', document.getElementById('title').value);
+        formData.append('content', document.getElementById('description').value);
+        formData.append('link_url', document.getElementById('link_url').value);
+        formData.append('post_to_facebook', document.getElementById('post_to_facebook').checked);
+        formData.append('post_to_instagram', document.getElementById('post_to_instagram').checked);
+        formData.append('post_to_banner', document.getElementById('post_to_banner').checked);
+
+        // Include thumbnail if we generated one (for videos)
+        if (generatedThumbnailBlob) {
+            formData.append('thumbnail', generatedThumbnailBlob, 'thumbnail.jpg');
+        }
+
         const completeResponse = await fetch('/marketing/complete-chunk-upload', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                uploadId: uploadId,
-                title: document.getElementById('title').value,
-                content: document.getElementById('description').value,
-                link_url: document.getElementById('link_url').value,
-                post_to_facebook: document.getElementById('post_to_facebook').checked,
-                post_to_instagram: document.getElementById('post_to_instagram').checked,
-                post_to_banner: document.getElementById('post_to_banner').checked
-            })
+            body: formData
         });
 
         if (!completeResponse.ok) {
