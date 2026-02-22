@@ -290,11 +290,15 @@ def upload_chunk():
 @login_required
 @csrf.exempt
 def complete_chunk_upload():
-    """Complete chunked upload and post to Facebook"""
+    """Complete chunked upload and create MediaContent record"""
     try:
         upload_id = request.json.get('uploadId')
         title = request.json.get('title')
-        message_content = request.json.get('content')
+        description = request.json.get('content')
+        link_url = request.json.get('link_url')
+        post_to_facebook = request.json.get('post_to_facebook', False)
+        post_to_instagram = request.json.get('post_to_instagram', False)
+        post_to_banner = request.json.get('post_to_banner', False)
 
         org = g.current_org
         if not org:
@@ -303,33 +307,99 @@ def complete_chunk_upload():
         # Assemble chunks
         unique_filename, file_path = chunk_upload.assemble_chunks(upload_id, org.id)
 
+        # Determine media type based on file extension
+        import mimetypes
+        mime_type, _ = mimetypes.guess_type(file_path)
+        if mime_type and mime_type.startswith('video/'):
+            media_type = 'video'
+        else:
+            media_type = 'image'
+
         # Construct public URL (use 'media' path to match where file is saved)
         if org.slug:
             media_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/media/{org.id}/{unique_filename}"
         else:
             media_url = f"{request.scheme}://{request.host}/static/uploads/media/{org.id}/{unique_filename}"
 
-        # Create FacebookPost record to track status
-        fb_post = FacebookPost(
-            organization_id=org.id,
-            user_id=current_user.id,
-            title=title,
-            message=message_content,
-            media_type='video',
-            media_url=media_url,
-            status='pending'
-        )
-        db.session.add(fb_post)
-        db.session.commit()
+        # Generate thumbnails for videos
+        thumbnail_url = None
+        if media_type == 'video':
+            try:
+                thumbnail_filename = f"{uuid.uuid4().hex}_thumb.jpg"
+                upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'media', str(org.id))
+                thumbnail_path = os.path.join(upload_dir, thumbnail_filename)
 
-        # Queue video upload task with post ID
-        from app.tasks.marketing import post_video_task
-        message = f"{title}\n\n{message_content}"
-        post_video_task.delay(org.id, message, media_url, title, fb_post.id)
+                if generate_video_thumbnail(file_path, thumbnail_path):
+                    if org.slug:
+                        thumbnail_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/media/{org.id}/{thumbnail_filename}"
+                    else:
+                        thumbnail_url = f"{request.scheme}://{request.host}/static/uploads/media/{org.id}/{thumbnail_filename}"
+            except Exception as e:
+                current_app.logger.error(f"Failed to generate video thumbnail: {str(e)}")
+                # If thumbnail generation fails, fall back to not having a thumbnail
+
+        # Check if at least one destination is selected
+        if not (post_to_facebook or post_to_instagram or post_to_banner):
+            return jsonify({'error': 'Please select at least one destination'}), 400
+
+        # Determine initial status and whether to post now
+        initial_status = 'posted' if (post_to_facebook or post_to_instagram or post_to_banner) else 'draft'
+        post_now = (post_to_facebook or post_to_instagram)
+
+        # Create MediaContent record
+        media_content = MediaContent(
+            organization_id=org.id,
+            title=title,
+            description=description,
+            media_url=media_url,
+            thumbnail_url=thumbnail_url,
+            media_type=media_type,
+            link_url=link_url,
+            post_to_facebook=post_to_facebook,
+            post_to_instagram=post_to_instagram,
+            post_to_banner=post_to_banner,
+            status=initial_status
+        )
+
+        db.session.add(media_content)
+        db.session.flush()  # Get the ID without committing
+
+        # Queue tasks for immediate posting
+        if post_now:
+            from app.tasks.marketing import post_media_task
+            message = f"{media_content.title}"
+            if media_content.description:
+                message += f"\n\n{media_content.description}"
+
+            # Post to Facebook/Instagram
+            if post_to_facebook or post_to_instagram:
+                task_result = post_media_task.delay(
+                    org.id,
+                    message,
+                    media_url,
+                    media_content.title,
+                    media_content.id,
+                    post_to_instagram,
+                    media_type
+                )
+
+        # Create ScheduledPost for banner if selected
+        if post_to_banner:
+            scheduled_post = ScheduledPost(
+                organization_id=org.id,
+                media_content_id=media_content.id,
+                destination='banner',
+                scheduled_time=datetime.utcnow(),
+                status='posted'
+            )
+            db.session.add(scheduled_post)
+
+        db.session.commit()
 
         return jsonify({
             'success': True,
-            'message': f'Video "{title}" is being processed and uploaded to Facebook in the background.'
+            'message': f'"{title}" uploaded successfully and queued for posting!',
+            'media_id': media_content.id
         })
 
     except Exception as e:

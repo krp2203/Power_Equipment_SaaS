@@ -457,7 +457,11 @@ async function uploadFileInChunks(file) {
             body: JSON.stringify({
                 uploadId: uploadId,
                 title: document.getElementById('title').value,
-                content: document.getElementById('description').value
+                content: document.getElementById('description').value,
+                link_url: document.getElementById('link_url').value,
+                post_to_facebook: document.getElementById('post_to_facebook').checked,
+                post_to_instagram: document.getElementById('post_to_instagram').checked,
+                post_to_banner: document.getElementById('post_to_banner').checked
             })
         });
 
