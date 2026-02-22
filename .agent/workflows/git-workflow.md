@@ -27,6 +27,12 @@ git push origin dev
 ## 2. Promoting to CT 101 (Production)
 Once changes are tested and verified on CT 106, merge them into `main`.
 
+### Database Schema Changes
+If you made changes to models on Dev:
+1.  **On CT 106**: Generate the migration: `flask db migrate -m "Description"`
+2.  **Commit**: Git add/commit the new migration file in `migrations/versions/`.
+3.  **Deploy**: When you pull on CT 101, run `flask db upgrade`.
+
 ### On CT 106 (or Production AG):
 // turbo
 ```bash
@@ -43,5 +49,11 @@ Pull the changes onto the live server.
 ```bash
 git checkout main
 git pull origin main
+flask db upgrade  # If there are new migrations
 # Restart services if needed
 ```
+
+## 4. Configuration Synchronization (.env)
+Since `.env` is NOT in Git, any changes made on Dev must be manually applied to Production:
+1.  **Identify Changes**: Keep track of any new environment variables added during dev.
+2.  **Apply to Prod**: Use `scp` or manual edit to update `/root/power_equip_saas/.env` on CT 101.
