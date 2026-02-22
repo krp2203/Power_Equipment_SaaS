@@ -376,6 +376,7 @@ def complete_chunk_upload():
         db.session.flush()  # Get the ID without committing
 
         # Queue tasks for immediate posting
+        current_app.logger.info(f"Video upload - post_now={post_now}, post_to_facebook={post_to_facebook}, post_to_instagram={post_to_instagram}")
         if post_now:
             from app.tasks.marketing import post_media_task
             message = f"{media_content.title}"
@@ -384,6 +385,7 @@ def complete_chunk_upload():
 
             # Post to Facebook/Instagram
             if post_to_facebook or post_to_instagram:
+                current_app.logger.info(f"Queueing post_media_task for media_content_id={media_content.id}, org_id={org.id}, media_type={media_type}")
                 task_result = post_media_task.delay(
                     org.id,
                     message,
@@ -393,6 +395,7 @@ def complete_chunk_upload():
                     post_to_instagram,
                     media_type
                 )
+                current_app.logger.info(f"Task queued with result: {task_result}")
 
         # Create ScheduledPost for banner if selected
         if post_to_banner:
