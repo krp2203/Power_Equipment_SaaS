@@ -14,7 +14,7 @@ echo "🚀 Starting database backup..."
 # Perform pg_dump inside the docker container
 # Using -f to specify output file inside the mount if we had one, 
 # but we'll stream it to host for safety.
-docker compose -f docker-compose.quick.yml exec db pg_dump -U user -d dealer_dashboard > "$BACKUP_FILE"
+docker compose -f docker-compose.quick.yml exec -T db pg_dump -U user -d dealer_dashboard > "$BACKUP_FILE"
 
 if [ $? -eq 0 ]; then
     echo "✅ Backup successful! Saved to: $BACKUP_FILE"
