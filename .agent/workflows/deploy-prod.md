@@ -63,7 +63,14 @@ docker compose exec web flask db upgrade
 ### 7. Update Configuration (.env)
 If you added any new variables to `.env` on CT 106, manually add them to CT 101's `.env` now.
 
-### 8. Restart & Verify
+### 8. Upload New Images (If any)
+If you uploaded new part images, brand logos, or banners on CT 106:
+// turbo
+```bash
+scp -r root@192.168.86.56:/root/power_equip_saas_test/app/static/uploads/{logos,brands,banners,inventory} /root/power_equip_saas/app/static/uploads/
+```
+
+### 9. Restart & Verify
 // turbo
 ```bash
 docker compose restart web worker
