@@ -61,9 +61,7 @@ def add_tenant():
             send_dealer_admin_notification(
                 dealer_name=new_org.name,
                 dealer_slug=new_org.slug,
-                custom_domain=new_org.custom_domain,
-                temp_admin_password=raw_password if was_auto_gen else None,
-                admin_username=new_user.username
+                custom_domain=new_org.custom_domain
             )
         except Exception as e:
             print(f"Warning: Failed to send admin notification: {e}")

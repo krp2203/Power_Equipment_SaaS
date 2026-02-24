@@ -6,7 +6,7 @@ from flask import render_template_string, current_app
 from flask_mail import Mail, Message
 from app.core.extensions import mail
 
-def send_dealer_admin_notification(dealer_name, dealer_slug, custom_domain=None, temp_admin_password=None, admin_username=None):
+def send_dealer_admin_notification(dealer_name, dealer_slug, custom_domain=None):
     """
     Send a notification to SaaS admin (ken@bentcrankshaft.com) with dealer setup details.
 
@@ -14,8 +14,6 @@ def send_dealer_admin_notification(dealer_name, dealer_slug, custom_domain=None,
         dealer_name (str): Name of the dealer
         dealer_slug (str): Dealer subdomain slug
         custom_domain (str, optional): Custom domain if provided
-        temp_admin_password (str, optional): Temp admin password for impersonation
-        admin_username (str, optional): Admin username
     """
     try:
         admin_email = "ken@bentcrankshaft.com"
@@ -55,17 +53,7 @@ def send_dealer_admin_notification(dealer_name, dealer_slug, custom_domain=None,
             </ol>
             """
 
-        impersonate_section = ""
-        if temp_admin_password and admin_username:
-            impersonate_section = f"""
-            <h3>Impersonate Dealer (Testing)</h3>
-            <p>To test as this dealer:</p>
-            <code style="background: #f5f5f5; padding: 4px 8px; border-radius: 3px; display: block; margin: 10px 0;">
-            Username: {admin_username}<br>
-            Password: {temp_admin_password}
-            </code>
-            <p>Then use the "Impersonate" feature from the dashboard.</p>
-            """
+        # Note: SaaS admins don't need credentials - they have access to all dealers via impersonation feature
 
         html_body = f"""
         <html>
@@ -81,8 +69,6 @@ def send_dealer_admin_notification(dealer_name, dealer_slug, custom_domain=None,
                     </p>
 
                     {domain_section}
-
-                    {impersonate_section}
 
                     <h3>Next Steps Checklist</h3>
                     <ul>
