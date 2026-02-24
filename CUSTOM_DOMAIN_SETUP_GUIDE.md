@@ -98,6 +98,21 @@ tenant = Organization.query.filter_by(custom_domain=header_host).first()
 
 ---
 
+## Current Dealer Creation Methods
+
+### Admin Panel (WORKING ✅)
+- SaaS admin creates at `/super_admin/tenants/add`
+- Can specify custom domain during creation
+- Automated emails sent to you + dealer
+- **This is the current, reliable path**
+
+### Customer Self-Signup (INCOMPLETE 🚧)
+- Form exists at `/auth/signup`
+- Square payment integration incomplete
+- **Table for later - not production-ready**
+
+---
+
 ## Roadmap to True "Click to Create"
 
 To get to 100% automated "click to create" dealer signup:
@@ -106,6 +121,7 @@ To get to 100% automated "click to create" dealer signup:
 - ✅ Remove host header rewrites
 - ✅ Backend detects orgs via custom_domain
 - ✅ All images work correctly
+- ✅ Admin panel dealer creation + emails working
 
 ### Phase 2 (RECOMMENDED): SSL Automation
 ```python
