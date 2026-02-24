@@ -32,10 +32,11 @@ def add_tenant():
         new_org = Organization(
             name=form.org_name.data,
             slug=form.slug.data.lower(), # Enforce lowercase for subdomains
+            custom_domain=form.custom_domain.data.lower() if form.custom_domain.data else None,
             settings={},
-            modules={'ari': False, 'pos': 'none'}, 
+            modules={'ari': False, 'pos': 'none'},
             theme_config={'primaryColor': '#2563EB', 'logo_url': None}, # Default Blue
-            
+
             # Auto-generate keys
             pos_bridge_key=secrets.token_hex(32),
             pos_provider='none'
@@ -53,11 +54,24 @@ def add_tenant():
         )
         db.session.add(new_user)
         db.session.commit()
-        
+
+        # 3. Send Admin Notification Email
+        try:
+            from app.core.email import send_dealer_admin_notification
+            send_dealer_admin_notification(
+                dealer_name=new_org.name,
+                dealer_slug=new_org.slug,
+                custom_domain=new_org.custom_domain,
+                temp_admin_password=raw_password if was_auto_gen else None,
+                admin_username=new_user.username
+            )
+        except Exception as e:
+            print(f"Warning: Failed to send admin notification: {e}")
+
         msg = f"Site '{new_org.name}' created successfully!"
         if was_auto_gen:
             msg += f" TEMP CREDENTIALS -> User: {new_user.username} | Pass: {raw_password}"
-        
+
         flash(msg, "success")
         return redirect(url_for('super_admin.add_tenant'))
         

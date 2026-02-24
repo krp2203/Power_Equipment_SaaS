@@ -28,21 +28,22 @@ class SignupForm(FlaskForm):
     # Organization Details
     org_name = StringField('Business Name', validators=[DataRequired(), Length(min=2, max=100)])
     subdomain = StringField('Desired Subdomain', validators=[DataRequired(), Length(min=3, max=20)])
+    custom_domain = StringField('Custom Domain (Optional)', validators=[Length(min=0, max=255)], description="e.g. bobsmowers.com")
     address = StringField('Business Address', validators=[DataRequired()])
-    
+
     # Manager Details
     first_name = StringField('First Name', validators=[DataRequired()])
     last_name = StringField('Last Name', validators=[DataRequired()])
     email = StringField('Email Address', validators=[DataRequired(), Email()])
     password = PasswordField('Password', validators=[DataRequired(), Length(min=8)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
-    
+
     # Plan Selection
     add_facebook = BooleanField('Add Facebook Marketing Module (+$69/mo)')
-    
+
     # Payment
     card_nonce = HiddenField('card_nonce', validators=[]) # Populated by JS
-    
+
     submit = SubmitField('Complete & Pay')
 
     def validate_subdomain(self, field):

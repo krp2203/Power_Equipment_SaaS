@@ -37,9 +37,10 @@ def organization():
             modules = {}
         
         form.primary_color.data = theme.get('primaryColor', '#DC2626')
-        
+
         # Identity
         form.slug.data = org.slug
+        form.custom_domain.data = org.custom_domain or ""
         
         # ARI
         form.enable_ari.data = modules.get('ari', False)
@@ -152,9 +153,10 @@ def organization():
             
         org.theme_config = new_theme
         
-        # Update Columns - Only allow slug update if SaaS Admin
+        # Update Columns - Only allow slug/custom_domain update if SaaS Admin
         if is_saas_admin:
             org.slug = form.slug.data
+            org.custom_domain = form.custom_domain.data.lower() if form.custom_domain.data else None
             
         org.ari_dealer_id = form.ari_dealer_id.data
         org.pos_provider = form.pos_provider.data

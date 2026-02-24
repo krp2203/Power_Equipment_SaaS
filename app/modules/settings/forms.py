@@ -8,6 +8,7 @@ class OrganizationSettingsForm(FlaskForm):
     company_logo = FileField('Company Logo', validators=[FileAllowed(['jpg', 'png'], 'Images only!')])
 
     slug = StringField('SaaS Subdomain Slug', description="Unique ID for your website URL (e.g. 'dealername').")
+    custom_domain = StringField('Custom Domain', description="Optional: Use your own domain (e.g. 'bobsmowers.com'). Leave blank to use subdomain only.")
     
     enable_ari = BooleanField('Enable ARI PartSmart')
     ari_dealer_id = StringField('ARI Dealer ID')

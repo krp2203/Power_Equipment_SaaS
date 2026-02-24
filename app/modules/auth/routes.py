@@ -235,10 +235,11 @@ def signup():
             # 4. Create Organization
             from app.core.models import Organization, User
             from werkzeug.security import generate_password_hash
-            
+
             org = Organization(
                 name=form.org_name.data,
                 slug=form.subdomain.data.lower(),
+                custom_domain=form.custom_domain.data.lower() if form.custom_domain.data else None,
                 modules={'facebook': form.add_facebook.data, 'ari': False},
                 customer_id=customer_id,
                 subscription_id=subscription_id,
@@ -269,12 +270,24 @@ def signup():
                     dealer_name=org.name,
                     dealer_email=form.email.data,
                     username=user.username,
-                    dealer_slug=org.slug
+                    dealer_slug=org.slug,
+                    custom_domain=org.custom_domain
                 )
             except Exception as e:
                 print(f"Warning: Failed to send welcome email: {e}")
 
-            # 7. Login
+            # 7. Send Admin Notification Email
+            try:
+                from app.core.email import send_dealer_admin_notification
+                send_dealer_admin_notification(
+                    dealer_name=org.name,
+                    dealer_slug=org.slug,
+                    custom_domain=org.custom_domain
+                )
+            except Exception as e:
+                print(f"Warning: Failed to send admin notification: {e}")
+
+            # 8. Login
             login_user(user)
             session['organization_id'] = org.id
             flash('Account created successfully! Welcome to your new dashboard.', 'success')
