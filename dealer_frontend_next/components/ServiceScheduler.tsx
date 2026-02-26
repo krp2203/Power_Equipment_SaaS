@@ -3,26 +3,45 @@
 import { useEffect, useState } from 'react';
 import { DealerConfig } from '@/lib/types';
 
-export default function ServiceScheduler() {
-    const [config, setConfig] = useState<DealerConfig | null>(null);
+interface ServiceSchedulerProps {
+    initialConfig?: DealerConfig;
+}
+
+export default function ServiceScheduler({ initialConfig }: ServiceSchedulerProps) {
+    const [config, setConfig] = useState<DealerConfig | null>(initialConfig || null);
 
     useEffect(() => {
-        // Fetch dealer config for contact phone
-        fetch('/api/v1/site-info')
-            .then(res => res.json())
-            .then(data => {
+        // If we already have config from SSR, use it
+        if (initialConfig?.theme?.contact_phone) {
+            return;
+        }
+
+        // Otherwise fetch dealer config for contact phone
+        const fetchConfig = async () => {
+            try {
+                const res = await fetch('/api/v1/site-info', {
+                    headers: {
+                        'X-Environment': 'local',
+                    }
+                });
+                const data = await res.json();
+
                 const adapted: DealerConfig = {
                     name: data.identity?.name,
                     slug: data.identity?.slug,
                     modules: {},
                     theme: {
-                        contact_phone: data.theme?.contact_phone
+                        contact_phone: data.theme?.contactPhone
                     }
                 };
                 setConfig(adapted);
-            })
-            .catch(err => console.error("Failed to load site info", err));
-    }, []);
+            } catch (err) {
+                console.error("Failed to load site info", err);
+            }
+        };
+
+        fetchConfig();
+    }, [initialConfig]);
 
     const phoneNumber = config?.theme?.contact_phone || '1-800-000-0000';
     const phoneLink = `tel:${phoneNumber.replace(/\D/g, '')}`;
