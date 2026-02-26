@@ -12,10 +12,17 @@ export default async function Home() {
   // Fetch advertisements from API
   let advertisements = [];
   try {
+    // Determine if we're in a .local (test) environment by checking the request host
+    const { headers } = await import('next/headers');
+    const headersList = await headers();
+    const requestHost = headersList.get('host') || '';
+    const isTestEnv = requestHost.includes('.local') || requestHost.includes('localhost');
+
     const response = await fetch(`http://web:5000/api/v1/advertisements?slug=${config.slug}`, {
       headers: {
+        'Host': config.slug ? `${config.slug}.bentcrankshaft.${isTestEnv ? 'local' : 'com'}` : 'localhost',
         'X-Dealer-Slug': config.slug || '',
-        'X-Environment': 'local',  // Tell backend we're in test environment
+        'X-Environment': isTestEnv ? 'local' : 'production',
       },
     });
     if (response.ok) {
