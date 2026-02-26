@@ -1,0 +1,24 @@
+FROM nginx:latest
+
+# Install openssl to generate self-signed certificates
+RUN apt-get update && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
+
+# Create certificate directory
+RUN mkdir -p /etc/nginx/certs
+
+# Generate self-signed certificate valid for 365 days
+# This runs during image build, not container start
+RUN openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/certs/self-signed.key \
+    -out /etc/nginx/certs/self-signed.crt \
+    -subj "/C=US/ST=State/L=City/O=Organization/CN=bentcrankshaft.local"
+
+# Set proper permissions
+RUN chmod 644 /etc/nginx/certs/self-signed.crt && \
+    chmod 644 /etc/nginx/certs/self-signed.key
+
+# Verify certificate was created
+RUN ls -la /etc/nginx/certs/
+
+# nginx will be started by the default entrypoint
+EXPOSE 80 443
