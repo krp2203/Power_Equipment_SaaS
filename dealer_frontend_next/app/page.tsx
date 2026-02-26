@@ -14,7 +14,7 @@ export default async function Home() {
   try {
     const response = await fetch(`http://web:5000/api/v1/advertisements?slug=${config.slug}`, {
       headers: {
-        'Host': config.slug ? `${config.slug}.bentcrankshaft.com` : 'localhost',
+        'Host': config.slug ? `${config.slug}.bentcrankshaft.local` : 'localhost',
         'X-Dealer-Slug': config.slug || '',
       },
     });
