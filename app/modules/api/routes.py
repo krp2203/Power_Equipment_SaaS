@@ -69,19 +69,28 @@ def get_advertisements():
 
             # Smart "either/or" logic: If we're in test environment (.local), rewrite URLs to match
             # Production (.com) keeps original URLs as-is
-            if ad_media and isinstance(ad_media, str) and ad_media.startswith('http'):
-                # Check if this is a test request (.local domain)
-                request_host = request.headers.get('X-Forwarded-Host') or request.host
-                if '.local' in request_host:
-                    # Test environment - extract path and reconstruct with .local
+
+            # Determine if we're in test environment:
+            # 1. Check X-Environment header (set by frontend in test)
+            # 2. Check if X-Forwarded-Host contains .local (nginx in test)
+            is_test_env = (
+                request.headers.get('X-Environment') == 'local' or
+                '.local' in (request.headers.get('X-Forwarded-Host') or '')
+            )
+
+            if is_test_env and slug:
+                # Test environment - use slug to construct proper .local domain
+                request_host = f"{slug}.bentcrankshaft.local"
+
+                # Rewrite media URL if it's a full URL
+                if ad_media and isinstance(ad_media, str) and ad_media.startswith('http'):
                     path_start = ad_media.find('/static/')
                     if path_start > 0:
                         path = ad_media[path_start:]
                         ad_media = f"{request.scheme}://{request_host}{path}"
 
-            if ad_thumb and isinstance(ad_thumb, str) and ad_thumb.startswith('http'):
-                request_host = request.headers.get('X-Forwarded-Host') or request.host
-                if '.local' in request_host:
+                # Rewrite thumbnail URL if it's a full URL
+                if ad_thumb and isinstance(ad_thumb, str) and ad_thumb.startswith('http'):
                     path_start = ad_thumb.find('/static/')
                     if path_start > 0:
                         path = ad_thumb[path_start:]

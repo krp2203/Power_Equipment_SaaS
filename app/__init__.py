@@ -107,22 +107,28 @@ def create_app(config_name=None):
         # 2. Reconcile with Session
         session_org_id = session.get('organization_id')
         impersonation_origin = session.get('impersonation_origin_org')
-        
+
         # Determine if user is effectively a Superuser (Org 1 Admin)
         is_superuser = (session_org_id == 1 or impersonation_origin == 1)
 
         # Logic to decide current organization
         if tenant:
-            # If we are visiting a subdomain, that IS the context.
-            if session_org_id and session_org_id != tenant.id and not is_superuser:
-                 # Security: Logged into Org A but visiting Org B (and not superuser).
-                 # Clear session to force re-login for the correct tenant.
-                 session.clear()
-                 from flask_login import logout_user
-                 logout_user()
-            
-            g.current_org = tenant
-            g.current_org_id = tenant.id
+            # Check if superuser is actively impersonating
+            if is_superuser and impersonation_origin and session_org_id != impersonation_origin:
+                # Superuser is impersonating: use impersonated org instead of subdomain
+                g.current_org = Organization.query.get(session_org_id)
+                g.current_org_id = session_org_id
+            else:
+                # If we are visiting a subdomain, that IS the context.
+                if session_org_id and session_org_id != tenant.id and not is_superuser:
+                     # Security: Logged into Org A but visiting Org B (and not superuser).
+                     # Clear session to force re-login for the correct tenant.
+                     session.clear()
+                     from flask_login import logout_user
+                     logout_user()
+
+                g.current_org = tenant
+                g.current_org_id = tenant.id
         elif session_org_id:
             # Root domain or admin context without subdomain
             g.current_org = Organization.query.get(session_org_id)

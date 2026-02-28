@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { getDealerConfig } from '@/lib/api';
 import BrandCarousel from '@/components/BrandCarousel';
 import AdvertisementCarousel from '@/components/AdvertisementCarousel';
@@ -12,10 +13,16 @@ export default async function Home() {
   // Fetch advertisements from API
   let advertisements = [];
   try {
+    // Determine if we're in a .local (test) environment by checking the request host
+    const headersList = await headers();
+    const requestHost = headersList.get('host') || '';
+    const isTestEnv = requestHost.includes('.local') || requestHost.includes('localhost');
+
     const response = await fetch(`http://web:5000/api/v1/advertisements?slug=${config.slug}`, {
       headers: {
-        'Host': config.slug ? `${config.slug}.bentcrankshaft.${process.env.NODE_ENV === 'production' ? 'com' : 'local'}` : 'localhost',
+        'Host': config.slug ? `${config.slug}.bentcrankshaft.${isTestEnv ? 'local' : 'com'}` : 'localhost',
         'X-Dealer-Slug': config.slug || '',
+        'X-Environment': isTestEnv ? 'local' : 'production',
       },
     });
     if (response.ok) {

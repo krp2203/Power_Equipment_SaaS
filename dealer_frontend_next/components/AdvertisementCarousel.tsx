@@ -48,7 +48,7 @@ export default function AdvertisementCarousel({
   return (
     <>
       {/* Advertisement Carousel - Single Ad at a Time */}
-      <div className="w-full bg-gray-100 py-2 px-4">
+      <div className="w-full bg-white py-2 px-4">
         <div className="container mx-auto flex justify-center relative">
           {/* Left Arrow */}
           {advertisements.length > 1 && (
