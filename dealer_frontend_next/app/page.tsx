@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { getDealerConfig } from '@/lib/api';
 import BrandCarousel from '@/components/BrandCarousel';
 import AdvertisementCarousel from '@/components/AdvertisementCarousel';
@@ -13,7 +14,6 @@ export default async function Home() {
   let advertisements = [];
   try {
     // Determine if we're in a .local (test) environment by checking the request host
-    const { headers } = await import('next/headers');
     const headersList = await headers();
     const requestHost = headersList.get('host') || '';
     const isTestEnv = requestHost.includes('.local') || requestHost.includes('localhost');
