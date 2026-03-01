@@ -48,8 +48,8 @@ export default function AdvertisementCarousel({
   return (
     <>
       {/* Advertisement Carousel - Single Ad at a Time */}
-      <div className="w-full bg-white py-2 px-4">
-        <div className="container mx-auto flex justify-center relative">
+      <div className="w-full bg-white py-0 px-0">
+        <div className="w-full flex justify-center relative px-4">
           {/* Left Arrow */}
           {advertisements.length > 1 && (
             <button
@@ -63,11 +63,11 @@ export default function AdvertisementCarousel({
             </button>
           )}
 
-          {/* Current Ad - Centered */}
-          <div className="flex justify-center max-w-5xl">
+          {/* Current Ad - Full Width */}
+          <div className="flex justify-center w-full">
             <button
               onClick={() => handleThumbnailClick(currentAd)}
-              className="overflow-hidden rounded-lg hover:shadow-lg transition-shadow"
+              className="overflow-hidden hover:shadow-lg transition-shadow"
             >
               {currentAd.media_type === 'video' ? (
                 <video

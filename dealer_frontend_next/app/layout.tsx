@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import Header from '@/components/Header';
+import Navigation from '@/components/Navigation';
 import Footer from '@/components/Footer';
 import { getDealerConfig } from '@/lib/api';
 import { headers } from 'next/headers';
@@ -32,10 +33,9 @@ export default async function RootLayout({
         {!isAdminRoute && config && (
           <>
             {config.slug === 'pes' && <DemoBanner />}
-            <Header config={config} />
-            <main className="flex-grow container mx-auto px-4 py-8">
-              {children}
-            </main>
+            <Header config={config} heroTitle={config.theme.hero_title} heroTagline={config.theme.hero_tagline} />
+            <Navigation config={config} />
+            {children}
             <Footer config={config} />
           </>
         )}

@@ -4,9 +4,12 @@ import Link from 'next/link';
 import { DealerConfig } from '@/lib/types';
 import { useState, useEffect } from 'react';
 
-export default function Header({ config }: { config: DealerConfig }) {
+export default function Header({ config, heroTitle, heroTagline }: { config: DealerConfig; heroTitle?: string; heroTagline?: string }) {
     const primaryColor = config.theme.primaryColor || '#2563EB'; // Default blue
     const [isImpersonating, setIsImpersonating] = useState(false);
+
+    const displayHeroTitle = heroTitle || config.theme.hero_title || `Welcome to ${config.name}`;
+    const displayHeroTagline = heroTagline || config.theme.hero_tagline || "Your Premium Destination for Power Equipment, Parts, and Service.";
 
     useEffect(() => {
         const cookies = document.cookie.split('; ');
@@ -56,18 +59,48 @@ export default function Header({ config }: { config: DealerConfig }) {
                 </div>
             )}
             <div className="text-white w-full" style={{ backgroundColor: primaryColor }}>
-                <div className="container mx-auto px-4 py-2 flex flex-col lg:flex-row justify-between items-center gap-4">
-                    <Link href="/" className="text-2xl font-bold flex items-center mb-2 lg:mb-0 whitespace-nowrap">
-                        <span>{config.name}</span>
-                    </Link>
+                <div className="w-full px-4 py-1" style={{ display: 'grid', gridTemplateColumns: '1fr 5fr 1fr', alignItems: 'center', gap: '16px', minHeight: '170px' }}>
+                    {/* Logo Section - Left Column */}
+                    <div className="flex items-center justify-start">
+                        {config.theme.hero_show_logo && config.theme.logoUrl && (
+                            <img
+                                src={config.theme.logoUrl}
+                                alt={config.name}
+                                className="h-40 w-auto object-contain"
+                            />
+                        )}
+                    </div>
 
-                    <nav className="flex space-x-6 overflow-x-auto w-full lg:w-auto pb-2 lg:pb-0 whitespace-nowrap">
-                        <Link href="/" className="hover:text-gray-200">Home</Link>
-                        <Link href="/inventory" className="hover:text-gray-200">Inventory</Link>
-                        <Link href="/parts" className="hover:text-gray-200">Parts</Link>
-                        <Link href="/service" className="hover:text-gray-200">Service</Link>
-                        <Link href="/contact" className="hover:text-gray-200">Contact</Link>
-                    </nav>
+                    {/* Hero Section - Center Column */}
+                    <div className="flex items-center justify-center w-full">
+                        <div className="bg-gradient-to-b from-gray-900 to-gray-800 rounded-lg px-12 py-8 shadow-lg flex items-center justify-center w-full" style={{ minHeight: '160px', maxHeight: '160px' }}>
+                            {/* Center Content - Text naturally centered in middle column */}
+                            <div className="flex flex-col items-center text-center">
+                                <h2 className="text-4xl font-bold drop-shadow-lg leading-tight text-white">
+                                    {displayHeroTitle}
+                                </h2>
+                                <p className="text-xl text-gray-200 drop-shadow-md hidden md:block">
+                                    {displayHeroTagline}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Buttons - Right Column */}
+                    <div className="flex flex-col gap-3 justify-center items-end w-full h-full">
+                        <button
+                            onClick={() => window.location.href = '/inventory'}
+                            className="px-8 py-4 rounded-lg font-bold text-lg text-gray-900 transition-all hover:shadow-lg transform hover:scale-105 shadow-lg bg-white hover:bg-gray-100 w-full whitespace-nowrap"
+                        >
+                            Shop Inventory
+                        </button>
+                        <button
+                            onClick={() => window.location.href = '/service'}
+                            className="px-8 py-4 rounded-lg font-bold text-lg bg-white text-gray-900 hover:bg-gray-100 shadow-lg transition-all hover:shadow-lg transform hover:scale-105 w-full whitespace-nowrap"
+                        >
+                            Schedule Service
+                        </button>
+                    </div>
                 </div>
             </div>
         </header>
