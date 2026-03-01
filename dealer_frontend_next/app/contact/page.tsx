@@ -10,7 +10,8 @@ export default async function ContactPage() {
     const contactText = config.theme.contact_text || "We are here to help you with all your power equipment needs.";
 
     return (
-        <div className="max-w-2xl mx-auto">
+    return (
+        <div className="max-w-2xl mx-auto py-12">
             <h1 className="text-3xl font-bold mb-6">Contact Us</h1>
             <div className="bg-white p-6 rounded shadow border">
                 <p className="mb-4 whitespace-pre-wrap">{contactText}</p>
