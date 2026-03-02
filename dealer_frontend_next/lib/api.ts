@@ -82,6 +82,14 @@ export async function getDealerConfig(): Promise<DealerConfig> {
                 contact_address: data.theme?.contactAddress,
                 contact_text: data.theme?.contactText,
 
+                // Social Media (API returns camelCase)
+                socialFacebook: data.theme?.socialFacebook,
+                socialInstagram: data.theme?.socialInstagram,
+                socialTwitter: data.theme?.socialTwitter,
+                socialLinkedin: data.theme?.socialLinkedin,
+                socialYoutube: data.theme?.socialYoutube,
+                socialBluesky: data.theme?.socialBluesky,
+
                 // Brands (API returns camelCase)
                 brand_logos: data.theme?.brandLogos, // Fallback for snake_case
                 brandLogos: data.theme?.brandLogos, // Use camelCase from API

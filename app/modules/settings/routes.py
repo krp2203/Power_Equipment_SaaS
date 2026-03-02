@@ -79,6 +79,14 @@ def organization():
         form.contact_address.data = theme.get('contact_address', "1234 Equipment Lane, Mower City, ST 12345")
         form.contact_text.data = theme.get('contact_text', "We are here to help you with all your power equipment needs.")
 
+        # Social Media
+        form.social_facebook.data = theme.get('social_facebook', '')
+        form.social_instagram.data = theme.get('social_instagram', '')
+        form.social_twitter.data = theme.get('social_twitter', '')
+        form.social_linkedin.data = theme.get('social_linkedin', '')
+        form.social_youtube.data = theme.get('social_youtube', '')
+        form.social_bluesky.data = theme.get('social_bluesky', '')
+
     # SaaS Admin check (either real Org 1 user, or impersonating)
     from flask import session
     is_saas_admin = session.get('impersonation_origin_org') is not None or g.current_org.id == 1
@@ -150,7 +158,15 @@ def organization():
         new_theme['contact_email'] = form.contact_email.data
         new_theme['contact_address'] = form.contact_address.data
         new_theme['contact_text'] = form.contact_text.data
-            
+
+        # Save Social Media URLs
+        new_theme['social_facebook'] = form.social_facebook.data
+        new_theme['social_instagram'] = form.social_instagram.data
+        new_theme['social_twitter'] = form.social_twitter.data
+        new_theme['social_linkedin'] = form.social_linkedin.data
+        new_theme['social_youtube'] = form.social_youtube.data
+        new_theme['social_bluesky'] = form.social_bluesky.data
+
         org.theme_config = new_theme
         
         # Update Columns - Only allow slug/custom_domain update if SaaS Admin
@@ -485,12 +501,20 @@ def onboarding_save():
     # Content
     new_theme['hero_title'] = form.hero_title.data
     new_theme['hero_tagline'] = form.hero_tagline.data
-    
+
     # Contact
     new_theme['contact_phone'] = form.contact_phone.data
     new_theme['contact_email'] = form.contact_email.data
     new_theme['contact_address'] = form.contact_address.data
-    
+
+    # Social Media
+    new_theme['social_facebook'] = form.social_facebook.data
+    new_theme['social_instagram'] = form.social_instagram.data
+    new_theme['social_twitter'] = form.social_twitter.data
+    new_theme['social_linkedin'] = form.social_linkedin.data
+    new_theme['social_youtube'] = form.social_youtube.data
+    new_theme['social_bluesky'] = form.social_bluesky.data
+
     org.theme_config = new_theme
     org.onboarding_complete = True
     

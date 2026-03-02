@@ -30,6 +30,14 @@ export interface DealerConfig {
         contact_address?: string;
         contact_text?: string;
 
+        // Social Media
+        socialFacebook?: string;
+        socialInstagram?: string;
+        socialTwitter?: string;
+        socialLinkedin?: string;
+        socialYoutube?: string;
+        socialBluesky?: string;
+
         // Brands
         brand_logos?: Record<string, string>;
         brandLogos?: Record<string, string>;

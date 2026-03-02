@@ -4,6 +4,30 @@ import { useState, useEffect } from 'react';
 import { Advertisement } from '@/lib/types';
 import AdvertisementModal from './AdvertisementModal';
 
+const mobileStyles = `
+  @media (max-width: 768px) {
+    .carousel-grid {
+      display: flex !important;
+      flex-direction: column !important;
+      gap: 8px !important;
+      padding: 0 !important;
+    }
+    .carousel-content {
+      height: auto !important;
+    }
+    .carousel-image {
+      height: auto !important;
+      max-height: 300px !important;
+      width: 100% !important;
+    }
+    .carousel-video {
+      height: auto !important;
+      max-height: 300px !important;
+      width: 100% !important;
+    }
+  }
+`;
+
 interface AdvertisementCarouselProps {
   advertisements: Advertisement[];
 }
@@ -49,12 +73,13 @@ export default function AdvertisementCarousel({
     <>
       {/* Advertisement Carousel - Constrained Width with Border */}
       <div className="w-full bg-white pb-6 pt-2">
-        <div className="w-full px-4" style={{ display: 'grid', gridTemplateColumns: '1fr 5fr 1fr', alignItems: 'center', gap: '16px' }}>
+        <style>{mobileStyles}</style>
+        <div className="carousel-grid w-full px-4" style={{ display: 'grid', gridTemplateColumns: '1fr 5fr 1fr', alignItems: 'center', gap: '16px' }}>
           {/* Spacer Left */}
           <div className="hidden md:block"></div>
 
           {/* Carousel Content - Center Column */}
-          <div className="relative group">
+          <div className="carousel-content relative group w-full">
             {/* Left Arrow - Positioned locally within center column */}
             {advertisements.length > 1 && (
               <button
@@ -78,7 +103,7 @@ export default function AdvertisementCarousel({
                   <video
                     src={currentAd.image}
                     poster={currentAd.thumbnail}
-                    className="h-80 w-auto object-cover hover:opacity-90 transition-opacity"
+                    className="carousel-video h-80 w-auto object-cover hover:opacity-90 transition-opacity"
                     controls={false}
                     preload="none"
                   />
@@ -86,7 +111,7 @@ export default function AdvertisementCarousel({
                   <img
                     src={currentAd.thumbnail || currentAd.image}
                     alt={currentAd.title}
-                    className="h-80 w-auto object-cover hover:opacity-90 transition-opacity"
+                    className="carousel-image h-80 w-auto object-cover hover:opacity-90 transition-opacity"
                   />
                 )}
               </button>

@@ -53,7 +53,15 @@ class OrganizationSettingsForm(FlaskForm):
     contact_email = StringField('Contact Email')
     contact_address = TextAreaField('Contact Address')
     contact_text = TextAreaField('Contact Page Message', description="Message above contact details")
-    
+
+    # Social Media Links
+    social_facebook = StringField('Facebook Profile URL', description="e.g. https://facebook.com/yourpage")
+    social_instagram = StringField('Instagram Profile URL', description="e.g. https://instagram.com/yourprofile")
+    social_twitter = StringField('Twitter/X Profile URL', description="e.g. https://twitter.com/yourhandle")
+    social_linkedin = StringField('LinkedIn Company URL', description="e.g. https://linkedin.com/company/yourcompany")
+    social_youtube = StringField('YouTube Channel URL', description="e.g. https://youtube.com/@yourchannel")
+    social_bluesky = StringField('BlueSky Profile URL', description="e.g. https://bsky.app/profile/yourhandle.bsky.social")
+
     submit = SubmitField('Save Settings')
 
 class AddUserForm(FlaskForm):

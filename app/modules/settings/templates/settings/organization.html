@@ -224,6 +224,21 @@
                                         {{ wtf.form_field(form.contact_text, rows=2) }}
                                     </div>
                                 </div>
+
+                                <h6 class="form-section-title">Social Media Links</h6>
+                                <p class="text-muted small mb-3">Add links to your social media profiles. Icons will appear on your website navigation bar automatically.</p>
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        {{ wtf.form_field(form.social_facebook) }}
+                                        {{ wtf.form_field(form.social_instagram) }}
+                                        {{ wtf.form_field(form.social_twitter) }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        {{ wtf.form_field(form.social_linkedin) }}
+                                        {{ wtf.form_field(form.social_youtube) }}
+                                        {{ wtf.form_field(form.social_bluesky) }}
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Integrations Tab -->
