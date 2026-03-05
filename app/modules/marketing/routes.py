@@ -148,13 +148,8 @@ def facebook_posting():
                     f.save(file_path)
                     print("DEBUG: File saved", file=sys.stderr)
                     
-                    # Construct public HTTPS URL
-                    # Use the dealer's subdomain for proper HTTPS access
-                    if org.slug:
-                        media_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/marketing/{org.id}/{unique_filename}"
-                    else:
-                        # Fallback to current host
-                        media_url = f"{request.scheme}://{request.host}/static/uploads/marketing/{org.id}/{unique_filename}"
+                    # Construct relative URL for internal use
+                    media_url = f"/static/uploads/marketing/{org.id}/{unique_filename}"
                     print(f"DEBUG: Media URL: {media_url}", file=sys.stderr)
                         
                 except Exception as e:
@@ -264,11 +259,8 @@ def parse_pdf():
             import shutil
             shutil.move(result['image_path'], final_image_path)
 
-            # Construct public URL
-            if org.slug:
-                image_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/marketing/{org.id}/{unique_filename}"
-            else:
-                image_url = f"{request.scheme}://{request.host}/static/uploads/marketing/{org.id}/{unique_filename}"
+            # Construct relative URL
+            image_url = f"/static/uploads/marketing/{org.id}/{unique_filename}"
 
             result['image_url'] = image_url
 
@@ -363,11 +355,8 @@ def complete_chunk_upload():
         else:
             media_type = 'image'
 
-        # Construct public URL (use 'media' path to match where file is saved)
-        if org.slug:
-            media_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/media/{org.id}/{unique_filename}"
-        else:
-            media_url = f"{request.scheme}://{request.host}/static/uploads/media/{org.id}/{unique_filename}"
+        # Construct relative URL
+        media_url = f"/static/uploads/media/{org.id}/{unique_filename}"
 
         # Generate/Use thumbnails for videos
         thumbnail_url = None
@@ -396,10 +385,7 @@ def complete_chunk_upload():
 
                 # Construct thumbnail URL if thumbnail was created
                 if thumbnail_url_path:
-                    if org.slug:
-                        thumbnail_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/media/{org.id}/{thumbnail_url_path}"
-                    else:
-                        thumbnail_url = f"{request.scheme}://{request.host}/static/uploads/media/{org.id}/{thumbnail_url_path}"
+                    thumbnail_url = f"/static/uploads/media/{org.id}/{thumbnail_url_path}"
 
             except Exception as e:
                 current_app.logger.warning(f"Video thumbnail processing error: {str(e)} - using video URL as thumbnail fallback")
@@ -692,11 +678,8 @@ def media():
             file_path = os.path.join(upload_dir, unique_filename)
             media_file.save(file_path)
 
-            # Construct media URL
-            if org.slug:
-                media_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/media/{org.id}/{unique_filename}"
-            else:
-                media_url = f"{request.scheme}://{request.host}/static/uploads/media/{org.id}/{unique_filename}"
+            # Construct relative media URL
+            media_url = f"/static/uploads/media/{org.id}/{unique_filename}"
 
             # Generate thumbnails based on media type
             thumbnail_url = None
@@ -713,9 +696,9 @@ def media():
                     if generate_video_thumbnail(file_path, thumbnail_path):
                         # Construct thumbnail URL
                         if org.slug:
-                            thumbnail_url = f"https://{org.slug}.bentcrankshaft.com/static/uploads/media/{org.id}/{thumbnail_filename}"
+                            thumbnail_url = f"/static/uploads/media/{org.id}/{thumbnail_filename}"
                         else:
-                            thumbnail_url = f"{request.scheme}://{request.host}/static/uploads/media/{org.id}/{thumbnail_filename}"
+                            thumbnail_url = f"/static/uploads/media/{org.id}/{thumbnail_filename}"
                 except Exception as e:
                     current_app.logger.error(f"Failed to generate video thumbnail: {str(e)}")
                     # If thumbnail generation fails, fall back to not having a thumbnail

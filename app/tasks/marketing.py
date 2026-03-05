@@ -9,12 +9,15 @@ from app.integrations.facebook import get_facebook_service
 from flask import current_app
 
 
+def make_absolute_url(url, org_slug):
+    if url and isinstance(url, str) and url.startswith('/'):
+        # Default to production domain for social media access
+        base = f"{org_slug}.bentcrankshaft.com" if org_slug and org_slug != 'demo' else "demo.bentcrankshaft.com"
+        return f"https://{base}{url}"
+    return url
+
 @shared_task
 def post_video_task(org_id, message, media_url, title, fb_post_id):
-    """
-    Async task to post a video to Facebook.
-    """
-    try:
         # Get organization and Facebook service
         org = Organization.query.get(org_id)
         if not org:
@@ -23,6 +26,9 @@ def post_video_task(org_id, message, media_url, title, fb_post_id):
         fb_service = get_facebook_service(org)
         if not fb_service:
             raise ValueError(f"Facebook not configured for organization {org_id}")
+
+        # Ensure absolute URL for Facebook
+        media_url = make_absolute_url(media_url, org.slug)
 
         # Post video to Facebook
         success, post_id, error = fb_service.post_video(message, media_url, title)
@@ -72,6 +78,9 @@ def post_media_task(org_id, message, media_url, title, media_content_id, post_to
         success = False
         post_id = None
         error = None
+
+        # Ensure absolute URL for Facebook/Instagram
+        media_url = make_absolute_url(media_url, org.slug)
 
         if media_type == 'video':
             success, post_id, error = fb_service.post_video(message, media_url, title)

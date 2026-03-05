@@ -67,43 +67,26 @@ def get_advertisements():
                 # Raw SQL tuple
                 ad_id, ad_title, ad_desc, ad_media, ad_thumb, ad_link, ad_type = row
 
-            # Smart "either/or" logic: If we're in test environment (.local), rewrite URLs to match
-            # Production (.com) keeps original URLs as-is
-
-            # Determine if we're in test environment:
-            # 1. Check X-Environment header (set by frontend in test)
-            # 2. Check if X-Forwarded-Host contains .local (nginx in test)
-            is_test_env = (
-                request.headers.get('X-Environment') == 'local' or
-                '.local' in (request.headers.get('X-Forwarded-Host') or '')
-            )
-
-            if is_test_env and slug:
-                # Test environment - use slug to construct proper .local domain
-                request_host = f"{slug}.bentcrankshaft.local"
-
-                # Rewrite media URL if it's a full URL
-                if ad_media and isinstance(ad_media, str) and ad_media.startswith('http'):
-                    path_start = ad_media.find('/static/')
-                    if path_start > 0:
-                        path = ad_media[path_start:]
-                        ad_media = f"{request.scheme}://{request_host}{path}"
-
-                # Rewrite thumbnail URL if it's a full URL
-                if ad_thumb and isinstance(ad_thumb, str) and ad_thumb.startswith('http'):
-                    path_start = ad_thumb.find('/static/')
-                    if path_start > 0:
-                        path = ad_thumb[path_start:]
-                        ad_thumb = f"{request.scheme}://{request_host}{path}"
+            # Ensure URLs are relative for internal display
+            # (Remove hardcoded domains if present)
+            if ad_media and isinstance(ad_media, str) and 'https://' in ad_media:
+                path_start = ad_media.find('/static/')
+                if path_start > 0:
+                    ad_media = ad_media[path_start:]
+            
+            if ad_thumb and isinstance(ad_thumb, str) and 'https://' in ad_thumb:
+                path_start = ad_thumb.find('/static/')
+                if path_start > 0:
+                    ad_thumb = ad_thumb[path_start:]
 
             result.append({
                 'id': ad_id,
                 'title': ad_title,
                 'description': ad_desc or '',
-                'image': ad_media,  # Use original image (high quality)
-                'thumbnail': ad_thumb or ad_media,  # Fallback to original if no thumb
+                'image': ad_media,  # Relative path /static/...
+                'thumbnail': ad_thumb or ad_media,  # Relative path /static/...
                 'link_url': ad_link or '',
-                'media_type': ad_type  # Include media type so frontend knows if it's a video
+                'media_type': ad_type
             })
 
         print(f"[ADS-RETURN] Returning {len(result)} ads in JSON", file=sys.stderr)
@@ -139,25 +122,22 @@ def get_site_info():
     # Convert theme config keys to camelCase for frontend
     theme_config = org.theme_config or {}
     converted_theme = {}
+    # Keep image URLs relative for better cross-subdomain compatibility
+    # and to simplify .local test setup
     for key, value in theme_config.items():
         # Convert snake_case to camelCase
         camel_key = ''.join(word if i == 0 else word.capitalize() for i, word in enumerate(key.split('_')))
 
-        # Convert relative URLs to absolute URLs for images (logoUrl, brand_logos)
+        # Ensure these are relative paths starting with /
         if camel_key in ('logoUrl', 'brandLogos') and value:
-            # Use current request host - all dealers use their own subdomain
-            # No special cases needed anymore since bentcrankshaft.com redirects to demo.bentcrankshaft.com
-            use_host = request.host
-
             if camel_key == 'logoUrl' and isinstance(value, str):
-                if value.startswith('/'):
-                    value = f"{request.scheme}://{use_host}{value}"
+                if 'http' in value and '/static/' in value:
+                    value = value[value.find('/static/'):]
             elif camel_key == 'brandLogos' and isinstance(value, dict):
-                # Convert each brand logo URL
                 converted_logos = {}
                 for idx, logo_url in value.items():
-                    if logo_url and logo_url.startswith('/'):
-                        converted_logos[idx] = f"{request.scheme}://{use_host}{logo_url}"
+                    if logo_url and 'http' in logo_url and '/static/' in logo_url:
+                        converted_logos[idx] = logo_url[logo_url.find('/static/'):]
                     else:
                         converted_logos[idx] = logo_url
                 value = converted_logos
