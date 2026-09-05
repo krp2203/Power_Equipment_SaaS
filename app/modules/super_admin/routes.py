@@ -47,6 +47,7 @@ def add_tenant():
         # 2. Create Admin User for that Org
         new_user = User(
             username=form.admin_username.data,
+            email=form.dealer_email.data or None,
             password=generate_password_hash(raw_password),
             organization_id=new_org.id,
             password_reset_required=True # ALWAYS force change on first login for new sites
@@ -55,7 +56,22 @@ def add_tenant():
         db.session.add(new_user)
         db.session.commit()
 
-        # 3. Send Admin Notification Email
+        # 3. Send Dealer Welcome Email (only if an email was provided)
+        if form.dealer_email.data:
+            try:
+                from app.core.email import send_welcome_email
+                send_welcome_email(
+                    dealer_name=new_org.name,
+                    dealer_email=form.dealer_email.data,
+                    username=new_user.username,
+                    dealer_slug=new_org.slug,
+                    temp_password=raw_password,
+                    custom_domain=new_org.custom_domain
+                )
+            except Exception as e:
+                print(f"Warning: Failed to send welcome email: {e}")
+
+        # 4. Send Admin Notification Email
         try:
             from app.core.email import send_dealer_admin_notification
             send_dealer_admin_notification(

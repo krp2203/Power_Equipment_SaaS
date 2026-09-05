@@ -98,8 +98,6 @@ Subdomain: https://{dealer_slug}.bentcrankshaft.com
 {"Custom Domain: " + custom_domain if custom_domain else ""}
 
 {f"CUSTOM DOMAIN SETUP REQUIRED:{domain_section.replace('<h3>', '').replace('</h3>', '').replace('<ol>', '').replace('</ol>', '').replace('<li>', '- ').replace('</li>', '').replace('<code>', '').replace('</code>', '').replace('<p>', '').replace('</p>', '').replace('<strong>', '').replace('</strong>', '')}" if custom_domain else ""}
-
-{f"Impersonate for Testing:{impersonate_section.replace('<h3>', '').replace('</h3>', '').replace('<code>', '').replace('</code>', '').replace('<p>', '').replace('</p>', '').replace('<br>', '\n').replace('<strong>', '').replace('</strong>', '')}" if impersonate_section else ""}
         """
 
         msg = Message(
