@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{% block title %}Start My Plan{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-md-7">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h4 class="mb-0">Start Your Plan</h4>
+                </div>
+                <div class="card-body">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                    {% if messages %}
+                    {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                    {% endfor %}
+                    {% endif %}
+                    {% endwith %}
+
+                    <p class="text-muted">
+                        Enter your card details below to activate your subscription. This charges a one-time
+                        $199 setup fee plus your first month (${{ "%.2f"|format((org.monthly_price or 4900) / 100) }}),
+                        then bills ${{ "%.2f"|format((org.monthly_price or 4900) / 100) }}/mo automatically going forward.
+                    </p>
+
+                    {% include "billing/_start_plan_form.html" %}
+
+                    <div class="text-center mt-3">
+                        <a href="{{ url_for('marketing.dashboard') }}">&larr; Back to Dashboard</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -603,7 +603,8 @@ def dashboard():
                              total_dealers=total_dealers,
                              active_dealers=active_dealers,
                              offline_bridges=offline_bridges,
-                             tenants=tenants)
+                             tenants=tenants,
+                             now=datetime.utcnow())
 
     # 2. Marketing Control Center (Dealer Org)
     else:
@@ -627,7 +628,43 @@ def dashboard():
                              bridge_online=bridge_online,
                              last_seen=last_seen,
                              parts_count=parts_count,
-                             units_count=units_count)
+                             units_count=units_count,
+                             now=datetime.utcnow())
+
+
+@marketing_bp.route('/marketing/start-my-plan', methods=['GET', 'POST'])
+@login_required
+def start_my_plan():
+    # Self-service: dealers can only start a plan for their own org, never org 1 (Master).
+    if g.current_org_id == 1:
+        flash("Not applicable to the master organization.", "danger")
+        return redirect(url_for('marketing.dashboard'))
+
+    org = g.current_org
+
+    if request.method == 'POST':
+        from app.core.billing_service import activate_subscription, ActivationError
+        card_nonce = request.form.get('card_nonce')
+        try:
+            activate_subscription(
+                org,
+                card_nonce=card_nonce,
+                contact_email=current_user.email or 'billing@bentcrankshaft.com',
+                contact_name=f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or org.name
+            )
+            flash("Your plan is now active. Thanks for subscribing!", "success")
+        except ActivationError as e:
+            flash(str(e), "danger")
+        return redirect(url_for('marketing.dashboard'))
+
+    return render_template(
+        'main/start_my_plan.html',
+        org=org,
+        SQUARE_ENVIRONMENT=os.environ.get('SQUARE_ENVIRONMENT', 'sandbox'),
+        SQUARE_APP_ID=os.environ.get('SQUARE_APP_ID'),
+        SQUARE_LOCATION_ID=os.environ.get('SQUARE_LOCATION_ID'),
+        start_plan_action_url=url_for('marketing.start_my_plan')
+    )
 
 
 # ====== MEDIA MANAGEMENT ENDPOINTS ======

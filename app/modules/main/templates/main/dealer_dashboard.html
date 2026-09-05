@@ -25,6 +25,24 @@
     </div>
     {% endif %}
 
+    {% if g.current_org.subscription_status == 'trial' %}
+    <div class="alert alert-info shadow-sm d-flex justify-content-between align-items-center">
+        <div>
+            <i class="bi bi-clock-history me-1"></i>
+            {% if g.current_org.trial_ends_at %}
+            You're on a free trial
+            {% set days_left = ((g.current_org.trial_ends_at - now).total_seconds() / 86400) | round(0, 'floor') | int %}
+            {% if days_left >= 0 %}({{ days_left }} day{{ 's' if days_left != 1 }} left){% else %}(trial ended){% endif %}.
+            {% else %}
+            You're on a free trial.
+            {% endif %}
+        </div>
+        <a href="{{ url_for('marketing.start_my_plan') }}" class="btn btn-sm btn-success">
+            <i class="bi bi-credit-card me-1"></i> Start My Plan
+        </a>
+    </div>
+    {% endif %}
+
     <div class="row">
         <!-- Connectivity Status (Only if POS Sync module enabled) -->
         {% if g.current_org.modules.get('pos_sync') %}

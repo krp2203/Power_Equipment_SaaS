@@ -361,3 +361,53 @@ def get_unit(id):
         "condition": unit.condition,
         "unit_hours": unit.unit_hours
     })
+
+
+@api_bp.route('/v1/webhooks/square', methods=['POST'])
+def square_webhook():
+    """
+    Square webhook receiver. Verifies the HMAC signature, then syncs
+    Organization.subscription_status off subscription.updated events —
+    Square transitions a subscription's own status to PAST_DUE / CANCELED
+    automatically on failed/stopped billing, so this is the single source
+    of truth for post-signup billing state (nothing else polls Square).
+    """
+    import sys
+    from app.integrations.square_payments import verify_webhook_signature
+    from app.core.models import Organization
+
+    raw_body = request.get_data()
+    signature = request.headers.get('x-square-hmacsha256-signature', '')
+    notification_url = request.url_root.rstrip('/') + request.path
+
+    if not verify_webhook_signature(raw_body, signature, notification_url):
+        print("Square Webhook: signature verification failed", file=sys.stderr)
+        return jsonify({"error": "invalid signature"}), 401
+
+    event = request.get_json(silent=True) or {}
+    event_type = event.get('type', '')
+
+    if event_type in ('subscription.updated', 'subscription.created'):
+        subscription = (event.get('data', {}).get('object', {}) or {}).get('subscription', {})
+        square_subscription_id = subscription.get('id') or event.get('data', {}).get('id')
+        square_status = (subscription.get('status') or '').upper()
+
+        status_map = {
+            'ACTIVE': 'active',
+            'PAST_DUE': 'past_due',
+            'CANCELED': 'canceled',
+            'DEACTIVATED': 'canceled',
+            'PAUSED': 'past_due',
+        }
+        new_status = status_map.get(square_status)
+
+        if square_subscription_id and new_status:
+            org = Organization.query.filter_by(subscription_id=square_subscription_id).first()
+            if org:
+                org.subscription_status = new_status
+                db.session.commit()
+                print(f"Square Webhook: org {org.id} subscription_status -> {new_status}", file=sys.stdout)
+            else:
+                print(f"Square Webhook: no org found for subscription {square_subscription_id}", file=sys.stderr)
+
+    return jsonify({"received": True}), 200

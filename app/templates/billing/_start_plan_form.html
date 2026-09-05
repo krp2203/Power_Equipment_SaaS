@@ -1,0 +1,83 @@
+{# Shared Square card-entry form for converting a trial org to an active paid plan.
+   Include with: {% include "billing/_start_plan_form.html" %}
+   Requires a Jinja variable `start_plan_action_url` set before the include,
+   and unique DOM ids per-page if included more than once on the same page. #}
+
+<div id="square-error-alert-{{ loop_index|default('') }}" class="alert alert-danger d-none">
+    Unable to load secure payment fields. Please check your connection and try again.
+</div>
+
+<form method="POST" action="{{ start_plan_action_url }}" id="start-plan-form-{{ loop_index|default('') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <input type="hidden" name="card_nonce" id="card_nonce-{{ loop_index|default('') }}" value="" />
+    <div id="card-container-{{ loop_index|default('') }}" class="mb-3"></div>
+    <div class="d-grid">
+        <button type="submit" id="card-button-{{ loop_index|default('') }}" class="btn btn-success">
+            Charge $199 Setup + First Month &amp; Start Plan
+        </button>
+    </div>
+</form>
+
+<script type="text/javascript">
+(function () {
+    const suffix = "{{ loop_index|default('') }}";
+    const squareEnv = "{{ SQUARE_ENVIRONMENT|default('sandbox') }}";
+    const scriptUrl = squareEnv === 'production'
+        ? "https://web.squarecdn.com/v1/square.js"
+        : "https://sandbox.web.squarecdn.com/v1/square.js";
+    const appId = "{{ SQUARE_APP_ID|default('') }}";
+    const locationId = "{{ SQUARE_LOCATION_ID|default('') }}";
+
+    function handleError() {
+        const alertBox = document.getElementById('square-error-alert-' + suffix);
+        const submitBtn = document.getElementById('card-button-' + suffix);
+        if (alertBox) alertBox.classList.remove('d-none');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = "Payment System Unavailable";
+        }
+    }
+
+    async function initSquare() {
+        if (!window.Square) { handleError(); return; }
+        try {
+            const payments = window.Square.payments(appId, locationId);
+            const card = await payments.card();
+            await card.attach('#card-container-' + suffix);
+
+            const form = document.getElementById('start-plan-form-' + suffix);
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                const btn = document.getElementById('card-button-' + suffix);
+                btn.disabled = true;
+                btn.innerHTML = "Processing...";
+                try {
+                    const result = await card.tokenize();
+                    if (result.status === 'OK') {
+                        document.getElementById('card_nonce-' + suffix).value = result.token;
+                        form.submit();
+                    } else {
+                        alert('Payment failed: ' + (result.errors && result.errors[0] ? result.errors[0].message : 'Unknown error'));
+                        btn.disabled = false;
+                        btn.innerHTML = "Charge $199 Setup + First Month &amp; Start Plan";
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('Payment processing error');
+                    btn.disabled = false;
+                    btn.innerHTML = "Charge $199 Setup + First Month &amp; Start Plan";
+                }
+            });
+        } catch (e) {
+            console.error("Square Initialization Error:", e);
+            handleError();
+        }
+    }
+
+    const script = document.createElement('script');
+    script.src = scriptUrl;
+    script.onload = initSquare;
+    script.onerror = handleError;
+    document.head.appendChild(script);
+})();
+</script>

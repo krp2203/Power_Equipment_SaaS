@@ -1,3 +1,4 @@
+import os
 from flask import render_template, request, flash, redirect, url_for, g, session, current_app, jsonify
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
@@ -29,6 +30,8 @@ def add_tenant():
             was_auto_gen = True
             
         # 1. Create Organization
+        from datetime import datetime, timedelta
+
         new_org = Organization(
             name=form.org_name.data,
             slug=form.slug.data.lower(), # Enforce lowercase for subdomains
@@ -39,7 +42,12 @@ def add_tenant():
 
             # Auto-generate keys
             pos_bridge_key=secrets.token_hex(32),
-            pos_provider='none'
+            pos_provider='none',
+
+            # Manually-created dealers also start on a free trial, same as
+            # public self-service signups; convert via Site Manager's "Start Plan".
+            subscription_status='trial',
+            trial_ends_at=datetime.utcnow() + timedelta(days=10)
         )
         db.session.add(new_org)
         db.session.flush() # Get ID
@@ -90,6 +98,41 @@ def add_tenant():
         return redirect(url_for('super_admin.add_tenant'))
         
     return render_template('super_admin/add.html', form=form)
+
+@super_admin_bp.route('/tenants/<int:org_id>/start-plan', methods=['GET', 'POST'])
+@login_required
+def start_plan(org_id):
+    # Security: Ensure only Super Admin (Org 1) can do this
+    if g.current_org_id != 1 and not session.get('impersonation_origin_org'):
+        flash("Unauthorized. Master access required.", "danger")
+        return redirect(url_for('marketing.dashboard'))
+
+    org = Organization.query.get_or_404(org_id)
+    admin_user = User.query.filter_by(organization_id=org.id, role='admin').first()
+
+    if request.method == 'POST':
+        from app.core.billing_service import activate_subscription, ActivationError
+        card_nonce = request.form.get('card_nonce')
+        try:
+            activate_subscription(
+                org,
+                card_nonce=card_nonce,
+                contact_email=(admin_user.email if admin_user else None) or 'billing@bentcrankshaft.com',
+                contact_name=org.name
+            )
+            flash(f"'{org.name}' is now on an active paid plan.", "success")
+        except ActivationError as e:
+            flash(str(e), "danger")
+        return redirect(url_for('marketing.dashboard'))
+
+    return render_template(
+        'super_admin/start_plan.html',
+        org=org,
+        SQUARE_ENVIRONMENT=os.environ.get('SQUARE_ENVIRONMENT', 'sandbox'),
+        SQUARE_APP_ID=os.environ.get('SQUARE_APP_ID'),
+        SQUARE_LOCATION_ID=os.environ.get('SQUARE_LOCATION_ID'),
+        start_plan_action_url=url_for('super_admin.start_plan', org_id=org.id)
+    )
 
 @super_admin_bp.route('/tenants', methods=['GET'])
 @login_required
@@ -276,3 +319,111 @@ def update_modules_ajax(org_id):
     db.session.commit()
     
     return jsonify({"success": True})
+
+@super_admin_bp.route('/tenants/<int:org_id>/update-price', methods=['POST'])
+@login_required
+def update_price(org_id):
+    # Security: Ensure only Super Admin (Org 1) can do this
+    if g.current_org_id != 1 and not session.get('impersonation_origin_org'):
+        flash("Unauthorized.", "danger")
+        return redirect(url_for('main.index'))
+
+    org = Organization.query.get_or_404(org_id)
+
+    try:
+        new_price_dollars = float(request.form.get('monthly_price_dollars', ''))
+        new_price_cents = round(new_price_dollars * 100)
+        if new_price_cents < 0:
+            raise ValueError()
+    except (TypeError, ValueError):
+        flash("Invalid price.", "danger")
+        return redirect(url_for('marketing.dashboard'))
+
+    org.monthly_price = new_price_cents
+
+    if org.subscription_status == 'active' and org.subscription_id:
+        from app.integrations.square_payments import SquarePaymentService
+        square = SquarePaymentService()
+        if not square.update_subscription_price(org.subscription_id, new_price_cents):
+            flash(f"Price saved locally, but updating the live Square subscription for '{org.name}' failed. Contact support.", "warning")
+            db.session.commit()
+            return redirect(url_for('marketing.dashboard'))
+
+    db.session.commit()
+    flash(f"'{org.name}' monthly price set to ${new_price_dollars:.2f}.", "success")
+    return redirect(url_for('marketing.dashboard'))
+
+@super_admin_bp.route('/tenants/bulk-raise-price', methods=['POST'])
+@login_required
+def bulk_raise_price():
+    # Security: Ensure only Super Admin (Org 1) can do this
+    if g.current_org_id != 1 and not session.get('impersonation_origin_org'):
+        flash("Unauthorized.", "danger")
+        return redirect(url_for('main.index'))
+
+    try:
+        raise_by_dollars = float(request.form.get('raise_by_dollars', ''))
+        raise_by_cents = round(raise_by_dollars * 100)
+        if raise_by_cents <= 0:
+            raise ValueError()
+    except (TypeError, ValueError):
+        flash("Invalid raise amount.", "danger")
+        return redirect(url_for('marketing.dashboard'))
+
+    include_org_ids = {int(v) for v in request.form.getlist('include_org_id')}
+    orgs = Organization.query.filter(
+        Organization.id != 1,
+        Organization.subscription_status == 'active',
+        Organization.id.in_(include_org_ids)
+    ).all() if include_org_ids else []
+
+    if not orgs:
+        flash("No active dealers were selected to raise.", "warning")
+        return redirect(url_for('marketing.dashboard'))
+
+    from app.integrations.square_payments import SquarePaymentService
+    square = SquarePaymentService()
+    updated, failed = [], []
+
+    for org in orgs:
+        new_price = (org.monthly_price or 4900) + raise_by_cents
+        if org.subscription_id and not square.update_subscription_price(org.subscription_id, new_price):
+            failed.append(org.name)
+            continue
+        org.monthly_price = new_price
+        updated.append(org.name)
+
+    db.session.commit()
+
+    if updated:
+        flash(f"Raised price by ${raise_by_dollars:.2f}/mo for: {', '.join(updated)}.", "success")
+    if failed:
+        flash(f"Failed to update live Square subscription for: {', '.join(failed)} (local price unchanged for these).", "danger")
+    return redirect(url_for('marketing.dashboard'))
+
+@super_admin_bp.route('/tenants/<int:org_id>/toggle-exempt', methods=['POST'])
+@login_required
+def toggle_exempt(org_id):
+    # Security: Ensure only Super Admin (Org 1) can do this
+    if g.current_org_id != 1 and not session.get('impersonation_origin_org'):
+        flash("Unauthorized.", "danger")
+        return redirect(url_for('main.index'))
+
+    if org_id == 1:
+        flash("Not applicable to the master organization.", "danger")
+        return redirect(url_for('marketing.dashboard'))
+
+    org = Organization.query.get_or_404(org_id)
+
+    if org.subscription_status == 'exempt':
+        org.subscription_status = 'inactive'
+        flash(f"'{org.name}' is no longer exempt from billing.", "success")
+    elif org.subscription_status == 'active':
+        flash(f"'{org.name}' already has an active paid plan; remove/cancel that first.", "danger")
+        return redirect(url_for('marketing.dashboard'))
+    else:
+        org.subscription_status = 'exempt'
+        flash(f"'{org.name}' is now exempt from billing. Use 'Start Plan' any time to begin charging them.", "success")
+
+    db.session.commit()
+    return redirect(url_for('marketing.dashboard'))

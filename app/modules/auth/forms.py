@@ -20,7 +20,6 @@ class ChangePasswordForm(FlaskForm):
     confirm_password = PasswordField('Confirm New Password', validators=[DataRequired(), EqualTo('new_password', message='Passwords must match.')])
     submit_password = SubmitField('Change Password')
 
-from wtforms import HiddenField, BooleanField
 from app.core.models import User, Organization
 from wtforms.validators import ValidationError
 
@@ -38,13 +37,7 @@ class SignupForm(FlaskForm):
     password = PasswordField('Password', validators=[DataRequired(), Length(min=8)])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
 
-    # Plan Selection
-    add_facebook = BooleanField('Add Facebook Marketing Module (+$69/mo)')
-
-    # Payment
-    card_nonce = HiddenField('card_nonce', validators=[]) # Populated by JS
-
-    submit = SubmitField('Complete & Pay')
+    submit = SubmitField('Start Free Trial')
 
     def validate_subdomain(self, field):
         if Organization.query.filter_by(slug=field.data.lower()).first():

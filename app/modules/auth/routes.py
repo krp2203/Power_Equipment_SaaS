@@ -5,7 +5,6 @@ from app.core.models import User, Organization
 from app.core.extensions import db
 from . import auth_bp
 from .forms import ProfileForm, ChangePasswordForm, LoginForm
-import sys
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -148,103 +147,33 @@ def profile():
 
     return render_template('auth/profile.html', profile_form=profile_form, password_form=password_form)
 
-import os
 from .forms import SignupForm
 
 @auth_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
     if current_user.is_authenticated:
         return redirect(url_for('marketing.dashboard'))
-        
+
     form = SignupForm()
-    
+
     if form.validate_on_submit():
         try:
-            # 1. Calculate Totals
-            setup_fee = 4999 # $49.99
-            base_plan_price = 2999 # $29.99
-            facebook_addon_price = 6900 # $69.00
-            
-            monthly_total = base_plan_price
-            if form.add_facebook.data:
-                monthly_total += facebook_addon_price
-            
-            initial_charge_total = setup_fee + monthly_total
-            full_name = f"{form.first_name.data} {form.last_name.data}"
-            
-            # BYPASS CHECK - must happen BEFORE Square instantiation
-            if form.card_nonce.data == "fake-nonce-bypass":
-                print("DEBUG: Bypassing Square Payment")
-                customer_id = "cus_bypass_mode"
-                success = True
-                subscription_id = "sub_bypass_mode"
-            else:
-                # 2. Square: Create Customer & Process Initial Payment
-                try:
-                    from app.integrations.square_payments import SquarePaymentService
-                    print("DEBUG: Instantiating SquarePaymentService inside route...", file=sys.stdout)
-                    square = SquarePaymentService()
-                    print("DEBUG: SquarePaymentService instantiated.", file=sys.stdout)
-                except Exception as e:
-                    print(f"CRITICAL ERROR instantiating SquarePaymentService: {e}", file=sys.stderr)
-                    import traceback
-                    traceback.print_exc()
-                    flash('Payment Service Error: Please contact support.', 'danger')
-                    square_env = os.environ.get('SQUARE_ENVIRONMENT', 'sandbox')
-                    script_url = "https://sandbox.web.squareup.com/v1/square.js" if square_env == 'sandbox' else "https://web.squareup.com/v1/square.js"
-                    return render_template('auth/signup.html', form=form, 
-                                           SQUARE_APP_ID=os.environ.get('SQUARE_APP_ID'),
-                                           SQUARE_V1_SCRIPT_URL=script_url)
-                
-                customer_id = square.create_customer(form.email.data, full_name)
-                
-                if not customer_id:
-                    flash('Payment Gateway Error: Could not create customer. Please try again.', 'danger')
-                    square_env = os.environ.get('SQUARE_ENVIRONMENT', 'sandbox')
-                    script_url = "https://sandbox.web.squareup.com/v1/square.js" if square_env == 'sandbox' else "https://web.squareup.com/v1/square.js"
-                    return render_template('auth/signup.html', form=form, 
-                                           SQUARE_APP_ID=os.environ.get('SQUARE_APP_ID'),
-                                           SQUARE_V1_SCRIPT_URL=script_url)
-                
-                # Process Payment
-                success, result_id = square.charge_card(
-                    source_id=form.card_nonce.data,
-                    amount_cents=initial_charge_total,
-                    customer_id=customer_id,
-                    note=f"Setup Fee & First Month for {form.org_name.data}"
-                )
-                
-                if not success:
-                    flash(f"Payment Failed: {result_id}", 'danger')
-                    square_env = os.environ.get('SQUARE_ENVIRONMENT', 'sandbox')
-                    script_url = "https://sandbox.web.squareup.com/v1/square.js" if square_env == 'sandbox' else "https://web.squareup.com/v1/square.js"
-                    return render_template('auth/signup.html', form=form, 
-                                           SQUARE_APP_ID=os.environ.get('SQUARE_APP_ID'),
-                                           SQUARE_V1_SCRIPT_URL=script_url)
-                
-                # 3. Create Subscription (Future)
-                card_id = square.store_card(customer_id, form.card_nonce.data)
-                
-                plan_name = "Base + Facebook" if form.add_facebook.data else "Base Plan"
-                plan_id = square.create_subscription_plan(plan_name, monthly_total)
-                
-                subscription_id = None
-                if plan_id and card_id:
-                    subscription_id = square.start_subscription(customer_id, card_id, plan_id)
-
-            # 4. Create Organization
+            # No payment is collected at signup. Every new org starts on a
+            # free trial; the setup fee + first month is only charged later
+            # when the dealer or a staff member explicitly starts the plan
+            # (see billing.start_plan), using a card entered at that time.
             from app.core.models import Organization, User
             from werkzeug.security import generate_password_hash
+            from datetime import datetime, timedelta
 
             org = Organization(
                 name=form.org_name.data,
                 slug=form.subdomain.data.lower(),
                 custom_domain=form.custom_domain.data.lower() if form.custom_domain.data else None,
-                modules={'facebook': form.add_facebook.data, 'ari': False},
-                customer_id=customer_id,
-                subscription_id=subscription_id,
-                subscription_status='active' if success else 'pending',
-                plan_type='base_plus_fb' if form.add_facebook.data else 'base'
+                modules={'facebook': False, 'ari': False},
+                subscription_status='trial',
+                trial_ends_at=datetime.utcnow() + timedelta(days=10),
+                plan_type='base'
             )
             db.session.add(org)
             db.session.flush() # Get ID
@@ -298,13 +227,7 @@ def signup():
             print(f"Signup Error: {e}")
             flash('An unexpected error occurred. Please try again.', 'danger')
 
-    square_env = os.environ.get('SQUARE_ENVIRONMENT', 'sandbox')
-    script_url = "https://sandbox.web.squareup.com/v1/square.js" if square_env == 'sandbox' else "https://web.squareup.com/v1/square.js"
-
     if form.errors:
         print(f"DEBUG: Form validation failed: {form.errors}")
 
-    return render_template('auth/signup.html', form=form, 
-                           SQUARE_APP_ID=os.environ.get('SQUARE_APP_ID'),
-                           SQUARE_LOCATION_ID=os.environ.get('SQUARE_LOCATION_ID'),
-                           SQUARE_V1_SCRIPT_URL=script_url)
+    return render_template('auth/signup.html', form=form)

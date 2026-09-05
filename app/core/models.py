@@ -31,8 +31,10 @@ class Organization(db.Model):
     # Billing / Square
     customer_id = db.Column(db.String(100), nullable=True) # Square Customer ID
     subscription_id = db.Column(db.String(100), nullable=True) # Square Subscription ID
-    subscription_status = db.Column(db.String(50), default='inactive') # active, past_due, canceled
+    subscription_status = db.Column(db.String(50), default='trial') # trial, active, past_due, canceled, exempt (billing permanently opted-out, e.g. a personal test/goodwill account)
     plan_type = db.Column(db.String(50), default='base') # base, base_plus_fb, etc.
+    monthly_price = db.Column(db.Integer, default=4900) # Cents. Per-org override, defaults to $49/mo base plan.
+    trial_ends_at = db.Column(db.DateTime, nullable=True) # 10-day free trial expiry; no auto-action taken on expiry.
 
     last_bridge_heartbeat = db.Column(db.DateTime, nullable=True)
     is_active = db.Column(db.Boolean, default=True, nullable=False)

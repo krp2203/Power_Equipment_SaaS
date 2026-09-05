@@ -25,4 +25,4 @@ pdfplumber
 pdf2image
 Pillow
 pytesseract
-squareup
+squareup==45.1.0.20260819
