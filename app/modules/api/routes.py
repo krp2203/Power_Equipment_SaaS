@@ -378,7 +378,13 @@ def square_webhook():
 
     raw_body = request.get_data()
     signature = request.headers.get('x-square-hmacsha256-signature', '')
-    notification_url = request.url_root.rstrip('/') + request.path
+    # Signature verification must reconstruct the exact URL Square hit and
+    # signed with, which nginx's proxy config can obscure (root-domain
+    # requests have historically had their Host header rewritten before
+    # reaching this app — see NGINX_CONFIG_BACKUP_20260224.conf). Trust
+    # X-Forwarded-Host, same as the tenant-resolution before_request hook.
+    forwarded_host = request.headers.get('X-Forwarded-Host', request.host)
+    notification_url = f"{request.scheme}://{forwarded_host}{request.path}"
 
     if not verify_webhook_signature(raw_body, signature, notification_url):
         print("Square Webhook: signature verification failed", file=sys.stderr)
