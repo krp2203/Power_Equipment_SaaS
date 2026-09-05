@@ -132,7 +132,7 @@ def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, te
         # Get master organization contact info
         from app.core.models import Organization
         master_org = Organization.query.filter_by(slug='pes').first()
-        support_email = "support@bentcrankshaft.com"
+        support_email = "customerservice@bentcrankshaft.com"
         support_phone = "(571) 238-8645"
 
         if master_org and master_org.theme_config:
