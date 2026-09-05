@@ -18,6 +18,7 @@ def make_absolute_url(url, org_slug):
 
 @shared_task
 def post_video_task(org_id, message, media_url, title, fb_post_id):
+    try:
         # Get organization and Facebook service
         org = Organization.query.get(org_id)
         if not org:
