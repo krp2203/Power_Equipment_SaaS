@@ -416,8 +416,10 @@ def toggle_exempt(org_id):
     org = Organization.query.get_or_404(org_id)
 
     if org.subscription_status == 'exempt':
-        org.subscription_status = 'inactive'
-        flash(f"'{org.name}' is no longer exempt from billing.", "success")
+        from datetime import datetime, timedelta
+        org.subscription_status = 'trial'
+        org.trial_ends_at = datetime.utcnow() + timedelta(days=10)
+        flash(f"'{org.name}' is no longer exempt from billing — they're back on a fresh 10-day trial.", "success")
     elif org.subscription_status == 'active':
         flash(f"'{org.name}' already has an active paid plan; remove/cancel that first.", "danger")
         return redirect(url_for('marketing.dashboard'))
