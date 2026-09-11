@@ -11,13 +11,6 @@
                     <h4 class="mb-0">Start Plan for {{ org.name }}</h4>
                 </div>
                 <div class="card-body">
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                    {% endfor %}
-                    {% endif %}
-                    {% endwith %}
 
                     <p class="text-muted">
                         Enter the dealer's card details below (e.g. if they've given you their card over the phone).

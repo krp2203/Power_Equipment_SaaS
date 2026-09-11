@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, BooleanField, SelectField, SubmitField, TextAreaField, PasswordField, DecimalField
-from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional
+from wtforms.validators import DataRequired, InputRequired, Email, Length, NumberRange, Optional
 from flask_wtf.file import FileField, FileAllowed
 
 class OrganizationSettingsForm(FlaskForm):
@@ -71,7 +71,17 @@ class EditUserForm(FlaskForm):
     submit = SubmitField('Save Changes')
 
 class MarkupTierForm(FlaskForm):
-    min_cost = DecimalField('Cost From ($)', validators=[DataRequired(), NumberRange(min=0)], places=2)
-    max_cost = DecimalField('Cost To ($, blank = no upper limit)', validators=[Optional(), NumberRange(min=0)], places=2)
-    markup_percent = DecimalField('Markup %', validators=[DataRequired(), NumberRange(min=0)], places=2)
+    # InputRequired (not DataRequired) - DataRequired treats a parsed value of
+    # 0 as "empty" and rejects it, which broke entering a tier starting at $0.00.
+    min_cost = DecimalField('Cost From ($)', places=2,
+        validators=[InputRequired(message="Enter a starting cost - use 0 for your lowest tier."),
+                    NumberRange(min=0, message="Cost From can't be negative.")],
+        description="The low end of this cost range, e.g. 0 for your first tier.")
+    max_cost = DecimalField('Cost To ($, blank = no upper limit)', places=2,
+        validators=[Optional(), NumberRange(min=0, message="Cost To can't be negative.")],
+        description="The high end of this range. Leave blank for \"and up\" (no ceiling).")
+    markup_percent = DecimalField('Markup %', places=2,
+        validators=[InputRequired(message="Enter a markup percent - use 0 for no markup."),
+                    NumberRange(min=0, message="Markup % can't be negative.")],
+        description="How much to mark up dealer cost in this range, e.g. 55 for 55%.")
     submit = SubmitField('Save Tier')

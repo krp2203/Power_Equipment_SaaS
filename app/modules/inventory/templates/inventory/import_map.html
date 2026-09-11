@@ -10,13 +10,6 @@
         Tell us which column is which &mdash; we've guessed based on common naming, double-check before continuing.
     </p>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    {% for category, message in messages %}
-    <div class="alert alert-{{ category }}">{{ message }}</div>
-    {% endfor %}
-    {% endif %}
-    {% endwith %}
 
     <form method="POST" action="{{ url_for('inventory.import_parts_preview') }}">
         <input type="hidden" name="upload_id" value="{{ upload_id }}">

@@ -8,9 +8,6 @@
         <a href="{{ url_for('equipment.index') }}" class="btn btn-sm btn-outline-secondary">All Equipment</a>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
-    {% endwith %}
 
     <div class="card shadow-sm">
         <div class="card-body">

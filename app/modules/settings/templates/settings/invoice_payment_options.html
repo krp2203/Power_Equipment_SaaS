@@ -78,9 +78,6 @@
         By default these are hidden once an invoice is marked Paid.
     </p>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
-    {% endwith %}
 
     <div class="card shadow-sm mb-4">
         <div class="card-header fw-bold">Add a payment option</div>

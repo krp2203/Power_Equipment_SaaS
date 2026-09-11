@@ -14,9 +14,6 @@
         <a href="{{ url_for('purchasing.vendors') }}" class="btn btn-sm btn-outline-secondary">All Vendors</a>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
-    {% endwith %}
 
     <div class="card shadow-sm">
         <div class="card-header bg-transparent fw-bold py-3">Manufacturers this vendor supplies</div>

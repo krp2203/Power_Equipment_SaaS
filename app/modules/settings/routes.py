@@ -11,6 +11,16 @@ from itsdangerous import URLSafeSerializer
 from app.core.multitenancy import global_tenant_bypass
 from sqlalchemy.orm.attributes import flag_modified
 
+
+def _flash_form_errors(form):
+    """Flashes each field's validation error by name, instead of one generic
+    'correct the errors' message that leaves the user guessing which field."""
+    for field_name, errors in form.errors.items():
+        label = getattr(form, field_name).label.text
+        for error in errors:
+            flash(f"{label}: {error}", "danger")
+
+
 @settings_bp.route('/settings/organization', methods=['GET', 'POST'])
 @login_required
 def organization():
@@ -560,9 +570,11 @@ def add_markup_tier():
             )
             db.session.add(tier)
             db.session.commit()
-            flash("Markup tier added.", "success")
+            from app.core.pricing_service import recalculate_extended_prices
+            changed = recalculate_extended_prices(org.id)
+            flash(f"Markup tier added. Recalculated prices for {changed} part(s).", "success")
     else:
-        flash("Please correct the errors and try again.", "danger")
+        _flash_form_errors(form)
 
     return redirect(url_for('settings.markup_tiers'))
 
@@ -582,9 +594,11 @@ def edit_markup_tier(tier_id):
             tier.max_cost = form.max_cost.data
             tier.markup_percent = form.markup_percent.data
             db.session.commit()
-            flash("Markup tier updated.", "success")
+            from app.core.pricing_service import recalculate_extended_prices
+            changed = recalculate_extended_prices(org.id)
+            flash(f"Markup tier updated. Recalculated prices for {changed} part(s).", "success")
     else:
-        flash("Please correct the errors and try again.", "danger")
+        _flash_form_errors(form)
 
     return redirect(url_for('settings.markup_tiers'))
 
@@ -596,7 +610,9 @@ def delete_markup_tier(tier_id):
     tier = MarkupTier.query.filter_by(id=tier_id, organization_id=org.id).first_or_404()
     db.session.delete(tier)
     db.session.commit()
-    flash("Markup tier removed.", "success")
+    from app.core.pricing_service import recalculate_extended_prices
+    changed = recalculate_extended_prices(org.id)
+    flash(f"Markup tier removed. Recalculated prices for {changed} part(s).", "success")
     return redirect(url_for('settings.markup_tiers'))
 
 

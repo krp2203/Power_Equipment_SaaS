@@ -13,13 +13,6 @@
                 </div>
                 <div class="card-body p-5">
 
-                    {% with messages = get_flashed_messages(with_categories=true) %}
-                    {% if messages %}
-                    {% for category, message in messages %}
-                    <div class="alert alert-{{ category }}">{{ message }}</div>
-                    {% endfor %}
-                    {% endif %}
-                    {% endwith %}
 
                     <!-- Form Validation Error Summary -->
                     {% if form.errors %}

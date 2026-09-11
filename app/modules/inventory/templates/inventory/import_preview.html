@@ -6,13 +6,6 @@
 <div class="container py-4">
     <h1><i class="bi bi-eye me-2"></i>Preview Import</h1>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-    {% for category, message in messages %}
-    <div class="alert alert-{{ category }}">{{ message }}</div>
-    {% endfor %}
-    {% endif %}
-    {% endwith %}
 
     {% if not has_tiers %}
     <div class="alert alert-warning">
