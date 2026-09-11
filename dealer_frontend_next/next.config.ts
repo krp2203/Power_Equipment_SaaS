@@ -1,6 +1,12 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Flask's blueprints require the trailing slash on their root routes
+  // (e.g. /admin/pos/, /admin/equipment/) and redirect to add it back if
+  // missing. Next.js's own default (trailingSlash: false) strips it before
+  // the rewrite below ever proxies the request, which fights Flask's
+  // redirect forever. Matching Flask's convention here breaks that loop.
+  trailingSlash: true,
   async rewrites() {
     return [
       {
@@ -10,6 +16,29 @@ const nextConfig: NextConfig = {
       {
         source: '/static/:path*',
         destination: 'http://web:5000/static/:path*', // Proxy Static Assets (Logos)
+      },
+      // Exact-match rules for the four POS-epic blueprint roots, which Flask
+      // requires to end in a trailing slash. Must come before the /admin/:path*
+      // wildcard below: that pattern's :path* capture drops trailing slashes when
+      // building the destination, so Flask always sees the no-slash form, issues
+      // its own redirect to add it back, and the client's retry hits the same
+      // lossy rewrite again - an infinite loop. An exact string match has no
+      // capture group to lose the slash from.
+      {
+        source: '/admin/pos/',
+        destination: 'http://web:5000/admin/pos/',
+      },
+      {
+        source: '/admin/service-tickets/',
+        destination: 'http://web:5000/admin/service-tickets/',
+      },
+      {
+        source: '/admin/equipment/',
+        destination: 'http://web:5000/admin/equipment/',
+      },
+      {
+        source: '/admin/purchasing/',
+        destination: 'http://web:5000/admin/purchasing/',
       },
       {
         source: '/admin/:path*',
