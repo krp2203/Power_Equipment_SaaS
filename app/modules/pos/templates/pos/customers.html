@@ -9,28 +9,26 @@
         </button>
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
-    {% endwith %}
 
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <table class="table table-hover mb-0">
                 <thead class="table-light">
-                    <tr><th>Name</th><th>Company</th><th>Phone</th><th>Email</th><th>Tax Exempt</th><th class="text-end">Actions</th></tr>
+                    <tr><th>Name</th><th>Company</th><th>Phone</th><th>Email</th><th>Tax Exempt</th><th>Discount</th><th class="text-end">Actions</th></tr>
                 </thead>
                 <tbody>
                     {% for customer in customers %}
                     <tr>
-                        <td class="fw-bold">{{ customer.name }}</td>
+                        <td class="fw-bold">{{ customer.name }}{% if customer.is_commercial %} <span class="badge bg-primary">Commercial</span>{% endif %}</td>
                         <td>{{ customer.company or '-' }}</td>
                         <td>{{ customer.phone or '-' }}</td>
                         <td>{{ customer.email or '-' }}</td>
                         <td>{% if customer.tax_exempt %}<span class="badge bg-info text-dark">Exempt</span>{% else %}-{% endif %}</td>
+                        <td>{% if customer.default_discount_percent %}{{ customer.default_discount_percent }}%{% else %}-{% endif %}</td>
                         <td class="text-end">
                             <a href="{{ url_for('equipment.index', customer_id=customer.id) }}" class="btn btn-sm btn-outline-secondary" title="Equipment"><i class="bi bi-tools"></i></a>
                             <button type="button" class="btn btn-sm btn-outline-secondary"
-                                onclick='editCustomer({{ customer.id }}, {{ (customer.first_name or "")|tojson|safe }}, {{ (customer.last_name or "")|tojson|safe }}, {{ (customer.company or "")|tojson|safe }}, {{ (customer.address or "")|tojson|safe }}, {{ (customer.phone or "")|tojson|safe }}, {{ (customer.email or "")|tojson|safe }}, {{ customer.tax_exempt|tojson }}, {{ (customer.notes or "")|tojson|safe }})'>Edit</button>
+                                onclick='editCustomer({{ customer.id }}, {{ (customer.first_name or "")|tojson|safe }}, {{ (customer.last_name or "")|tojson|safe }}, {{ (customer.company or "")|tojson|safe }}, {{ (customer.address or "")|tojson|safe }}, {{ (customer.phone or "")|tojson|safe }}, {{ (customer.email or "")|tojson|safe }}, {{ customer.tax_exempt|tojson }}, {{ customer.is_commercial|tojson }}, {{ customer.default_discount_percent if customer.default_discount_percent is not none else "null" }}, {{ (customer.notes or "")|tojson|safe }})'>Edit</button>
                             <form action="{{ url_for('pos.delete_customer', customer_id=customer.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this customer?');">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                                 <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
@@ -38,7 +36,7 @@
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="6" class="text-center text-muted py-4">No customers yet.</td></tr>
+                    <tr><td colspan="7" class="text-center text-muted py-4">No customers yet.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -62,6 +60,10 @@
                     <div class="mb-2">{{ form.phone.label(class="form-label") }}{{ form.phone(class="form-control") }}</div>
                     <div class="mb-2">{{ form.email.label(class="form-label") }}{{ form.email(class="form-control") }}</div>
                     <div class="form-check mb-2">{{ form.tax_exempt(class="form-check-input") }}{{ form.tax_exempt.label(class="form-check-label") }}</div>
+                    <div class="form-check mb-2">{{ form.is_commercial(class="form-check-input") }}{{ form.is_commercial.label(class="form-check-label") }}</div>
+                    <div class="mb-2">{{ form.default_discount_percent.label(class="form-label") }}{{ form.default_discount_percent(class="form-control", placeholder="e.g. 10 for 10% off") }}
+                        <div class="form-text">Pre-fills the discount at checkout for this customer; still editable per-sale.</div>
+                    </div>
                     <div class="mb-2">{{ form.notes.label(class="form-label") }}{{ form.notes(class="form-control", rows=2) }}</div>
                 </div>
                 <div class="modal-footer">{{ form.submit(class="btn btn-primary") }}</div>
@@ -86,6 +88,10 @@
                     <div class="mb-2"><label class="form-label">Phone</label><input class="form-control" name="phone" id="edit_phone"></div>
                     <div class="mb-2"><label class="form-label">Email</label><input class="form-control" name="email" id="edit_email"></div>
                     <div class="form-check mb-2"><input type="checkbox" class="form-check-input" name="tax_exempt" id="edit_tax_exempt"><label class="form-check-label">Tax Exempt</label></div>
+                    <div class="form-check mb-2"><input type="checkbox" class="form-check-input" name="is_commercial" id="edit_is_commercial"><label class="form-check-label">Commercial Account</label></div>
+                    <div class="mb-2"><label class="form-label">Default Discount %</label><input type="number" step="0.01" min="0" max="100" class="form-control" name="default_discount_percent" id="edit_default_discount_percent" placeholder="e.g. 10 for 10% off">
+                        <div class="form-text">Pre-fills the discount at checkout for this customer; still editable per-sale.</div>
+                    </div>
                     <div class="mb-2"><label class="form-label">Notes</label><textarea class="form-control" name="notes" id="edit_notes" rows="2"></textarea></div>
                 </div>
                 <div class="modal-footer"><button type="submit" class="btn btn-primary">Save Changes</button></div>
@@ -95,7 +101,7 @@
 </div>
 
 <script>
-function editCustomer(id, first_name, last_name, company, address, phone, email, tax_exempt, notes) {
+function editCustomer(id, first_name, last_name, company, address, phone, email, tax_exempt, is_commercial, default_discount_percent, notes) {
     document.getElementById('editCustomerForm').action = '/admin/pos/customers/' + id + '/edit';
     document.getElementById('edit_first_name').value = first_name;
     document.getElementById('edit_last_name').value = last_name;
@@ -104,6 +110,8 @@ function editCustomer(id, first_name, last_name, company, address, phone, email,
     document.getElementById('edit_phone').value = phone;
     document.getElementById('edit_email').value = email;
     document.getElementById('edit_tax_exempt').checked = tax_exempt;
+    document.getElementById('edit_is_commercial').checked = is_commercial;
+    document.getElementById('edit_default_discount_percent').value = default_discount_percent === null ? '' : default_discount_percent;
     document.getElementById('edit_notes').value = notes;
     new bootstrap.Modal(document.getElementById('editCustomerModal')).show();
 }

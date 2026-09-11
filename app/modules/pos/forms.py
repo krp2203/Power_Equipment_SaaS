@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, TextAreaField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Optional, Email
+from wtforms import StringField, TextAreaField, BooleanField, DecimalField, SubmitField
+from wtforms.validators import DataRequired, Optional, Email, NumberRange
 
 
 class CustomerForm(FlaskForm):
@@ -11,5 +11,7 @@ class CustomerForm(FlaskForm):
     phone = StringField('Phone', validators=[Optional()])
     email = StringField('Email', validators=[Optional(), Email()])
     tax_exempt = BooleanField('Tax Exempt')
+    is_commercial = BooleanField('Commercial Account')
+    default_discount_percent = DecimalField('Default Discount %', validators=[Optional(), NumberRange(min=0, max=100)], places=2)
     notes = TextAreaField('Notes', validators=[Optional()])
     submit = SubmitField('Save Customer')

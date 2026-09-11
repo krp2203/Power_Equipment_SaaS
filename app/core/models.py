@@ -586,6 +586,9 @@ class Customer(db.Model):
     phone = db.Column(db.String(50))
     email = db.Column(db.String(120))
     tax_exempt = db.Column(db.Boolean, default=False)
+    is_commercial = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
+    # Pre-fills the checkout discount when this customer is picked; still editable per-sale.
+    default_discount_percent = db.Column(db.Numeric(5, 2), nullable=True)
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
@@ -659,6 +662,9 @@ class Invoice(db.Model):
     status = db.Column(db.String(20), default='draft')  # draft, finalized, paid, partial, void
 
     subtotal = db.Column(db.Numeric(10, 2), default=0)
+    # Applied to the subtotal before tax - e.g. a commercial-account rate or a one-off deal at checkout.
+    discount_percent = db.Column(db.Numeric(5, 2), nullable=True)
+    discount_amount = db.Column(db.Numeric(10, 2), nullable=True, default=0)
     tax_rate = db.Column(db.Numeric(5, 2), default=0)  # percent, e.g. 7.25
     tax_amount = db.Column(db.Numeric(10, 2), default=0)
     total = db.Column(db.Numeric(10, 2), default=0)
@@ -712,6 +718,7 @@ class PurchaseOrder(db.Model):
     is_auto_draft = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
     order_date = db.Column(db.Date, nullable=True)
     expected_date = db.Column(db.Date, nullable=True)
+    shipping_cost = db.Column(db.Numeric(10, 2), nullable=True, default=0)
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

@@ -5,9 +5,6 @@
     <h1><i class="bi bi-receipt me-2"></i>Generate Service Invoice</h1>
     <p class="text-muted">Service Ticket #{{ ticket.id }}{% if ticket.unit %} &mdash; {{ ticket.unit.manufacturer }} {{ ticket.unit.model_number }}{% endif %}</p>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
-    {% endwith %}
 
     <form method="POST">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -43,6 +40,12 @@
 
         <div class="card shadow-sm mb-4" style="max-width:400px;">
             <div class="card-body">
+                <div class="mb-2 d-flex justify-content-between align-items-center">
+                    <span>Discount %</span>
+                    <input type="number" step="0.01" min="0" max="100" name="discount_percent"
+                           value="{{ ticket.customer.default_discount_percent if ticket.customer and ticket.customer.default_discount_percent is not none else '' }}"
+                           placeholder="0" class="form-control form-control-sm" style="width:100px;">
+                </div>
                 <div class="mb-2 d-flex justify-content-between align-items-center">
                     <span>Tax Rate %</span>
                     <input type="number" step="0.01" name="tax_rate" value="{{ default_tax_rate }}" class="form-control form-control-sm" style="width:100px;">

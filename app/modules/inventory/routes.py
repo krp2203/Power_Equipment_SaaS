@@ -4,8 +4,14 @@ from . import inventory_bp
 from app.core.models import Unit, UnitImage, PartInventory
 from app.core.extensions import db
 from .forms import InventoryItemForm, PartInventoryForm
+from app.core.pricing_service import compute_extended_price, effective_unit_price, recalculate_extended_prices
 import os
 from werkzeug.utils import secure_filename
+
+
+def _org_markup_tiers(org_id):
+    from app.core.models import MarkupTier
+    return MarkupTier.query.filter_by(organization_id=org_id).order_by(MarkupTier.min_cost).all()
 
 @inventory_bp.route('/parts', methods=['GET'])
 @login_required
@@ -67,9 +73,12 @@ def add_part():
             description=form.description.data,
             stock_on_hand=form.stock_on_hand.data,
             bin_location=form.bin_location.data,
+            dealer_cost=form.dealer_cost.data,
+            retail_price=form.retail_price.data,
             display_on_web=form.display_on_web.data,
         )
-        
+        part.extended_price = compute_extended_price(part.dealer_cost, _org_markup_tiers(g.current_org.id))
+
         # Handle Image Upload
         if form.image.data:
             f = form.image.data
@@ -112,6 +121,9 @@ def edit_part(id):
         part.description = form.description.data
         part.stock_on_hand = form.stock_on_hand.data
         part.bin_location = form.bin_location.data
+        part.dealer_cost = form.dealer_cost.data
+        part.retail_price = form.retail_price.data
+        part.extended_price = compute_extended_price(part.dealer_cost, _org_markup_tiers(g.current_org.id))
         part.display_on_web = form.display_on_web.data
 
         # Handle Image Upload
@@ -186,18 +198,26 @@ def search_parts():
             .limit(25)
             .all())
 
-    def price(p):
-        v = p.extended_price if p.extended_price is not None else (p.retail_price or p.dealer_cost)
-        return float(v) if v is not None else 0.0
-
     return {'results': [{
         'id': p.id,
         'part_number': p.part_number,
         'manufacturer': p.manufacturer or '',
         'description': p.description or '',
-        'price': price(p),
+        'price': float(effective_unit_price(p)),
         'stock': p.stock_on_hand or 0,
     } for p in rows]}
+
+
+@inventory_bp.route('/parts/recalculate-prices', methods=['POST'])
+@login_required
+def recalculate_prices():
+    """Recomputes every part's Extended Price from its current Dealer Cost and
+    the org's Markup Tiers. Use after bulk-editing costs, or if a tier change
+    doesn't seem to have taken effect on older parts."""
+    changed = recalculate_extended_prices(g.current_org.id)
+    flash(f"Recalculated prices for {changed} part(s).", 'success')
+    return redirect(request.referrer or url_for('inventory.index'))
+
 
 @inventory_bp.route('/units')
 @login_required

@@ -1,5 +1,6 @@
 from flask import render_template, g, redirect, url_for, flash, request
 from flask_login import login_required
+from decimal import Decimal, InvalidOperation
 from . import purchasing_bp
 from app.core.models import (Vendor, VendorManufacturer, PurchaseOrder, PurchaseOrderLineItem,
                              PartInventory, Unit)
@@ -204,7 +205,25 @@ def new_purchase_order():
 @login_required
 def view_purchase_order(po_id):
     po = PurchaseOrder.query.filter_by(id=po_id, organization_id=g.current_org.id).first_or_404()
-    return render_template('purchasing/po_detail.html', po=po)
+    merch_subtotal = sum(
+        (li.unit_cost or 0) * li.quantity_ordered for li in po.line_items
+    )
+    return render_template('purchasing/po_detail.html', po=po, merch_subtotal=merch_subtotal)
+
+
+@purchasing_bp.route('/pos/<int:po_id>/shipping', methods=['POST'])
+@login_required
+def update_po_shipping(po_id):
+    po = PurchaseOrder.query.filter_by(id=po_id, organization_id=g.current_org.id).first_or_404()
+    raw = request.form.get('shipping_cost', '').strip()
+    try:
+        po.shipping_cost = Decimal(raw) if raw else Decimal('0')
+    except InvalidOperation:
+        flash("Shipping/freight must be a number.", "danger")
+        return redirect(url_for('purchasing.view_purchase_order', po_id=po.id))
+    db.session.commit()
+    flash("Shipping/freight updated.", "success")
+    return redirect(url_for('purchasing.view_purchase_order', po_id=po.id))
 
 
 @purchasing_bp.route('/pos/<int:po_id>/add-line', methods=['POST'])

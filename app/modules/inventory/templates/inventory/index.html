@@ -11,6 +11,12 @@
                 service tickets; only parts flagged <strong>Web</strong> show on your public website.</p>
         </div>
         <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <form method="POST" action="{{ url_for('inventory.recalculate_prices') }}" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit" class="btn btn-outline-secondary" title="Recompute every part's Extended Price from Dealer Cost + Markup Tiers">
+                    <i class="bi bi-arrow-repeat me-2"></i>Recalculate Prices
+                </button>
+            </form>
             <a href="{{ url_for('inventory.import_parts') }}" class="btn btn-outline-primary">
                 <i class="bi bi-upload me-2"></i>Import Price File
             </a>
@@ -126,7 +132,7 @@
                                     <td class="pe-4 text-end">
                                         <div class="btn-group">
                                             <button type="button" class="btn btn-sm btn-outline-primary"
-                                                onclick='editPart({{ part.id }}, {{ part.part_number|tojson|safe }}, {{ (part.manufacturer or "")|tojson|safe }}, {{ (part.description or "")|tojson|safe }}, {{ part.stock_on_hand }}, {{ (part.bin_location or "")|tojson|safe }}, {{ part.display_on_web|tojson }})'
+                                                onclick='editPart({{ part.id }}, {{ part.part_number|tojson|safe }}, {{ (part.manufacturer or "")|tojson|safe }}, {{ (part.description or "")|tojson|safe }}, {{ part.stock_on_hand }}, {{ (part.bin_location or "")|tojson|safe }}, {{ part.display_on_web|tojson }}, {{ part.dealer_cost if part.dealer_cost is not none else "null" }}, {{ part.retail_price if part.retail_price is not none else "null" }})'
                                                 title="Edit Part">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
@@ -221,6 +227,17 @@
                             {{ form.bin_location(class="form-control", placeholder="e.g. A-12") }}
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Dealer Cost ($)</label>
+                            {{ form.dealer_cost(class="form-control", placeholder="What you pay the vendor") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Retail / MSRP ($)</label>
+                            {{ form.retail_price(class="form-control", placeholder="Vendor's suggested price") }}
+                        </div>
+                    </div>
+                    <div class="form-text mb-3">Selling price (Extended Price) is computed automatically from Dealer Cost and your Markup Tiers when you save.</div>
                     <div class="form-check form-switch">
                         {{ form.display_on_web(class="form-check-input") }}
                         <label class="form-check-label" for="{{ form.display_on_web.id }}">Show on website</label>
@@ -274,6 +291,17 @@
                             {{ form.bin_location(class="form-control", id="edit_bin_location") }}
                         </div>
                     </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Dealer Cost ($)</label>
+                            {{ form.dealer_cost(class="form-control", id="edit_dealer_cost", placeholder="What you pay the vendor") }}
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Retail / MSRP ($)</label>
+                            {{ form.retail_price(class="form-control", id="edit_retail_price", placeholder="Vendor's suggested price") }}
+                        </div>
+                    </div>
+                    <div class="form-text mb-3">Selling price (Extended Price) is recomputed from Dealer Cost and your Markup Tiers when you save.</div>
                     <div class="form-check form-switch">
                         {{ form.display_on_web(class="form-check-input", id="edit_display_on_web") }}
                         <label class="form-check-label" for="edit_display_on_web">Show on website</label>
@@ -312,7 +340,7 @@
 </div>
 
 <script>
-    function editPart(id, partNumber, manufacturer, description, stock, bin, displayOnWeb) {
+    function editPart(id, partNumber, manufacturer, description, stock, bin, displayOnWeb, dealerCost, retailPrice) {
         const modal = new bootstrap.Modal(document.getElementById('editPartModal'));
         document.getElementById('editPartForm').action = "/admin/inventory/parts/edit/" + id;
         document.getElementById('edit_part_number').value = partNumber;
@@ -320,6 +348,8 @@
         document.getElementById('edit_description').value = description;
         document.getElementById('edit_stock_on_hand').value = stock;
         document.getElementById('edit_bin_location').value = bin;
+        document.getElementById('edit_dealer_cost').value = dealerCost === null ? '' : dealerCost;
+        document.getElementById('edit_retail_price').value = retailPrice === null ? '' : retailPrice;
         document.getElementById('edit_display_on_web').checked = !!displayOnWeb;
         modal.show();
     }

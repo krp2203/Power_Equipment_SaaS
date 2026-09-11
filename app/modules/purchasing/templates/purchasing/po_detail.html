@@ -21,9 +21,6 @@
         {% endif %}
     </div>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
-    {% endwith %}
 
     <div class="card shadow-sm mb-4">
         <div class="card-header">Line Items</div>
@@ -85,6 +82,25 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4" style="max-width:400px;">
+        <div class="card-body">
+            <div class="mb-2 d-flex justify-content-between"><span>Merchandise Subtotal</span><span>${{ '%.2f'|format(merch_subtotal) }}</span></div>
+            <form method="POST" action="{{ url_for('purchasing.update_po_shipping', po_id=po.id) }}" class="mb-2 d-flex justify-content-between align-items-center">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <label class="mb-0">Shipping / Freight</label>
+                <div class="input-group input-group-sm" style="width:150px;">
+                    <span class="input-group-text">$</span>
+                    <input type="number" step="0.01" min="0" name="shipping_cost" class="form-control"
+                           value="{{ '%.2f'|format(po.shipping_cost) if po.shipping_cost is not none else '0.00' }}">
+                    <button type="submit" class="btn btn-outline-secondary">Save</button>
+                </div>
+            </form>
+            <div class="d-flex justify-content-between fw-bold fs-5 border-top pt-2 mt-2">
+                <span>Total</span><span>${{ '%.2f'|format(merch_subtotal + (po.shipping_cost or 0)) }}</span>
+            </div>
         </div>
     </div>
 

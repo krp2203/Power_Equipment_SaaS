@@ -42,6 +42,8 @@ def add_customer():
             phone=form.phone.data,
             email=form.email.data,
             tax_exempt=form.tax_exempt.data,
+            is_commercial=form.is_commercial.data,
+            default_discount_percent=form.default_discount_percent.data,
             notes=form.notes.data,
         )
         db.session.add(customer)
@@ -65,6 +67,8 @@ def edit_customer(customer_id):
         customer.phone = form.phone.data
         customer.email = form.email.data
         customer.tax_exempt = form.tax_exempt.data
+        customer.is_commercial = form.is_commercial.data
+        customer.default_discount_percent = form.default_discount_percent.data
         customer.notes = form.notes.data
         db.session.commit()
         flash(f"Customer '{customer.name}' updated.", "success")
@@ -88,6 +92,18 @@ def delete_customer(customer_id):
 
 def _get_org_tax_rate(org):
     return org.default_tax_rate
+
+
+def _parse_discount_percent():
+    """Reads and clamps the checkout 'discount_percent' field, if present."""
+    raw = request.form.get('discount_percent', '').strip()
+    if not raw:
+        return None
+    try:
+        pct = Decimal(raw)
+    except InvalidOperation:
+        return None
+    return max(Decimal('0'), min(Decimal('100'), pct))
 
 
 # ====== SERVICE INVOICE (from a ServiceTicket) ======
@@ -126,6 +142,7 @@ def new_service_invoice(ticket_id):
             bill_to_email=request.form.get('bill_to_email', '').strip() or (customer.email if customer else (unit.owner_email if unit else '')),
             status='unpaid',
             tax_rate=Decimal('0') if (customer and customer.tax_exempt) else tax_rate,
+            discount_percent=_parse_discount_percent(),
             created_by=current_user.id,
         )
         db.session.add(invoice)
@@ -241,6 +258,7 @@ def new_sale():
             bill_to_email=request.form.get('bill_to_email', '').strip() or (customer.email if customer else ''),
             status='unpaid',
             tax_rate=Decimal('0') if (customer and customer.tax_exempt) else tax_rate,
+            discount_percent=_parse_discount_percent(),
             created_by=current_user.id,
         )
         db.session.add(invoice)
@@ -440,7 +458,8 @@ def search_customers():
     return {'results': [
         {'id': c.id, 'name': c.name, 'first_name': c.first_name or '', 'last_name': c.last_name or '',
          'company': c.company or '', 'address': c.address or '',
-         'phone': c.phone or '', 'email': c.email or '', 'tax_exempt': c.tax_exempt}
+         'phone': c.phone or '', 'email': c.email or '', 'tax_exempt': c.tax_exempt,
+         'default_discount_percent': float(c.default_discount_percent) if c.default_discount_percent is not None else None}
         for c in results
     ]}
 

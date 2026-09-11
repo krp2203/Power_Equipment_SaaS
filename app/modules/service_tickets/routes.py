@@ -1,10 +1,12 @@
 from flask import render_template, request, flash, redirect, url_for, g
 from flask_login import login_required, current_user
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from . import service_tickets_bp
 from app.core.extensions import db
 from app.core.models import (ServiceTicket, ServiceTicketPart, ServiceTicketLabor, ServiceTicketNote,
                              Customer, Unit, User, PartInventory)
+from app.core.pricing_service import effective_unit_price
 
 STATUSES = ['Received', 'In Progress', 'Waiting on Parts', 'Ready for Pickup', 'Closed']
 
@@ -216,6 +218,17 @@ def add_part(ticket_id):
         flash('Quantity must be a number.', 'danger')
         return redirect(url_for('service_tickets.view', ticket_id=ticket_id))
 
+    # Optional price override - lets the counter charge a price other than the
+    # catalog price (a special-order part that's gone up, a known price change
+    # not yet reflected in inventory, etc.) without editing the part record.
+    price_override = None
+    override_raw = request.form.get('unit_price', '').strip()
+    if override_raw:
+        try:
+            price_override = Decimal(override_raw)
+        except InvalidOperation:
+            price_override = None
+
     stp = ServiceTicketPart(
         organization_id=g.current_org_id, service_ticket_id=ticket.id,
         quantity=quantity,
@@ -227,7 +240,7 @@ def add_part(ticket_id):
             flash('Part not found.', 'danger')
             return redirect(url_for('service_tickets.view', ticket_id=ticket_id))
         stp.part_number = part.part_number
-        stp.cost_at_time_of_use = part.extended_price if part.extended_price is not None else (part.dealer_cost or 0)
+        stp.cost_at_time_of_use = price_override if price_override is not None else effective_unit_price(part)
         stp.description_at_time_of_use = part.description or part.part_number
         stp.part_inventory_id = part.id
         db.session.add(stp)

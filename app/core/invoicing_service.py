@@ -24,11 +24,19 @@ def next_po_number(org_id):
 
 
 def recalculate_invoice_totals(invoice):
-    """Recomputes subtotal/tax_amount/total from the invoice's current line items. Does not commit."""
+    """
+    Recomputes subtotal/discount_amount/tax_amount/total from the invoice's
+    current line items and discount_percent. Discount is applied to the
+    subtotal before tax. Does not commit.
+    """
     subtotal = sum((li.line_total for li in invoice.line_items), Decimal('0'))
+    discount_percent = invoice.discount_percent or Decimal('0')
+    discount_amount = (subtotal * discount_percent / Decimal('100')).quantize(Decimal('0.01')) if discount_percent else Decimal('0')
+    taxable = subtotal - discount_amount
     tax_rate = invoice.tax_rate or Decimal('0')
-    tax_amount = (subtotal * tax_rate / Decimal('100')).quantize(Decimal('0.01'))
+    tax_amount = (taxable * tax_rate / Decimal('100')).quantize(Decimal('0.01'))
 
     invoice.subtotal = subtotal
+    invoice.discount_amount = discount_amount
     invoice.tax_amount = tax_amount
-    invoice.total = subtotal + tax_amount
+    invoice.total = taxable + tax_amount

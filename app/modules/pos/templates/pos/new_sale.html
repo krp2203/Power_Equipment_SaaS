@@ -7,9 +7,6 @@
     <h1><i class="bi bi-cash-coin me-2"></i>New Sale</h1>
     <p class="text-muted">Ring up any mix of parts and whole goods on one ticket.</p>
 
-    {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
-    {% endwith %}
 
     <form method="POST" id="saleForm">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -50,6 +47,11 @@
         <div class="card shadow-sm mb-4" style="max-width:400px;">
             <div class="card-body">
                 <div class="mb-2 d-flex justify-content-between"><span>Subtotal</span><span id="subtotalDisplay">$0.00</span></div>
+                <div class="mb-2 d-flex justify-content-between align-items-center">
+                    <span>Discount %</span>
+                    <input type="number" step="0.01" min="0" max="100" name="discount_percent" id="discountInput" value="" placeholder="0" class="form-control form-control-sm" style="width:100px;" oninput="recalc()">
+                </div>
+                <div class="mb-2 d-flex justify-content-between" id="discountRow" style="display:none;"><span>Discount</span><span id="discountDisplay">-$0.00</span></div>
                 <div class="mb-2 d-flex justify-content-between align-items-center">
                     <span>Tax Rate %</span>
                     <input type="number" step="0.01" name="tax_rate" id="taxRateInput" value="{{ default_tax_rate }}" class="form-control form-control-sm" style="width:100px;" oninput="recalc()">
@@ -143,10 +145,15 @@ function recalc() {
         document.getElementById('linetotal-' + idx).innerText = '$' + total.toFixed(2);
         subtotal += total;
     });
+    const discountPct = parseFloat(document.getElementById('discountInput').value) || 0;
+    const discount = subtotal * discountPct / 100;
+    document.getElementById('discountRow').style.display = discountPct > 0 ? 'flex' : 'none';
+    document.getElementById('discountDisplay').innerText = '-$' + discount.toFixed(2);
+    const taxable = subtotal - discount;
     const taxRate = parseFloat(document.getElementById('taxRateInput').value) || 0;
-    const tax = subtotal * taxRate / 100;
+    const tax = taxable * taxRate / 100;
     document.getElementById('subtotalDisplay').innerText = '$' + subtotal.toFixed(2);
-    document.getElementById('totalDisplay').innerText = '$' + (subtotal + tax).toFixed(2);
+    document.getElementById('totalDisplay').innerText = '$' + (taxable + tax).toFixed(2);
 }
 
 function onCustomerPicked(prefix, customer) {
@@ -157,6 +164,8 @@ function onCustomerPicked(prefix, customer) {
         document.getElementById('bill_to_address').value = '';
         document.getElementById('bill_to_phone').value = '';
         document.getElementById('bill_to_email').value = '';
+        document.getElementById('discountInput').value = '';
+        recalc();
         return;
     }
     document.getElementById('bill_to_name').value = customer.name || '';
@@ -167,6 +176,7 @@ function onCustomerPicked(prefix, customer) {
     if (customer.tax_exempt) {
         document.getElementById('taxRateInput').value = 0;
     }
+    document.getElementById('discountInput').value = customer.default_discount_percent != null ? customer.default_discount_percent : '';
     recalc();
 }
 
