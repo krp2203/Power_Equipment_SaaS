@@ -1,14 +1,14 @@
 {% extends "base.html" %}
 
-{% block title %}Marketing Control Center{% endblock %}
+{% block title %}Dealer Control Center{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
     <!-- Header -->
     <div class="row mb-4">
         <div class="col-md-8">
-            <h1><i class="bi bi-shop-window me-2"></i>Marketing Control Center</h1>
-            <p class="text-muted">Manage your website integration and inventory status.</p>
+            <h1><i class="bi bi-shop-window me-2"></i>Dealer Control Center</h1>
+            <p class="text-muted">Your day-to-day operations, settings, and website at a glance.</p>
         </div>
         <div class="col-md-4 text-end">
             <a href="{{ url_for('settings.organization') }}" class="btn btn-outline-primary">
@@ -43,55 +43,42 @@
     </div>
     {% endif %}
 
-    <div class="row">
-        <!-- Connectivity Status (Only if POS Sync module enabled) -->
-        {% if g.current_org.modules.get('pos_sync') %}
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card border-left-{{ 'success' if bridge_online else 'danger' }} shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div
-                                class="text-xs font-weight-bold text-{{ 'success' if bridge_online else 'danger' }} text-uppercase mb-1">
-                                POS Bridge Status
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">
-                                {{ 'Connected' if bridge_online else 'Offline' }}
-                            </div>
-                            <small class="text-muted">
-                                Last seen: {{ last_seen|time_ago if last_seen else 'Never' }}
-                            </small>
-                            <div class="mt-2">
-                                <form action="{{ url_for('marketing.download_bridge') }}" method="POST">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <div class="d-grid gap-2">
-                                        <button type="submit"
-                                            class="btn btn-{{ 'success' if bridge_online else 'danger' }}">
-                                            <i class="bi bi-download me-1"></i> Download Bridge
-                                        </button>
-                                        <div class="alert alert-info py-2 px-3 mb-0 small border-0 shadow-none"
-                                            style="background-color: rgba(13, 202, 240, 0.1);">
-                                            <i class="bi bi-info-circle-fill me-1"></i>
-                                            <strong>Pro Tip:</strong> Right-click the downloaded ZIP and select
-                                            <strong>"Extract All"</strong> before running the app.
-                                        </div>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            {% if bridge_online %}
-                            <i class="bi bi-hdd-network fa-2x text-success" style="font-size: 2.5rem;"></i>
-                            {% else %}
-                            <i class="bi bi-hdd-network fa-2x text-danger" style="font-size: 2.5rem;"></i>
-                            {% endif %}
-                        </div>
-                    </div>
+    {# ---- Quick launcher ---- #}
+    {% set _is_admin = current_user.role == 'admin' or session.get('impersonation_origin_org') %}
+    {% macro tile(endpoint, icon, label) %}
+    <div class="col-6 col-md-4 col-lg-3 mb-3">
+        <a href="{{ url_for(endpoint) }}" class="text-decoration-none transition-hover">
+            <div class="card shadow-sm h-100 text-center border-0">
+                <div class="card-body py-3">
+                    <i class="bi {{ icon }} d-block mb-2 text-primary" style="font-size: 1.9rem;"></i>
+                    <div class="fw-semibold text-dark small">{{ label }}</div>
                 </div>
             </div>
-        </div>
-        {% endif %}
+        </a>
+    </div>
+    {% endmacro %}
 
+    <h6 class="text-uppercase text-muted fw-bold small mb-2">Jump to</h6>
+    <div class="row g-2 mb-4">
+        {% if g.current_org.modules.get('pos') %}
+        {{ tile('pos.new_sale', 'bi-cart-plus', 'New Sale') }}
+        {{ tile('service_tickets.index', 'bi-wrench-adjustable', 'Service Tickets') }}
+        {{ tile('pos.customers', 'bi-people', 'Customers') }}
+        {{ tile('purchasing.purchase_orders', 'bi-truck', 'Purchase Orders') }}
+        {{ tile('equipment.index', 'bi-tools', 'Equipment') }}
+        {% endif %}
+        {{ tile('inventory.index', 'bi-box-seam', 'Parts Inventory') }}
+        {% if _is_admin %}
+        {{ tile('settings.organization', 'bi-gear', 'Site Settings') }}
+        {{ tile('settings.invoice_payment_options', 'bi-credit-card', 'Payment Options') }}
+        {{ tile('settings.markup_tiers', 'bi-graph-up', 'Markup Tiers') }}
+        {% endif %}
+        {% if session.get('impersonation_origin_org') %}
+        {{ tile('super_admin.exit_impersonation', 'bi-speedometer2', 'SaaS Command Center') }}
+        {% endif %}
+    </div>
+
+    <div class="row">
         <!-- Inventory Stats -->
         <div class="col-xl-4 col-md-6 mb-4">
             <a href="{{ url_for('inventory.index') }}" class="text-decoration-none transition-hover">
@@ -123,13 +110,20 @@
                             <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
                                 Integrations
                             </div>
+                            <!-- POS Check -->
+                            {% if g.current_org.modules.get('pos') %}
+                            <div class="mb-1">
+                                <i class="bi bi-check-circle-fill text-success me-1"></i> Point of Sale
+                            </div>
+                            {% endif %}
+
                             <!-- ARI Check -->
                             {% if g.current_org.modules.get('ari') %}
                             <div class="mb-1">
                                 <i class="bi bi-check-circle-fill text-success me-1"></i> ARI PartSmart
                             </div>
                             {% endif %}
-                            
+
                             <!-- Facebook Check -->
                             {% if g.current_org.modules.get('facebook') %}
                             <div>
@@ -141,7 +135,7 @@
                             </div>
                             {% endif %}
 
-                            {% if not g.current_org.modules.get('ari') and not g.current_org.modules.get('facebook') %}
+                            {% if not g.current_org.modules.get('pos') and not g.current_org.modules.get('ari') and not g.current_org.modules.get('facebook') %}
                             <div class="text-muted small">No active add-ons.</div>
                             {% endif %}
                         </div>
@@ -152,6 +146,7 @@
                 </div>
             </div>
         </div>
+
     </div>
 
     <!-- Instructions / Guide -->
@@ -162,15 +157,12 @@
                     <h6 class="m-0 font-weight-bold">How to manage your website</h6>
                 </div>
                 <div class="card-body">
-                    <p>Welcome to your customized marketing dashboard. From here you can:</p>
+                    <p>Welcome to your Dealer Control Center. From here you can:</p>
                     <ul>
-                        {% if g.current_org.modules.get('pos_sync') %}
-                        <li>Ensure your <strong>POS Bridge</strong> is running on your server to keep parts inventory in sync.</li>
+                        {% if g.current_org.modules.get('pos') %}
+                        <li>Use <strong>Point of Sale</strong> for counter sales, invoicing, service tickets, and purchasing.</li>
                         {% endif %}
-                        <li>Check <strong>Settings</strong> to enable or disable your active integrations.</li>
-                        {% if g.current_org.modules.get('pos_sync') %}
-                        <li>Your inventory updates automatically every 15 minutes when the bridge is online.</li>
-                        {% endif %}
+                        <li>Check <strong>Settings</strong> to update your site content and review which modules are active.</li>
                         {% if g.current_org.modules.get('facebook') %}
                         <li>Promote your equipment directly to your Facebook Page with one click.</li>
                         {% endif %}

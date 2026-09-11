@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Parts Markup Tiers{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1><i class="bi bi-graph-up me-2"></i>Parts Markup Tiers</h1>
+    <p class="text-muted">
+        Define how much to mark up parts above dealer cost, based on cost ranges. This is used to
+        calculate each part's <strong>Extended Price</strong> automatically when you import a price file
+        or add a part manually. It doesn't change the manufacturer's suggested retail price &mdash; that
+        comes straight from the price file.
+    </p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">Add a Tier</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('settings.add_markup_tier') }}" class="row g-2 align-items-end">
+                {{ form.hidden_tag() }}
+                <div class="col-md-3">
+                    {{ form.min_cost.label(class="form-label small") }}
+                    {{ form.min_cost(class="form-control") }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.max_cost.label(class="form-label small") }}
+                    {{ form.max_cost(class="form-control") }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.markup_percent.label(class="form-label small") }}
+                    {{ form.markup_percent(class="form-control") }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.submit(class="btn btn-primary w-100") }}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th>Cost From</th>
+                        <th>Cost To</th>
+                        <th>Markup %</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for tier in tiers %}
+                    <tr>
+                        <td colspan="4" class="p-2">
+                            <form method="POST" action="{{ url_for('settings.edit_markup_tier', tier_id=tier.id) }}"
+                                class="row g-2 align-items-center">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <div class="col-md-3">
+                                    <input type="number" step="0.01" name="min_cost" value="{{ tier.min_cost }}" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" step="0.01" name="max_cost" value="{{ tier.max_cost if tier.max_cost is not none else '' }}" placeholder="no limit" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" step="0.01" name="markup_percent" value="{{ tier.markup_percent }}" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3 text-end">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Save</button>
+                                    <button type="submit" formaction="{{ url_for('settings.delete_markup_tier', tier_id=tier.id) }}"
+                                        class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Delete this markup tier?');">Delete</button>
+                                </div>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center text-muted py-4">No markup tiers yet &mdash; add one above.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

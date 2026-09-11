@@ -1,6 +1,6 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, BooleanField, SelectField, SubmitField, TextAreaField, PasswordField
-from wtforms.validators import DataRequired, Email, Length
+from wtforms import StringField, BooleanField, SelectField, SubmitField, TextAreaField, PasswordField, DecimalField
+from wtforms.validators import DataRequired, Email, Length, NumberRange, Optional
 from flask_wtf.file import FileField, FileAllowed
 
 class OrganizationSettingsForm(FlaskForm):
@@ -10,17 +10,11 @@ class OrganizationSettingsForm(FlaskForm):
     slug = StringField('SaaS Subdomain Slug', description="Unique ID for your website URL (e.g. 'dealername').")
     custom_domain = StringField('Custom Domain', description="Optional: Use your own domain (e.g. 'bobsmowers.com'). Leave blank to use subdomain only.")
     
-    enable_ari = BooleanField('Enable ARI PartSmart')
     ari_dealer_id = StringField('ARI Dealer ID')
-    
-    enable_pos = BooleanField('Enable POS Integration')
-    pos_provider = SelectField('POS Provider', choices=[('ideal', 'Ideal'), ('csystems', 'C-Systems'), ('commander', 'Commander'), ('none', 'None')], default='none')
-    pos_bridge_key = StringField('POS Bridge Key', description="Secret key for local sync script.")
-    
-    # Module Toggles (For Admin use)
-    module_pos_sync = BooleanField('Module: POS Sync')
-    module_facebook = BooleanField('Module: Facebook Marketing')
-    module_ari = BooleanField('Module: ARI PartSmart')
+
+    # Point of Sale / Service defaults
+    default_tax_rate = DecimalField('Default Sales Tax %', validators=[Optional(), NumberRange(min=0, max=100)], places=3)
+    default_labor_rate = DecimalField('Shop Labor Rate ($/hr)', validators=[Optional(), NumberRange(min=0)], places=2)
 
     facebook_page_id = StringField('Facebook Page ID')
     facebook_access_token = StringField('Facebook Access Token')
@@ -68,10 +62,16 @@ class AddUserForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     email = StringField('Email Address', validators=[DataRequired(), Email()])
     password = PasswordField('Temporary Password', validators=[DataRequired(), Length(min=6)])
-    role = SelectField('Role', choices=[('admin', 'Admin'), ('user', 'User')], default='user')
+    role = SelectField('Role', choices=[('admin', 'Admin'), ('technician', 'Technician'), ('user', 'User')], default='user')
     submit = SubmitField('Add User')
 
 class EditUserForm(FlaskForm):
     email = StringField('Email Address', validators=[DataRequired(), Email()])
-    role = SelectField('Role', choices=[('admin', 'Admin'), ('user', 'User')])
+    role = SelectField('Role', choices=[('admin', 'Admin'), ('technician', 'Technician'), ('user', 'User')])
     submit = SubmitField('Save Changes')
+
+class MarkupTierForm(FlaskForm):
+    min_cost = DecimalField('Cost From ($)', validators=[DataRequired(), NumberRange(min=0)], places=2)
+    max_cost = DecimalField('Cost To ($, blank = no upper limit)', validators=[Optional(), NumberRange(min=0)], places=2)
+    markup_percent = DecimalField('Markup %', validators=[DataRequired(), NumberRange(min=0)], places=2)
+    submit = SubmitField('Save Tier')

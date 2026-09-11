@@ -7,10 +7,13 @@
     <div class="row mb-4 align-items-center">
         <div class="col-md-8">
             <h1><i class="bi bi-box-seam me-2"></i>Inventory</h1>
-            <p class="text-muted mb-0">Manage and view your parts inventory synced from the Bridge or added manually.
-            </p>
+            <p class="text-muted mb-0">Manage your parts inventory. Everything here is available for counter sales and
+                service tickets; only parts flagged <strong>Web</strong> show on your public website.</p>
         </div>
         <div class="col-md-4 text-md-end mt-3 mt-md-0">
+            <a href="{{ url_for('inventory.import_parts') }}" class="btn btn-outline-primary">
+                <i class="bi bi-upload me-2"></i>Import Price File
+            </a>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPartModal">
                 <i class="bi bi-plus-lg me-2"></i>Add Part Manually
             </button>
@@ -21,7 +24,43 @@
         <div class="col-md-12">
             <div class="card shadow-sm">
                 <div class="card-header bg-white py-3">
-                    <h5 class="mb-0">Parts List</h5>
+                    <form method="GET" class="row g-2 align-items-center">
+                        <div class="col-sm-5 col-md-4">
+                            <input type="search" name="q" value="{{ q }}" class="form-control form-control-sm"
+                                   placeholder="Search part # or description…">
+                        </div>
+                        <div class="col-sm-4 col-md-3">
+                            <select name="mfg" class="form-select form-select-sm">
+                                <option value="">All manufacturers</option>
+                                {% for m in manufacturers %}
+                                <option value="{{ m }}" {% if m == mfg %}selected{% endif %}>{{ m }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" role="switch" id="webOnly"
+                                       name="web" value="1" {% if web %}checked{% endif %} onchange="this.form.submit()">
+                                <label class="form-check-label small" for="webOnly">On website{% if web_count %} ({{ '{:,}'.format(web_count) }}){% endif %}</label>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <button type="submit" class="btn btn-sm btn-primary">Filter</button>
+                            {% if q or mfg or neg or web %}
+                            <a href="{{ url_for('inventory.index') }}" class="btn btn-sm btn-outline-secondary">Clear</a>
+                            {% endif %}
+                        </div>
+                        <div class="col text-end small">
+                            {% if negative_count and not neg %}
+                            <a href="{{ url_for('inventory.index', neg=1) }}" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-exclamation-triangle me-1"></i>{{ '{:,}'.format(negative_count) }} negative
+                            </a>
+                            {% elif neg %}
+                            <span class="badge bg-danger">Showing negative stock only</span>
+                            {% endif %}
+                            <span class="text-muted ms-2">{{ '{:,}'.format(pagination.total) }} part{{ 's' if pagination.total != 1 }}</span>
+                        </div>
+                    </form>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -32,8 +71,12 @@
                                     <th>Part Number</th>
                                     <th>Manufacturer</th>
                                     <th>Description</th>
+                                    <th class="text-end">Dealer Cost</th>
+                                    <th class="text-end">Retail Price</th>
+                                    <th class="text-end">Extended Price</th>
                                     <th>Bin Location</th>
                                     <th class="text-center">QOH</th>
+                                    <th class="text-center">Web</th>
                                     <th class="text-center">Last Updated</th>
                                     <th class="pe-4 text-end">Actions</th>
                                 </tr>
@@ -58,6 +101,9 @@
                                     <td>{{ part.manufacturer or '-' }}</td>
                                     <td class="text-truncate" style="max-width: 250px;">{{ part.description or '-' }}
                                     </td>
+                                    <td class="text-end">{{ '$%.2f'|format(part.dealer_cost) if part.dealer_cost is not none else '-' }}</td>
+                                    <td class="text-end">{{ '$%.2f'|format(part.retail_price) if part.retail_price is not none else '-' }}</td>
+                                    <td class="text-end">{{ '$%.2f'|format(part.extended_price) if part.extended_price is not none else '-' }}</td>
                                     <td><span class="badge bg-light text-dark border">{{ part.bin_location or '-'
                                             }}</span></td>
                                     <td class="text-center">
@@ -66,13 +112,21 @@
                                             {{ part.stock_on_hand }}
                                         </span>
                                     </td>
+                                    <td class="text-center">
+                                        <div class="form-check form-switch d-flex justify-content-center mb-0">
+                                            <input class="form-check-input" type="checkbox" role="switch"
+                                                {% if part.display_on_web %}checked{% endif %}
+                                                onchange="toggleWeb({{ part.id }}, this)"
+                                                title="Show this part on the public website">
+                                        </div>
+                                    </td>
                                     <td class="text-center text-muted small">
                                         {{ part.updated_at|time_ago if part.updated_at else '-' }}
                                     </td>
                                     <td class="pe-4 text-end">
                                         <div class="btn-group">
                                             <button type="button" class="btn btn-sm btn-outline-primary"
-                                                onclick='editPart({{ part.id }}, {{ part.part_number|tojson|safe }}, {{ (part.manufacturer or "")|tojson|safe }}, {{ (part.description or "")|tojson|safe }}, {{ part.stock_on_hand }}, {{ (part.bin_location or "")|tojson|safe }})'
+                                                onclick='editPart({{ part.id }}, {{ part.part_number|tojson|safe }}, {{ (part.manufacturer or "")|tojson|safe }}, {{ (part.description or "")|tojson|safe }}, {{ part.stock_on_hand }}, {{ (part.bin_location or "")|tojson|safe }}, {{ part.display_on_web|tojson }})'
                                                 title="Edit Part">
                                                 <i class="bi bi-pencil"></i>
                                             </button>
@@ -87,8 +141,9 @@
                                 {% endfor %}
                                 {% else %}
                                 <tr>
-                                    <td colspan="7" class="text-center py-5 text-muted">
-                                        <i class="bi bi-info-circle me-1"></i> No parts found in inventory.
+                                    <td colspan="12" class="text-center py-5 text-muted">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        {% if q or mfg or neg or web %}No parts match your filter.{% else %}No parts found in inventory.{% endif %}
                                     </td>
                                 </tr>
                                 {% endif %}
@@ -96,6 +151,33 @@
                         </table>
                     </div>
                 </div>
+                {% if pagination.pages > 1 %}
+                <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
+                    <span class="small text-muted">
+                        Page {{ pagination.page }} of {{ '{:,}'.format(pagination.pages) }}
+                    </span>
+                    <nav>
+                        <ul class="pagination pagination-sm mb-0">
+                            {% set args = {} %}{% if q %}{% set _ = args.update({'q': q}) %}{% endif %}{% if mfg %}{% set _ = args.update({'mfg': mfg}) %}{% endif %}{% if neg %}{% set _ = args.update({'neg': 1}) %}{% endif %}{% if web %}{% set _ = args.update({'web': 1}) %}{% endif %}
+                            <li class="page-item {{ 'disabled' if not pagination.has_prev }}">
+                                <a class="page-link" href="{{ url_for('inventory.index', page=pagination.prev_num, **args) }}">Prev</a>
+                            </li>
+                            {% for p in pagination.iter_pages(left_edge=1, left_current=2, right_current=2, right_edge=1) %}
+                                {% if p %}
+                                <li class="page-item {{ 'active' if p == pagination.page }}">
+                                    <a class="page-link" href="{{ url_for('inventory.index', page=p, **args) }}">{{ p }}</a>
+                                </li>
+                                {% else %}
+                                <li class="page-item disabled"><span class="page-link">…</span></li>
+                                {% endif %}
+                            {% endfor %}
+                            <li class="page-item {{ 'disabled' if not pagination.has_next }}">
+                                <a class="page-link" href="{{ url_for('inventory.index', page=pagination.next_num, **args) }}">Next</a>
+                            </li>
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
             </div>
         </div>
     </div>
@@ -138,6 +220,11 @@
                             <label class="form-label">Bin Location</label>
                             {{ form.bin_location(class="form-control", placeholder="e.g. A-12") }}
                         </div>
+                    </div>
+                    <div class="form-check form-switch">
+                        {{ form.display_on_web(class="form-check-input") }}
+                        <label class="form-check-label" for="{{ form.display_on_web.id }}">Show on website</label>
+                        <div class="form-text">Off by default. POS &amp; service tickets can use this part either way.</div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -187,6 +274,10 @@
                             {{ form.bin_location(class="form-control", id="edit_bin_location") }}
                         </div>
                     </div>
+                    <div class="form-check form-switch">
+                        {{ form.display_on_web(class="form-check-input", id="edit_display_on_web") }}
+                        <label class="form-check-label" for="edit_display_on_web">Show on website</label>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -221,7 +312,7 @@
 </div>
 
 <script>
-    function editPart(id, partNumber, manufacturer, description, stock, bin) {
+    function editPart(id, partNumber, manufacturer, description, stock, bin, displayOnWeb) {
         const modal = new bootstrap.Modal(document.getElementById('editPartModal'));
         document.getElementById('editPartForm').action = "/admin/inventory/parts/edit/" + id;
         document.getElementById('edit_part_number').value = partNumber;
@@ -229,7 +320,24 @@
         document.getElementById('edit_description').value = description;
         document.getElementById('edit_stock_on_hand').value = stock;
         document.getElementById('edit_bin_location').value = bin;
+        document.getElementById('edit_display_on_web').checked = !!displayOnWeb;
         modal.show();
+    }
+
+    function toggleWeb(id, checkbox) {
+        const desired = checkbox.checked;
+        checkbox.disabled = true;
+        fetch("/admin/inventory/parts/" + id + "/toggle-web", {
+            method: "POST",
+            headers: { "X-CSRFToken": "{{ csrf_token() }}" }
+        })
+            .then(r => r.ok ? r.json() : Promise.reject(r))
+            .then(data => { checkbox.checked = data.display_on_web; })
+            .catch(() => {
+                checkbox.checked = !desired; // revert on failure
+                alert("Could not update that part. Please try again.");
+            })
+            .finally(() => { checkbox.disabled = false; });
     }
 
     function deletePart(id, partNumber) {

@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Purchasing{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h1><i class="bi bi-truck me-2"></i>Purchasing</h1>
+    <p class="text-muted">Vendors, purchase orders, and receiving.</p>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <a href="{{ url_for('purchasing.vendors') }}" class="text-decoration-none">
+                <div class="card shadow-sm text-center py-4">
+                    <i class="bi bi-building fs-1 text-primary"></i>
+                    <div class="h4 mt-2 mb-0">{{ vendor_count }}</div>
+                    <div class="text-muted">Vendors</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{{ url_for('purchasing.new_purchase_order') }}" class="text-decoration-none">
+                <div class="card shadow-sm text-center py-4 border-success">
+                    <i class="bi bi-plus-circle fs-1 text-success"></i>
+                    <div class="h4 mt-2 mb-0">New</div>
+                    <div class="text-muted">Purchase Order</div>
+                </div>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{{ url_for('purchasing.purchase_orders') }}" class="text-decoration-none">
+                <div class="card shadow-sm text-center py-4">
+                    <i class="bi bi-list-check fs-1 text-info"></i>
+                    <div class="h4 mt-2 mb-0">{{ open_pos|length }}</div>
+                    <div class="text-muted">Open Purchase Orders</div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header">Open Purchase Orders</div>
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>PO #</th><th>Vendor</th><th>Status</th><th>Ordered</th><th>Expected</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for po in open_pos %}
+                    <tr>
+                        <td class="font-monospace">#{{ po.po_number }}</td>
+                        <td>{{ po.vendor.name }}</td>
+                        <td><span class="badge bg-secondary">{{ po.status }}</span></td>
+                        <td>{{ po.order_date or '-' }}</td>
+                        <td>{{ po.expected_date or '-' }}</td>
+                        <td class="text-end"><a href="{{ url_for('purchasing.view_purchase_order', po_id=po.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No open purchase orders.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

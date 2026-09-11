@@ -10,10 +10,50 @@ from werkzeug.utils import secure_filename
 @inventory_bp.route('/parts', methods=['GET'])
 @login_required
 def index():
-    # Restore Parts Inventory View
-    parts = PartInventory.query.filter_by(organization_id=g.current_org.id).order_by(PartInventory.updated_at.desc()).all()
+    org_id = g.current_org.id
+    q = request.args.get('q', '').strip()
+    mfg = request.args.get('mfg', '').strip()
+    neg = request.args.get('neg') == '1'
+    web = request.args.get('web') == '1'
+    page = request.args.get('page', 1, type=int)
+
+    query = PartInventory.query.filter_by(organization_id=org_id)
+    if q:
+        like = f'%{q}%'
+        query = query.filter(db.or_(
+            PartInventory.part_number.ilike(like),
+            PartInventory.description.ilike(like),
+        ))
+    if mfg:
+        query = query.filter(PartInventory.manufacturer == mfg)
+    if neg:
+        query = query.filter(PartInventory.stock_on_hand < 0)
+    if web:
+        query = query.filter(PartInventory.display_on_web.is_(True))
+
+    if neg:
+        query = query.order_by(PartInventory.stock_on_hand.asc())
+    elif q or mfg or web:
+        query = query.order_by(PartInventory.part_number.asc())
+    else:
+        query = query.order_by(PartInventory.updated_at.desc())
+    pagination = query.paginate(page=page, per_page=50, error_out=False)
+
+    negative_count = PartInventory.query.filter(
+        PartInventory.organization_id == org_id, PartInventory.stock_on_hand < 0).count()
+    web_count = PartInventory.query.filter(
+        PartInventory.organization_id == org_id, PartInventory.display_on_web.is_(True)).count()
+
+    manufacturers = [row[0] for row in db.session.query(PartInventory.manufacturer)
+                     .filter(PartInventory.organization_id == org_id,
+                             PartInventory.manufacturer.isnot(None),
+                             PartInventory.manufacturer != '')
+                     .distinct().order_by(PartInventory.manufacturer).all()]
+
     form = PartInventoryForm()
-    return render_template('inventory/index.html', parts=parts, form=form)
+    return render_template('inventory/index.html', parts=pagination.items, pagination=pagination,
+                           manufacturers=manufacturers, q=q, mfg=mfg, neg=neg, web=web,
+                           negative_count=negative_count, web_count=web_count, form=form)
 
 @inventory_bp.route('/parts/add', methods=['POST'])
 @login_required
@@ -26,7 +66,8 @@ def add_part():
             manufacturer=form.manufacturer.data,
             description=form.description.data,
             stock_on_hand=form.stock_on_hand.data,
-            bin_location=form.bin_location.data
+            bin_location=form.bin_location.data,
+            display_on_web=form.display_on_web.data,
         )
         
         # Handle Image Upload
@@ -71,20 +112,21 @@ def edit_part(id):
         part.description = form.description.data
         part.stock_on_hand = form.stock_on_hand.data
         part.bin_location = form.bin_location.data
-        
+        part.display_on_web = form.display_on_web.data
+
         # Handle Image Upload
         if form.image.data:
             f = form.image.data
             filename = secure_filename(f"{part.part_number}_{f.filename}")
             upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'parts', str(g.current_org.id))
             os.makedirs(upload_dir, exist_ok=True)
-            
+
             import uuid
             ext = os.path.splitext(filename)[1]
             unique_filename = f"{uuid.uuid4().hex}{ext}"
             f.save(os.path.join(upload_dir, unique_filename))
             part.image_url = f"/static/uploads/parts/{g.current_org.id}/{unique_filename}"
-        
+
         db.session.commit()
         flash('Part updated successfully.', 'success')
     
@@ -97,11 +139,65 @@ def delete_part(id):
     if part.organization_id != g.current_org.id:
         flash('Unauthorized access.', 'danger')
         return redirect(url_for('inventory.index'))
-    
+
     db.session.delete(part)
     db.session.commit()
     flash('Part deleted successfully.', 'success')
     return redirect(url_for('inventory.index'))
+
+
+@inventory_bp.route('/parts/<int:id>/toggle-web', methods=['POST'])
+@login_required
+def toggle_part_web(id):
+    """AJAX: flip a single part's 'show on website' flag from the Parts list."""
+    part = PartInventory.query.filter_by(id=id, organization_id=g.current_org.id).first()
+    if not part:
+        return {'error': 'Part not found'}, 404
+    part.display_on_web = not part.display_on_web
+    db.session.commit()
+    return {'id': part.id, 'display_on_web': part.display_on_web}
+
+
+@inventory_bp.route('/parts/search')
+@login_required
+def search_parts():
+    """AJAX type-ahead used by the POS 'New Sale' and service-ticket part pickers.
+    Searches part number / description / manufacturer; returns the dealer's selling
+    price (extended_price, falling back to retail then cost)."""
+    from sqlalchemy import or_, case
+
+    q = request.args.get('q', '').strip()
+    if len(q) < 2:
+        return {'results': []}
+
+    like = f'%{q}%'
+    prefix = f'{q}%'
+    rows = (PartInventory.query
+            .filter_by(organization_id=g.current_org.id)
+            .filter(or_(
+                PartInventory.part_number.ilike(like),
+                PartInventory.description.ilike(like),
+                PartInventory.manufacturer.ilike(like),
+            ))
+            .order_by(
+                case((PartInventory.part_number.ilike(prefix), 0), else_=1),
+                PartInventory.part_number,
+            )
+            .limit(25)
+            .all())
+
+    def price(p):
+        v = p.extended_price if p.extended_price is not None else (p.retail_price or p.dealer_cost)
+        return float(v) if v is not None else 0.0
+
+    return {'results': [{
+        'id': p.id,
+        'part_number': p.part_number,
+        'manufacturer': p.manufacturer or '',
+        'description': p.description or '',
+        'price': price(p),
+        'stock': p.stock_on_hand or 0,
+    } for p in rows]}
 
 @inventory_bp.route('/units')
 @login_required
@@ -300,3 +396,210 @@ def social_share(id):
         flash(f'Internal Error: {str(e)}', 'danger')
         
     return redirect(url_for('inventory.manage'))
+
+
+# ====== BULK PARTS PRICE IMPORT ======
+
+import tempfile
+import uuid as uuid_lib
+
+def _import_dir(org_id):
+    d = os.path.join(tempfile.gettempdir(), 'parts_import', str(org_id))
+    os.makedirs(d, exist_ok=True)
+    return d
+
+
+def _existing_parts_by_key(org_id, part_numbers):
+    """{(part_number, manufacturer): PartInventory} for just the part numbers in
+    the import file, fetched in chunks. Avoids loading a 100k+ row catalog into
+    memory to decide new-vs-update."""
+    existing = {}
+    pns = list(part_numbers)
+    for i in range(0, len(pns), 1000):
+        chunk = pns[i:i + 1000]
+        for p in (PartInventory.query
+                  .filter(PartInventory.organization_id == org_id,
+                          PartInventory.part_number.in_(chunk))
+                  .all()):
+            existing[(p.part_number, p.manufacturer)] = p
+    return existing
+
+@inventory_bp.route('/parts/import', methods=['GET'])
+@login_required
+def import_parts():
+    return render_template('inventory/import_start.html')
+
+@inventory_bp.route('/parts/import/upload', methods=['POST'])
+@login_required
+def import_parts_upload():
+    from app.core.parts_import_service import get_headers_and_sample, suggest_mapping, IMPORT_FIELDS
+
+    file = request.files.get('price_file')
+    if not file or not file.filename:
+        flash('Please choose a CSV or Excel file to upload.', 'danger')
+        return redirect(url_for('inventory.import_parts'))
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    if ext not in ('.csv', '.xlsx', '.xls'):
+        flash('File must be a .csv, .xlsx, or .xls file.', 'danger')
+        return redirect(url_for('inventory.import_parts'))
+
+    upload_id = uuid_lib.uuid4().hex
+    saved_name = f"{upload_id}{ext}"
+    saved_path = os.path.join(_import_dir(g.current_org.id), saved_name)
+    file.save(saved_path)
+
+    try:
+        headers, sample, row_count = get_headers_and_sample(saved_path, saved_name)
+    except Exception as e:
+        os.remove(saved_path)
+        flash(f'Could not read that file: {e}', 'danger')
+        return redirect(url_for('inventory.import_parts'))
+
+    suggested = suggest_mapping(headers)
+
+    return render_template(
+        'inventory/import_map.html',
+        upload_id=saved_name,
+        headers=headers,
+        sample=sample,
+        row_count=row_count,
+        fields=IMPORT_FIELDS,
+        suggested=suggested,
+    )
+
+@inventory_bp.route('/parts/import/preview', methods=['POST'])
+@login_required
+def import_parts_preview():
+    from app.core.parts_import_service import parse_rows, REQUIRED_FIELDS, IMPORT_FIELDS
+    from app.core.pricing_service import compute_extended_price
+    from app.core.models import MarkupTier
+
+    upload_id = request.form.get('upload_id', '')
+    saved_path = os.path.join(_import_dir(g.current_org.id), upload_id)
+    if not upload_id or not os.path.isfile(saved_path):
+        flash('That upload has expired. Please upload the file again.', 'danger')
+        return redirect(url_for('inventory.import_parts'))
+
+    mapping = {field: request.form.get(f'map_{field}', '') for field in IMPORT_FIELDS}
+    manufacturer_default = request.form.get('manufacturer_default', '').strip()
+
+    missing_required = [IMPORT_FIELDS[f] for f in REQUIRED_FIELDS if not mapping.get(f)]
+    if missing_required:
+        flash(f"Please map: {', '.join(missing_required)}", 'danger')
+        return redirect(url_for('inventory.import_parts'))
+
+    rows = parse_rows(saved_path, upload_id, mapping, manufacturer_default)
+    tiers = MarkupTier.query.filter_by(organization_id=g.current_org.id).all()
+
+    # Look up only the part numbers present in this file (batched) rather than
+    # the whole catalog - a dealer can have 100k+ parts.
+    file_part_numbers = {r['part_number'] for r in rows if 'error' not in r}
+    existing = _existing_parts_by_key(g.current_org.id, file_part_numbers)
+
+    valid_rows, error_rows = [], []
+    new_count, update_count = 0, 0
+    for row in rows:
+        if 'error' in row:
+            error_rows.append(row)
+            continue
+        row['extended_price'] = compute_extended_price(row['dealer_cost'], tiers)
+        key = (row['part_number'], row['manufacturer'])
+        if key in existing:
+            row['action'] = 'update'
+            update_count += 1
+        else:
+            row['action'] = 'new'
+            new_count += 1
+        valid_rows.append(row)
+
+    return render_template(
+        'inventory/import_preview.html',
+        upload_id=upload_id,
+        mapping=mapping,
+        manufacturer_default=manufacturer_default,
+        fields=IMPORT_FIELDS,
+        preview_rows=valid_rows[:100],
+        error_rows=error_rows[:100],
+        total_rows=len(rows),
+        new_count=new_count,
+        update_count=update_count,
+        error_count=len(error_rows),
+        has_tiers=len(tiers) > 0,
+    )
+
+@inventory_bp.route('/parts/import/confirm', methods=['POST'])
+@login_required
+def import_parts_confirm():
+    from app.core.parts_import_service import parse_rows, IMPORT_FIELDS
+    from app.core.pricing_service import compute_extended_price
+    from app.core.models import MarkupTier
+    from datetime import datetime
+
+    upload_id = request.form.get('upload_id', '')
+    saved_path = os.path.join(_import_dir(g.current_org.id), upload_id)
+    if not upload_id or not os.path.isfile(saved_path):
+        flash('That upload has expired. Please upload the file again.', 'danger')
+        return redirect(url_for('inventory.import_parts'))
+
+    mapping = {field: request.form.get(f'map_{field}', '') for field in IMPORT_FIELDS}
+    manufacturer_default = request.form.get('manufacturer_default', '').strip()
+    org_id = g.current_org.id
+
+    rows = parse_rows(saved_path, upload_id, mapping, manufacturer_default)
+    tiers = MarkupTier.query.filter_by(organization_id=org_id).all()
+    file_part_numbers = {r['part_number'] for r in rows if 'error' not in r}
+    existing = _existing_parts_by_key(org_id, file_part_numbers)
+
+    created, updated, skipped = 0, 0, 0
+    try:
+        for i, row in enumerate(rows):
+            if 'error' in row:
+                skipped += 1
+                continue
+
+            key = (row['part_number'], row['manufacturer'])
+            extended_price = compute_extended_price(row['dealer_cost'], tiers)
+            part = existing.get(key)
+
+            if part:
+                part.description = row['description'] or part.description
+                part.dealer_cost = row['dealer_cost']
+                part.retail_price = row['retail_price']
+                part.extended_price = extended_price
+                part.upc = row['upc'] or part.upc
+                part.superseded_to = row['superseded_to'] or part.superseded_to
+                part.updated_at = datetime.utcnow()
+                updated += 1
+            else:
+                part = PartInventory(
+                    organization_id=org_id,
+                    part_number=row['part_number'],
+                    manufacturer=row['manufacturer'],
+                    description=row['description'],
+                    dealer_cost=row['dealer_cost'],
+                    retail_price=row['retail_price'],
+                    extended_price=extended_price,
+                    upc=row['upc'],
+                    superseded_to=row['superseded_to'],
+                )
+                db.session.add(part)
+                existing[key] = part
+                created += 1
+
+            if (i + 1) % 500 == 0:
+                db.session.flush()
+
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Import failed, no changes were saved: {e}', 'danger')
+        return redirect(url_for('inventory.import_parts'))
+    finally:
+        try:
+            os.remove(saved_path)
+        except OSError:
+            pass
+
+    flash(f"Import complete: {created} new part(s), {updated} updated, {skipped} skipped due to errors.", 'success')
+    return redirect(url_for('inventory.index'))

@@ -1,0 +1,58 @@
+{# Inline "add equipment" modal + JS. Include once per page, then call
+   EquipmentQuickAdd.init({ quickAddUrl, csrf, getCustomerId, onCreated }). #}
+<div class="modal fade" id="addEquipmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">New Equipment</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="row g-2">
+                    <div class="col-6"><label class="form-label">Manufacturer</label><input type="text" class="form-control" id="eq-manufacturer"></div>
+                    <div class="col-6"><label class="form-label">Model #</label><input type="text" class="form-control" id="eq-model"></div>
+                    <div class="col-6"><label class="form-label">Serial #</label><input type="text" class="form-control" id="eq-serial"></div>
+                    <div class="col-6"><label class="form-label">Type</label><input type="text" class="form-control" id="eq-type" placeholder="Mower, Chainsaw, ..."></div>
+                    <div class="col-6"><label class="form-label">Hours</label><input type="text" class="form-control" id="eq-hours"></div>
+                </div>
+                <div class="form-text mt-2">Enter at least a manufacturer, model, or serial number.</div>
+                <div id="eq-error" class="text-danger small mt-1"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" id="eq-submit">Add Equipment</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const EquipmentQuickAdd = (function () {
+    let cfg = {};
+    function init(config) {
+        cfg = config || {};
+        const btn = document.getElementById('eq-submit');
+        if (btn) btn.addEventListener('click', submit);
+    }
+    function val(id) { const e = document.getElementById(id); return e ? e.value.trim() : ''; }
+    function submit() {
+        const err = document.getElementById('eq-error');
+        err.innerText = '';
+        const body = new URLSearchParams();
+        body.append('csrf_token', cfg.csrf);
+        body.append('manufacturer', val('eq-manufacturer'));
+        body.append('model_number', val('eq-model'));
+        body.append('serial_number', val('eq-serial'));
+        body.append('type', val('eq-type'));
+        body.append('unit_hours', val('eq-hours'));
+        if (cfg.getCustomerId) body.append('customer_id', cfg.getCustomerId() || '');
+
+        fetch(cfg.quickAddUrl, { method: 'POST', body: body })
+            .then(r => r.json().then(d => ({ ok: r.ok, d })))
+            .then(({ ok, d }) => {
+                if (!ok || d.error) { err.innerText = d.error || 'Could not add equipment.'; return; }
+                bootstrap.Modal.getInstance(document.getElementById('addEquipmentModal')).hide();
+                ['eq-manufacturer', 'eq-model', 'eq-serial', 'eq-type', 'eq-hours'].forEach(id => document.getElementById(id).value = '');
+                if (cfg.onCreated) cfg.onCreated(d);
+            })
+            .catch(() => { err.innerText = 'Something went wrong. Please try again.'; });
+    }
+    return { init };
+})();
+</script>

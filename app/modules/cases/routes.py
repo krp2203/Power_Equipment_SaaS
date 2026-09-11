@@ -112,7 +112,7 @@ def view(case_id):
     users = User.query.order_by(User.username).all()
     print(f"DEBUG: Fetched users", flush=True)
     mention_data = jsonify([{'key': u.username, 'value': u.username} for u in users]).json
-    
+
     return render_template('cases/detail.html', case=case, users=users, render_note_html=render_note_html)
 
 @cases_bp.route('/cases/<int:case_id>/edit', methods=['GET', 'POST'])
@@ -210,3 +210,4 @@ def delete(case_id):
         db.session.rollback()
         flash(f'Error deleting case: {e}', 'danger')
         return redirect(url_for('cases.view', case_id=case_id))
+

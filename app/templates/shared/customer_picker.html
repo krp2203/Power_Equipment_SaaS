@@ -1,0 +1,162 @@
+{# Reusable searchable customer picker with inline quick-add.
+   Usage: {% from "shared/customer_picker.html" import customer_picker, customer_picker_scripts %}
+          {{ customer_picker('sale', url_for('pos.search_customers'), url_for('pos.quick_add_customer')) }}
+   ...at the very end of the page, once: {{ customer_picker_scripts() }}
+   On selection/clear, calls window.onCustomerPicked(prefix, customerOrNull) if defined on the page. #}
+
+{% macro customer_picker(prefix, search_url, quick_add_url, hidden_field_name='customer_id') %}
+<div class="customer-picker" id="picker-{{ prefix }}" data-search-url="{{ search_url }}" data-quick-add-url="{{ quick_add_url }}" data-csrf="{{ csrf_token() }}">
+    <input type="hidden" name="{{ hidden_field_name }}" id="customer_id-{{ prefix }}">
+
+    <div id="searchBox-{{ prefix }}">
+        <div class="input-group mb-2">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="search-{{ prefix }}" placeholder="Search by name or phone..." autocomplete="off">
+            <button type="button" class="btn btn-outline-primary" onclick="CustomerPicker.openAdd('{{ prefix }}')"><i class="bi bi-plus-lg"></i> New</button>
+        </div>
+        <div id="results-{{ prefix }}" class="list-group shadow-sm" style="position:relative; z-index:1000; max-height:250px; overflow-y:auto; display:none;"></div>
+    </div>
+
+    <div id="selected-{{ prefix }}" class="alert alert-light border py-2 px-3 d-none mb-2">
+        <div class="d-flex justify-content-between align-items-center">
+            <div id="selected-info-{{ prefix }}" class="small"></div>
+            <button type="button" class="btn btn-sm btn-link text-danger" onclick="CustomerPicker.clear('{{ prefix }}')">Change</button>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addCustomerModal-{{ prefix }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5 class="modal-title">New Customer</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="row g-2 mb-2">
+                    <div class="col-6"><label class="form-label">First Name</label><input type="text" class="form-control" id="qa-first-{{ prefix }}"></div>
+                    {# no `required` attr: this modal has no <form> of its own and is submitted via JS
+                       (CustomerPicker.submitAdd validates it). A bare `required` here would block
+                       whatever parent form the picker is embedded in. #}
+                    <div class="col-6"><label class="form-label">Last Name *</label><input type="text" class="form-control" id="qa-last-{{ prefix }}"></div>
+                </div>
+                <div class="mb-2"><label class="form-label">Company</label><input type="text" class="form-control" id="qa-company-{{ prefix }}"></div>
+                <div class="mb-2"><label class="form-label">Phone</label><input type="text" class="form-control" id="qa-phone-{{ prefix }}"></div>
+                <div class="mb-2"><label class="form-label">Email</label><input type="text" class="form-control" id="qa-email-{{ prefix }}"></div>
+                <div class="mb-2"><label class="form-label">Address</label><input type="text" class="form-control" id="qa-address-{{ prefix }}"></div>
+                <div id="qa-error-{{ prefix }}" class="text-danger small"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="CustomerPicker.submitAdd('{{ prefix }}')">Add Customer</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endmacro %}
+
+{% macro customer_picker_scripts() %}
+<script>
+const CustomerPicker = (function () {
+    let debounceTimers = {};
+
+    function el(prefix, name) { return document.getElementById(name + '-' + prefix); }
+
+    function init(prefix) {
+        const input = el(prefix, 'search');
+        if (!input) return;
+        input.addEventListener('input', function () {
+            clearTimeout(debounceTimers[prefix]);
+            const q = input.value.trim();
+            const resultsBox = el(prefix, 'results');
+            if (q.length < 2) { resultsBox.style.display = 'none'; return; }
+            debounceTimers[prefix] = setTimeout(function () { search(prefix, q); }, 250);
+        });
+        document.addEventListener('click', function (e) {
+            const box = document.getElementById('picker-' + prefix);
+            if (box && !box.contains(e.target)) {
+                el(prefix, 'results').style.display = 'none';
+            }
+        });
+    }
+
+    function search(prefix, q) {
+        const picker = document.getElementById('picker-' + prefix);
+        fetch(picker.dataset.searchUrl + '?q=' + encodeURIComponent(q))
+            .then(r => r.json())
+            .then(data => renderResults(prefix, data.results || []));
+    }
+
+    function renderResults(prefix, results) {
+        const box = el(prefix, 'results');
+        if (!results.length) {
+            box.innerHTML = '<div class="list-group-item text-muted small">No matches. Click "New" to add one.</div>';
+        } else {
+            box.innerHTML = results.map(c =>
+                `<button type="button" class="list-group-item list-group-item-action" onclick='CustomerPicker.select("${prefix}", ${JSON.stringify(c).replace(/'/g, "&apos;")})'>`
+                + `<strong>${c.name}</strong>${c.company ? ' (' + c.company + ')' : ''}<br><span class="text-muted small">${c.phone || ''} ${c.email ? ' - ' + c.email : ''}</span>`
+                + `</button>`
+            ).join('');
+        }
+        box.style.display = 'block';
+    }
+
+    function select(prefix, customer) {
+        el(prefix, 'customer_id').value = customer.id;
+        el(prefix, 'search').value = '';
+        el(prefix, 'results').style.display = 'none';
+        document.getElementById('searchBox-' + prefix).classList.add('d-none');
+        const selBox = el(prefix, 'selected');
+        selBox.classList.remove('d-none');
+        el(prefix, 'selected-info').innerHTML = `<strong>${customer.name}</strong>${customer.company ? ' (' + customer.company + ')' : ''} &mdash; ${customer.phone || 'no phone'}`;
+        if (window.onCustomerPicked) window.onCustomerPicked(prefix, customer);
+    }
+
+    function clear(prefix) {
+        el(prefix, 'customer_id').value = '';
+        document.getElementById('searchBox-' + prefix).classList.remove('d-none');
+        el(prefix, 'selected').classList.add('d-none');
+        if (window.onCustomerPicked) window.onCustomerPicked(prefix, null);
+    }
+
+    function openAdd(prefix) {
+        const currentQuery = el(prefix, 'search').value.trim();
+        let parts = currentQuery.split(/\s+/).filter(Boolean);
+        let first = '', last = '';
+        if (parts.length === 1) { last = parts[0]; }
+        else if (parts.length > 1) { last = parts.pop(); first = parts.join(' '); }
+        el(prefix, 'qa-first').value = first;
+        el(prefix, 'qa-last').value = last;
+        el(prefix, 'qa-company').value = '';
+        el(prefix, 'qa-phone').value = '';
+        el(prefix, 'qa-email').value = '';
+        el(prefix, 'qa-address').value = '';
+        el(prefix, 'qa-error').innerText = '';
+        new bootstrap.Modal(document.getElementById('addCustomerModal-' + prefix)).show();
+    }
+
+    function submitAdd(prefix) {
+        const picker = document.getElementById('picker-' + prefix);
+        const first = el(prefix, 'qa-first').value.trim();
+        const last = el(prefix, 'qa-last').value.trim();
+        if (!last) { el(prefix, 'qa-error').innerText = 'Last name is required.'; return; }
+
+        const body = new URLSearchParams();
+        body.append('csrf_token', picker.dataset.csrf);
+        body.append('first_name', first);
+        body.append('last_name', last);
+        body.append('company', el(prefix, 'qa-company').value.trim());
+        body.append('phone', el(prefix, 'qa-phone').value.trim());
+        body.append('email', el(prefix, 'qa-email').value.trim());
+        body.append('address', el(prefix, 'qa-address').value.trim());
+
+        fetch(picker.dataset.quickAddUrl, { method: 'POST', body: body })
+            .then(r => r.json())
+            .then(data => {
+                if (data.error) { el(prefix, 'qa-error').innerText = data.error; return; }
+                bootstrap.Modal.getInstance(document.getElementById('addCustomerModal-' + prefix)).hide();
+                select(prefix, data);
+            })
+            .catch(() => { el(prefix, 'qa-error').innerText = 'Something went wrong. Please try again.'; });
+    }
+
+    return { init, search, select, clear, openAdd, submitAdd };
+})();
+</script>
+{% endmacro %}

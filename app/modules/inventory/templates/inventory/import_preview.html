@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block title %}Preview Import - Parts{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1><i class="bi bi-eye me-2"></i>Preview Import</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    {% if not has_tiers %}
+    <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        You haven't set up any <a href="{{ url_for('settings.markup_tiers') }}">Parts Markup Tiers</a> yet, so
+        Extended Price can't be calculated and will be left blank for every part. You can still import Dealer
+        Cost and Retail Price now, and Extended Price will fill in automatically once tiers are set up and this
+        file (or a future one) is imported again.
+    </div>
+    {% endif %}
+
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card shadow-sm text-center py-3">
+                <div class="h3 mb-0">{{ total_rows }}</div>
+                <div class="text-muted small">Total rows</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm text-center py-3 border-success">
+                <div class="h3 mb-0 text-success">{{ new_count }}</div>
+                <div class="text-muted small">New parts</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm text-center py-3 border-info">
+                <div class="h3 mb-0 text-info">{{ update_count }}</div>
+                <div class="text-muted small">Updated parts</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card shadow-sm text-center py-3 {% if error_count %}border-danger{% endif %}">
+                <div class="h3 mb-0 {% if error_count %}text-danger{% endif %}">{{ error_count }}</div>
+                <div class="text-muted small">Rows with errors (skipped)</div>
+            </div>
+        </div>
+    </div>
+
+    {% if error_rows %}
+    <div class="card shadow-sm mb-4 border-danger">
+        <div class="card-header bg-danger text-white">Rows that will be skipped ({{ error_count }}{% if error_count > 100 %}, showing first 100{% endif %})</div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 300px;">
+                <table class="table table-sm mb-0">
+                    <thead class="bg-light"><tr><th>Row #</th><th>Problem</th></tr></thead>
+                    <tbody>
+                        {% for row in error_rows %}
+                        <tr><td>{{ row.row_num }}</td><td class="text-danger">{{ row.error }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            Parts that will be saved
+            {% if total_rows - error_count > 100 %}(showing first 100 of {{ total_rows - error_count }}){% endif %}
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 500px;">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Action</th>
+                            <th>Part #</th>
+                            <th>Manufacturer</th>
+                            <th>Description</th>
+                            <th>Dealer Cost</th>
+                            <th>Retail Price</th>
+                            <th>Extended Price</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in preview_rows %}
+                        <tr>
+                            <td><span class="badge {% if row.action == 'new' %}bg-success{% else %}bg-info{% endif %}">{{ row.action }}</span></td>
+                            <td>{{ row.part_number }}</td>
+                            <td>{{ row.manufacturer or '' }}</td>
+                            <td>{{ row.description or '' }}</td>
+                            <td>{{ '$%.2f'|format(row.dealer_cost) if row.dealer_cost is not none else '' }}</td>
+                            <td>{{ '$%.2f'|format(row.retail_price) if row.retail_price is not none else '' }}</td>
+                            <td>{{ '$%.2f'|format(row.extended_price) if row.extended_price is not none else '' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('inventory.import_parts_confirm') }}"
+        onsubmit="return confirm('Save these changes to {{ new_count + update_count }} part(s)?');">
+        <input type="hidden" name="upload_id" value="{{ upload_id }}">
+        <input type="hidden" name="manufacturer_default" value="{{ manufacturer_default or '' }}">
+        {% for field, header in mapping.items() %}
+        <input type="hidden" name="map_{{ field }}" value="{{ header }}">
+        {% endfor %}
+        <button type="submit" class="btn btn-success" {% if new_count + update_count == 0 %}disabled{% endif %}>
+            Confirm &amp; Save {{ new_count + update_count }} Part(s)
+        </button>
+        <a href="{{ url_for('inventory.import_parts') }}" class="btn btn-outline-secondary">Start Over</a>
+    </form>
+</div>
+{% endblock %}

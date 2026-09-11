@@ -25,4 +25,5 @@ pdfplumber
 pdf2image
 Pillow
 pytesseract
+segno==1.6.1
 squareup==45.1.0.20260819

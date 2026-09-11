@@ -1,0 +1,31 @@
+{# Payment-options block for the on-screen / printable invoice.
+   Hidden entirely on a void invoice; per-option hidden on a paid invoice
+   unless the option is marked always_show. #}
+{% macro invoice_payment_block(org, invoice) %}
+{% set opts = [] %}
+{% for o in (org.invoice_payment_options or []) %}
+  {% if invoice.status != 'void' and (invoice.status != 'paid' or o.always_show) %}{% set _ = opts.append(o) %}{% endif %}
+{% endfor %}
+{% if opts %}
+<div class="mt-4 pt-3 border-top">
+    <h6 class="text-muted">Payment Options</h6>
+    <div class="d-flex flex-wrap gap-4 align-items-start">
+        {% for o in opts %}
+            {% if o.kind == 'link' %}
+            <a href="{{ o.url }}" target="_blank" rel="noopener" class="btn btn-primary">{{ o.label }}</a>
+            {% elif o.kind == 'qr' %}
+            <div class="text-center">
+                <div class="fw-bold small mb-1">{{ o.label }}</div>
+                <img src="{{ o.image_url }}" alt="{{ o.label }}" style="width:130px; height:130px; object-fit:contain;">
+            </div>
+            {% else %}
+            <div class="small" style="max-width:320px;">
+                <div class="fw-bold">{{ o.label }}</div>
+                {{ o.body_text | e | replace('\n', '<br>') | safe }}
+            </div>
+            {% endif %}
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endmacro %}

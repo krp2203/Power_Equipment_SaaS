@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Vendors{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1><i class="bi bi-building me-2"></i>Vendors</h1>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addVendorModal">
+            <i class="bi bi-plus-lg me-1"></i>Add Vendor
+        </button>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>Name</th><th>Account #</th><th>Contact</th><th>Phone</th><th>Manufacturers</th><th class="text-end">Actions</th></tr>
+                </thead>
+                <tbody>
+                    {% for vendor in vendors %}
+                    <tr>
+                        <td class="fw-bold"><a href="{{ url_for('purchasing.vendor_detail', vendor_id=vendor.id) }}">{{ vendor.name }}</a></td>
+                        <td>{{ vendor.account_number or '-' }}</td>
+                        <td>{{ vendor.contact_name or '-' }}</td>
+                        <td>{{ vendor.phone or '-' }}</td>
+                        <td>
+                            {% set n = vendor.manufacturers|length %}
+                            <a href="{{ url_for('purchasing.vendor_detail', vendor_id=vendor.id) }}" class="{{ 'text-warning' if n == 0 }}">
+                                {{ n }} assigned{{ ' — set up' if n == 0 }}
+                            </a>
+                        </td>
+                        <td class="text-end">
+                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                onclick='editVendor({{ vendor.id }}, {{ vendor.name|tojson|safe }}, {{ (vendor.account_number or "")|tojson|safe }}, {{ (vendor.contact_name or "")|tojson|safe }}, {{ (vendor.phone or "")|tojson|safe }}, {{ (vendor.email or "")|tojson|safe }}, {{ (vendor.address or "")|tojson|safe }}, {{ (vendor.notes or "")|tojson|safe }})'>Edit</button>
+                            <form action="{{ url_for('purchasing.delete_vendor', vendor_id=vendor.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Delete this vendor?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No vendors yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addVendorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" action="{{ url_for('purchasing.add_vendor') }}">
+                {{ form.hidden_tag() }}
+                <div class="modal-header"><h5 class="modal-title">Add Vendor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="mb-2">{{ form.name.label(class="form-label") }}{{ form.name(class="form-control") }}</div>
+                    <div class="mb-2">{{ form.account_number.label(class="form-label") }}{{ form.account_number(class="form-control") }}</div>
+                    <div class="mb-2">{{ form.contact_name.label(class="form-label") }}{{ form.contact_name(class="form-control") }}</div>
+                    <div class="mb-2">{{ form.phone.label(class="form-label") }}{{ form.phone(class="form-control") }}</div>
+                    <div class="mb-2">{{ form.email.label(class="form-label") }}{{ form.email(class="form-control") }}</div>
+                    <div class="mb-2">{{ form.address.label(class="form-label") }}{{ form.address(class="form-control") }}</div>
+                    <div class="mb-2">{{ form.notes.label(class="form-label") }}{{ form.notes(class="form-control", rows=2) }}</div>
+                </div>
+                <div class="modal-footer">{{ form.submit(class="btn btn-primary") }}</div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="editVendorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST" id="editVendorForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div class="modal-header"><h5 class="modal-title">Edit Vendor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body">
+                    <div class="mb-2"><label class="form-label">Vendor Name</label><input class="form-control" name="name" id="edit_name" required></div>
+                    <div class="mb-2"><label class="form-label">Account Number</label><input class="form-control" name="account_number" id="edit_account_number"></div>
+                    <div class="mb-2"><label class="form-label">Contact Name</label><input class="form-control" name="contact_name" id="edit_contact_name"></div>
+                    <div class="mb-2"><label class="form-label">Phone</label><input class="form-control" name="phone" id="edit_phone"></div>
+                    <div class="mb-2"><label class="form-label">Email</label><input class="form-control" name="email" id="edit_email"></div>
+                    <div class="mb-2"><label class="form-label">Address</label><input class="form-control" name="address" id="edit_address"></div>
+                    <div class="mb-2"><label class="form-label">Notes</label><textarea class="form-control" name="notes" id="edit_notes" rows="2"></textarea></div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-primary">Save Changes</button></div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function editVendor(id, name, account_number, contact_name, phone, email, address, notes) {
+    document.getElementById('editVendorForm').action = '/admin/purchasing/vendors/' + id + '/edit';
+    document.getElementById('edit_name').value = name;
+    document.getElementById('edit_account_number').value = account_number;
+    document.getElementById('edit_contact_name').value = contact_name;
+    document.getElementById('edit_phone').value = phone;
+    document.getElementById('edit_email').value = email;
+    document.getElementById('edit_address').value = address;
+    document.getElementById('edit_notes').value = notes;
+    new bootstrap.Modal(document.getElementById('editVendorModal')).show();
+}
+</script>
+{% endblock %}

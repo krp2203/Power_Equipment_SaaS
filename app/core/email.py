@@ -322,3 +322,186 @@ def send_test_email(recipient_email):
     except Exception as e:
         print(f"❌ Failed to send test email to {recipient_email}: {str(e)}")
         return False
+
+
+def send_invoice_email(invoice, recipient_email, org):
+    """
+    Emails a formatted copy of an invoice to a customer.
+
+    Args:
+        invoice: Invoice instance (with line_items loaded)
+        recipient_email (str): Where to send it
+        org: Organization instance (for branding)
+    """
+    try:
+        theme = org.theme_config or {}
+        # Images are referenced as hosted URLs on the dealer's own subdomain -
+        # NOT attached. Attached images (a QR code especially) trip Gmail's
+        # "content presents a potential security issue" filter.
+        base_url = f"https://{org.slug}.bentcrankshaft.com" if org.slug else ""
+        logo_url = theme.get('logo_url')
+        if logo_url and logo_url.startswith('/'):
+            logo_full_url = base_url + logo_url
+        else:
+            logo_full_url = logo_url
+
+        # Emails are relayed through the master Mailgun account for deliverability, but each
+        # dealer's own contact email is set as Reply-To so customer replies land with the
+        # dealer, not with the SaaS operator. Falls back to the shared sender if a dealer
+        # hasn't set a contact email yet.
+        base_sender = current_app.config.get('MAIL_SENDER', 'noreply@mail.bentcrankshaft.com')
+        dealer_reply_to = theme.get('contact_email') or base_sender
+
+        status_label = {'paid': 'PAID', 'void': 'VOID'}.get(invoice.status, 'UNPAID')
+        status_color = {'paid': '#16a34a', 'void': '#6b7280'}.get(invoice.status, '#d97706')
+
+        line_rows_html = ''.join(
+            f"""<tr>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;">{li.description}</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;">{li.quantity}</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;">${li.unit_price:.2f}</td>
+                <td style="padding:8px;border-bottom:1px solid #e5e7eb;text-align:right;">${li.line_total:.2f}</td>
+            </tr>"""
+            for li in invoice.line_items
+        )
+        line_rows_text = '\n'.join(
+            f"  {li.quantity}x {li.description} @ ${li.unit_price:.2f} = ${li.line_total:.2f}"
+            for li in invoice.line_items
+        )
+
+        # Dealer-configured payment buttons / QR codes / notes.
+        pay_opts = [
+            o for o in (org.invoice_payment_options or [])
+            if invoice.status != 'void' and (invoice.status != 'paid' or o.always_show)
+        ]
+        pay_html, pay_text = '', ''
+        if pay_opts:
+            blocks = []
+            for o in pay_opts:
+                if o.kind == 'link' and o.url:
+                    blocks.append(
+                        f'<a href="{o.url}" style="display:inline-block;background:#2563eb;color:#fff;'
+                        f'text-decoration:none;padding:10px 18px;border-radius:6px;font-weight:bold;">{o.label}</a>')
+                elif o.kind == 'qr' and o.image_url:
+                    # Hosted image (dealer subdomain), not an attachment.
+                    src = o.image_url if o.image_url.startswith('http') else base_url + o.image_url
+                    # Also show the target as a link so there's a working path if the image is blocked.
+                    caption = (f'<div style="font-size:11px;"><a href="{o.url}">{o.url}</a></div>'
+                               if o.url else '')
+                    blocks.append(
+                        f'<div style="display:inline-block;text-align:center;margin-right:16px;vertical-align:top;">'
+                        f'<div style="font-weight:bold;font-size:13px;">{o.label}</div>'
+                        f'<img src="{src}" alt="{o.label}" width="130" height="130" style="width:130px;height:130px;">'
+                        f'{caption}</div>')
+                elif o.kind == 'text' and o.body_text:
+                    body = o.body_text.replace('\n', '<br>')
+                    blocks.append(f'<div style="margin:6px 0;"><strong>{o.label}</strong><br>{body}</div>')
+            pay_html = (
+                '<div style="margin:24px 0;padding-top:16px;border-top:1px solid #ddd;">'
+                '<div style="color:#666;font-weight:bold;margin-bottom:10px;">Payment Options</div>'
+                + ' '.join(blocks) + '</div>')
+            pay_text = "\n\nPayment Options:\n" + "\n".join(
+                f"  {o.label}: {o.url or o.body_text or 'see QR code'}" for o in pay_opts)
+
+        # Service invoices carry the ticket's work-notes log.
+        notes_html, notes_text = '', ''
+        st = getattr(invoice, 'service_ticket', None)
+        if st is not None and getattr(st, 'notes', None):
+            ordered = sorted(st.notes, key=lambda n: n.created_at)
+            rows = ''.join(
+                f'<div style="margin-bottom:8px;"><div style="color:#888;font-size:12px;">'
+                f'{n.created_at.strftime("%b %d, %Y %I:%M %p")}</div>'
+                f'<div>{(n.body or "").replace(chr(10), "<br>")}</div></div>'
+                for n in ordered)
+            notes_html = (
+                '<div style="margin:24px 0;padding-top:16px;border-top:1px solid #ddd;">'
+                '<div style="color:#666;font-weight:bold;margin-bottom:10px;">Work Notes</div>'
+                + rows + '</div>')
+            notes_text = "\n\nWork Notes:\n" + "\n".join(
+                f"  [{n.created_at.strftime('%b %d, %Y %I:%M %p')}] {n.body or ''}" for n in ordered)
+
+        subject = f"Invoice #{invoice.invoice_number} from {org.name}"
+
+        html_body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 650px; margin: 0 auto; padding: 20px;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px;">
+                        <div>
+                            {f'<img src="{logo_full_url}" style="max-height:50px;"><br>' if logo_full_url else ''}
+                            <strong style="font-size:18px;">{org.name}</strong>
+                        </div>
+                        <div style="text-align:right;">
+                            <h2 style="margin:0;">INVOICE</h2>
+                            <div style="color:#666;">#{invoice.invoice_number}</div>
+                            <div style="color:#666;">{invoice.created_at.strftime('%B %d, %Y')}</div>
+                            <span style="display:inline-block;margin-top:6px;padding:2px 10px;border-radius:4px;background:{status_color};color:#fff;font-size:12px;font-weight:bold;">{status_label}</span>
+                        </div>
+                    </div>
+
+                    <p>Hi {invoice.bill_to_name or 'there'},</p>
+                    <p>{"Thank you for your payment! Here's a copy of your paid invoice." if invoice.status == 'paid' else "Please find your invoice details below."}</p>
+
+                    <table style="width:100%; border-collapse:collapse; margin:20px 0;">
+                        <thead>
+                            <tr style="background:#f9fafb;">
+                                <th style="padding:8px;text-align:left;border-bottom:2px solid #e5e7eb;">Description</th>
+                                <th style="padding:8px;text-align:right;border-bottom:2px solid #e5e7eb;">Qty</th>
+                                <th style="padding:8px;text-align:right;border-bottom:2px solid #e5e7eb;">Price</th>
+                                <th style="padding:8px;text-align:right;border-bottom:2px solid #e5e7eb;">Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {line_rows_html}
+                        </tbody>
+                    </table>
+
+                    <div style="text-align:right; margin-bottom:20px;">
+                        <div>Subtotal: ${invoice.subtotal:.2f}</div>
+                        <div>Tax ({invoice.tax_rate}%): ${invoice.tax_amount:.2f}</div>
+                        <div style="font-size:18px; font-weight:bold; margin-top:6px;">Total: ${invoice.total:.2f}</div>
+                    </div>
+
+                    {notes_html}
+                    {pay_html}
+
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+                    <p style="color: #666; font-size: 12px;">
+                        This is an automated email from {org.name}. Please contact us directly with any questions.
+                    </p>
+                </div>
+            </body>
+        </html>
+        """
+
+        text_body = f"""
+Invoice #{invoice.invoice_number} from {org.name}
+{invoice.created_at.strftime('%B %d, %Y')} - {status_label}
+
+Bill To: {invoice.bill_to_name or ''}
+
+Items:
+{line_rows_text}
+
+Subtotal: ${invoice.subtotal:.2f}
+Tax ({invoice.tax_rate}%): ${invoice.tax_amount:.2f}
+Total: ${invoice.total:.2f}{notes_text}{pay_text}
+
+This is an automated email from {org.name}.
+        """
+
+        msg = Message(
+            subject=subject,
+            recipients=[recipient_email],
+            html=html_body,
+            body=text_body,
+            sender=(org.name, base_sender),
+            reply_to=dealer_reply_to,
+        )
+        mail.send(msg)
+        print(f"✅ Invoice #{invoice.invoice_number} emailed to {recipient_email} (reply-to: {dealer_reply_to})")
+        return True
+
+    except Exception as e:
+        print(f"❌ Failed to email invoice #{invoice.invoice_number} to {recipient_email}: {str(e)}")
+        return False

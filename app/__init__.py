@@ -183,7 +183,7 @@ def create_app(config_name=None):
     app.register_blueprint(service_bulletins_bp)
 
     from app.modules.api import api_bp
-    # Exempt API blueprint from CSRF (uses X-Bridge-Key authentication)
+    # Exempt API blueprint from CSRF (token / header authenticated, not cookie-session)
     csrf.exempt(api_bp)
     app.register_blueprint(api_bp, url_prefix='/api')
 
@@ -192,7 +192,19 @@ def create_app(config_name=None):
     
     from app.modules.inventory import inventory_bp
     app.register_blueprint(inventory_bp, url_prefix='/admin/inventory')
-    
+
+    from app.modules.service_tickets import service_tickets_bp
+    app.register_blueprint(service_tickets_bp, url_prefix='/admin/service-tickets')
+
+    from app.modules.pos import pos_bp
+    app.register_blueprint(pos_bp, url_prefix='/admin/pos')
+
+    from app.modules.purchasing import purchasing_bp
+    app.register_blueprint(purchasing_bp, url_prefix='/admin/purchasing')
+
+    from app.modules.equipment import equipment_bp
+    app.register_blueprint(equipment_bp, url_prefix='/admin/equipment')
+
     from app.modules.settings import settings_bp
     app.register_blueprint(settings_bp)
 

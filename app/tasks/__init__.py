@@ -1,1 +1,1 @@
-from . import pos_sync, marketing
+from . import marketing

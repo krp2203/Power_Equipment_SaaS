@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Equipment{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="mb-0"><i class="bi bi-tools me-2"></i>Equipment</h1>
+            {% if focus_customer %}
+            <div class="text-muted">for <strong>{{ focus_customer.name }}</strong>
+                <a href="{{ url_for('equipment.index') }}" class="small ms-2">show all</a></div>
+            {% endif %}
+        </div>
+        <a href="{{ url_for('equipment.new', customer_id=focus_customer.id if focus_customer else None) }}"
+           class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>Add Equipment</a>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <form method="GET" class="row g-2 align-items-center">
+                {% if focus_customer %}<input type="hidden" name="customer_id" value="{{ focus_customer.id }}">{% endif %}
+                <div class="col-sm-6 col-md-4">
+                    <input type="search" name="q" value="{{ q }}" class="form-control form-control-sm"
+                           placeholder="Search serial, make/model, or customer…">
+                </div>
+                <div class="col-auto">
+                    <button class="btn btn-sm btn-primary">Search</button>
+                    {% if q %}<a href="{{ url_for('equipment.index', customer_id=focus_customer.id if focus_customer else None) }}" class="btn btn-sm btn-outline-secondary">Clear</a>{% endif %}
+                </div>
+                <div class="col text-end small text-muted">{{ '{:,}'.format(pagination.total) }} record{{ 's' if pagination.total != 1 }}</div>
+            </form>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr><th>Make / Model</th><th>Type</th><th>Serial</th><th>Hours</th><th>Customer</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        {% for u in units %}
+                        <tr>
+                            <td class="fw-bold">{{ ([u.manufacturer, u.model_number]|select|join(' ')) or '—' }}</td>
+                            <td>{{ u.type or '—' }}</td>
+                            <td class="font-monospace">{{ u.serial_number or '—' }}</td>
+                            <td>{{ u.unit_hours or '—' }}</td>
+                            <td>
+                                {% if u.customer %}<a href="{{ url_for('equipment.index', customer_id=u.customer.id) }}">{{ u.customer.name }}</a>
+                                {% elif u.owner_name %}{{ u.owner_name }}<span class="text-muted small"> (unlinked)</span>
+                                {% else %}<span class="text-muted">—</span>{% endif %}
+                            </td>
+                            <td class="text-end"><a href="{{ url_for('equipment.edit', unit_id=u.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-center text-muted py-4">
+                            {% if q or focus_customer %}No equipment matches.{% else %}No equipment records yet.{% endif %}
+                        </td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% if pagination.pages > 1 %}
+        <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
+            <span class="small text-muted">Page {{ pagination.page }} of {{ pagination.pages }}</span>
+            <nav><ul class="pagination pagination-sm mb-0">
+                {% set a = {} %}{% if q %}{% set _ = a.update({'q': q}) %}{% endif %}{% if focus_customer %}{% set _ = a.update({'customer_id': focus_customer.id}) %}{% endif %}
+                <li class="page-item {{ 'disabled' if not pagination.has_prev }}"><a class="page-link" href="{{ url_for('equipment.index', page=pagination.prev_num, **a) }}">Prev</a></li>
+                {% for p in pagination.iter_pages(left_edge=1, left_current=2, right_current=2, right_edge=1) %}
+                  {% if p %}<li class="page-item {{ 'active' if p == pagination.page }}"><a class="page-link" href="{{ url_for('equipment.index', page=p, **a) }}">{{ p }}</a></li>
+                  {% else %}<li class="page-item disabled"><span class="page-link">…</span></li>{% endif %}
+                {% endfor %}
+                <li class="page-item {{ 'disabled' if not pagination.has_next }}"><a class="page-link" href="{{ url_for('equipment.index', page=pagination.next_num, **a) }}">Next</a></li>
+            </ul></nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

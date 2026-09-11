@@ -162,9 +162,7 @@ def get_site_info():
                 # NEVER return the access_token publically
             },
             "pos": {
-                "enabled": (org.pos_provider and org.pos_provider != 'none'),
-                "provider": org.pos_provider
-                # NEVER return the bridge_key publically
+                "enabled": bool(modules.get('pos', False))
             }
         }
     }
@@ -185,7 +183,8 @@ def get_inventory():
     order = request.args.get('order', 'desc')
     
     query = Unit.query.filter_by(organization_id=g.current_org.id, is_inventory=True, display_on_web=True)
-    
+    query = query.filter(Unit.status != 'Sold')  # don't advertise units that are already sold
+
     if manufacturer:
         query = query.filter(Unit.manufacturer == manufacturer)
     if unit_type:
@@ -241,16 +240,16 @@ def get_inventory_filters():
         
     # Get unique manufacturers and types that are currently in inventory
     manufacturers = db.session.query(Unit.manufacturer).filter_by(
-        organization_id=g.current_org.id, 
-        is_inventory=True, 
+        organization_id=g.current_org.id,
+        is_inventory=True,
         display_on_web=True
-    ).distinct().all()
-    
+    ).filter(Unit.status != 'Sold').distinct().all()
+
     types = db.session.query(Unit.type).filter_by(
-        organization_id=g.current_org.id, 
-        is_inventory=True, 
+        organization_id=g.current_org.id,
+        is_inventory=True,
         display_on_web=True
-    ).distinct().all()
+    ).filter(Unit.status != 'Sold').distinct().all()
     
     return jsonify({
         "manufacturers": sorted([m[0] for m in manufacturers if m[0]]),
@@ -264,7 +263,10 @@ def get_parts():
     if not g.current_org:
         return jsonify([])
         
-    parts = PartInventory.query.filter_by(organization_id=g.current_org.id).order_by(PartInventory.updated_at.desc()).all()
+    # Public website: only parts the dealer has explicitly flagged for the web.
+    parts = PartInventory.query.filter_by(
+        organization_id=g.current_org.id, display_on_web=True
+    ).order_by(PartInventory.updated_at.desc()).all()
     
     results = []
     for part in parts:
@@ -336,7 +338,7 @@ def get_unit(id):
     if not g.current_org:
         return jsonify({"error": "Tenant context missing"}), 404
         
-    unit = Unit.query.filter_by(id=id, organization_id=g.current_org.id, is_inventory=True, display_on_web=True).first_or_404()
+    unit = Unit.query.filter_by(id=id, organization_id=g.current_org.id, is_inventory=True, display_on_web=True).filter(Unit.status != 'Sold').first_or_404()
     
     # get primary image
     primary_img = UnitImage.query.filter_by(unit_id=unit.id, is_primary=True).first()

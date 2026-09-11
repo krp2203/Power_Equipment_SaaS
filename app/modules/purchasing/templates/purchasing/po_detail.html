@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% from "shared/part_picker.html" import part_picker_scripts %}
+{% block title %}PO #{{ po.po_number }}{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1>Purchase Order #{{ po.po_number }}</h1>
+            <p class="text-muted mb-0">Vendor: <strong>{{ po.vendor.name }}</strong>
+                {% if po.status == 'draft' %}<span class="badge bg-secondary ms-2">Draft</span>
+                {% elif po.status == 'ordered' %}<span class="badge bg-info text-dark ms-2">Ordered</span>
+                {% elif po.status == 'partially_received' %}<span class="badge bg-warning text-dark ms-2">Partially Received</span>
+                {% elif po.status == 'received' %}<span class="badge bg-success ms-2">Received</span>{% endif %}
+            </p>
+        </div>
+        {% if po.status == 'draft' %}
+        <form action="{{ url_for('purchasing.mark_ordered', po_id=po.id) }}" method="POST">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <button type="submit" class="btn btn-success">Mark as Ordered</button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">Line Items</div>
+        <div class="card-body p-0">
+            <table class="table mb-0">
+                <thead class="table-light">
+                    <tr><th>Type</th><th>Part / Description</th><th class="text-center">Ordered</th><th class="text-center">Received</th><th class="text-end">Unit Cost</th><th class="text-end">Actions</th></tr>
+                </thead>
+                <tbody>
+                    {% for line in po.line_items %}
+                    <tr>
+                        <td><span class="badge {% if line.line_type == 'whole_good' %}bg-primary{% else %}bg-secondary{% endif %}">{{ 'Whole Good' if line.line_type == 'whole_good' else 'Part' }}</span></td>
+                        <td>
+                            {% if line.part_number %}<span class="font-monospace">{{ line.part_number }}</span> - {% endif %}
+                            {{ line.description or '-' }}
+                            {% if line.manufacturer %}<div class="small text-muted">{{ line.manufacturer }}</div>{% endif %}
+                            {% if line.service_ticket_id %}<div class="small"><span class="badge bg-warning text-dark">Special order</span> <a href="{{ url_for('service_tickets.view', ticket_id=line.service_ticket_id) }}">Ticket #{{ line.service_ticket_id }}</a></div>
+                            {% elif line.invoice_id %}<div class="small"><span class="badge bg-warning text-dark">Special order</span> <a href="{{ url_for('pos.view_invoice', invoice_id=line.invoice_id) }}">Invoice #{{ line.invoice.invoice_number }}</a></div>{% endif %}
+                        </td>
+                        <td class="text-center">{{ line.quantity_ordered }}</td>
+                        <td class="text-center">{{ line.quantity_received }}</td>
+                        <td class="text-end">{{ '$%.2f'|format(line.unit_cost) if line.unit_cost is not none else '-' }}</td>
+                        <td class="text-end">
+                            {% if line.quantity_received < line.quantity_ordered and po.status in ('ordered', 'partially_received') %}
+                            <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#receiveModal{{ line.id }}">Receive</button>
+                            {% endif %}
+                            {% if line.quantity_received == 0 and po.status == 'draft' %}
+                            <form action="{{ url_for('purchasing.delete_po_line', po_id=po.id, line_id=line.id) }}" method="POST" class="d-inline" onsubmit="return confirm('Remove this line?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+
+                    <!-- Receive modal -->
+                    <div class="modal fade" id="receiveModal{{ line.id }}" tabindex="-1">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <form method="POST" action="{{ url_for('purchasing.receive_po_line', po_id=po.id, line_id=line.id) }}">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                    <div class="modal-header"><h5 class="modal-title">Receive: {{ line.description or line.part_number }}</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                                    <div class="modal-body">
+                                        {% if line.line_type == 'part' %}
+                                        <label class="form-label">Quantity Received (up to {{ line.quantity_ordered - line.quantity_received }})</label>
+                                        <input type="number" name="quantity_received" class="form-control" min="1" max="{{ line.quantity_ordered - line.quantity_received }}" value="{{ line.quantity_ordered - line.quantity_received }}" required>
+                                        {% else %}
+                                        <label class="form-label">Serial Number</label>
+                                        <input type="text" name="serial_number" class="form-control" required>
+                                        {% endif %}
+                                    </div>
+                                    <div class="modal-footer"><button type="submit" class="btn btn-success">Confirm Received</button></div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No line items yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if po.status in ('draft', 'ordered') %}
+    <div class="card shadow-sm">
+        <div class="card-header">Add Line Item</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('purchasing.add_po_line', po_id=po.id) }}" id="addLineForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div class="mb-3">
+                    <label class="form-label">Type</label>
+                    <select name="line_type" class="form-select" id="lineTypeSelect" onchange="toggleLineType()">
+                        <option value="part">Part</option>
+                        <option value="whole_good">Whole Good (Unit)</option>
+                    </select>
+                </div>
+
+                <div id="partFields">
+                    <div class="mb-3">
+                        <label class="form-label">Search an existing part (or leave blank and type a new one below)</label>
+                        <input type="text" id="poPartSearch" class="form-control" placeholder="Search part # or description…" autocomplete="off">
+                        <input type="hidden" name="part_inventory_id" id="poPartId">
+                        <div id="poPartHint" class="small text-success mt-1 d-none"></div>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-4"><label class="form-label small">Part Number (if new)</label><input type="text" name="part_number" class="form-control"></div>
+                        <div class="col-md-4"><label class="form-label small">Manufacturer</label><input type="text" name="manufacturer" class="form-control"></div>
+                        <div class="col-md-4"><label class="form-label small">Description</label><input type="text" name="description" class="form-control"></div>
+                    </div>
+                    <div class="mb-3"><label class="form-label">Quantity Ordered</label><input type="number" name="quantity_ordered" class="form-control" min="1" value="1"></div>
+                </div>
+
+                <div id="wholeGoodFields" style="display:none;">
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-6"><label class="form-label small">Manufacturer</label><input type="text" name="manufacturer" class="form-control"></div>
+                        <div class="col-md-6"><label class="form-label small">Model / Description</label><input type="text" name="description" class="form-control"></div>
+                    </div>
+                </div>
+
+                <div class="mb-3"><label class="form-label">Unit Cost</label><input type="number" step="0.01" name="unit_cost" class="form-control"></div>
+                <button type="submit" class="btn btn-primary">Add Line Item</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+function toggleLineType() {
+    const isWholeGood = document.getElementById('lineTypeSelect').value === 'whole_good';
+    document.getElementById('partFields').style.display = isWholeGood ? 'none' : 'block';
+    document.getElementById('wholeGoodFields').style.display = isWholeGood ? 'block' : 'none';
+}
+</script>
+{% if po.status in ('draft', 'ordered') %}
+{{ part_picker_scripts(url_for('inventory.search_parts')) }}
+<script>
+PartPicker.wire(
+    document.getElementById('poPartSearch'),
+    function (p) {
+        document.getElementById('poPartId').value = p.id;
+        var h = document.getElementById('poPartHint');
+        h.textContent = 'Selected ' + p.part_number + (p.manufacturer ? ' · ' + p.manufacturer : '') + ' · cost $' + p.price.toFixed(2);
+        h.classList.remove('d-none');
+    },
+    function () {
+        document.getElementById('poPartId').value = '';
+        document.getElementById('poPartHint').classList.add('d-none');
+    }
+);
+</script>
+{% endif %}
+{% endblock %}

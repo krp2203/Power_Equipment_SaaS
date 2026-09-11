@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% from "shared/customer_picker.html" import customer_picker, customer_picker_scripts %}
+{% block title %}New Service Ticket{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h1><i class="bi bi-wrench-adjustable me-2"></i>New Service Ticket</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm" style="max-width:600px;">
+        <div class="card-body">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div class="mb-3">
+                    <label class="form-label">Customer</label>
+                    {{ customer_picker('ticket', url_for('pos.search_customers'), url_for('pos.quick_add_customer')) }}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Unit / Equipment</label>
+                    <div class="input-group">
+                        <select name="unit_id" id="unitSelect" class="form-select" disabled>
+                            <option value="">-- Pick a customer first --</option>
+                        </select>
+                        <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addEquipmentModal"><i class="bi bi-plus-lg"></i> New</button>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Assigned Technician</label>
+                    <select name="technician_id" class="form-select">
+                        <option value="">-- Unassigned --</option>
+                        {% for tech in technicians %}<option value="{{ tech.id }}">{{ ([tech.first_name, tech.last_name]|select|join(' ')) or tech.username }}{% if tech.role == 'admin' %} (admin){% endif %}</option>{% endfor %}
+                    </select>
+                    {% if not technicians %}<div class="form-text text-warning">No technicians yet &mdash; add staff with the Technician role under Settings &rsaquo; Users.</div>{% endif %}
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Reported Issue</label>
+                    <textarea name="reported_issue" class="form-control" rows="3" placeholder="What did the customer say is wrong?"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Create Ticket</button>
+                <a href="{{ url_for('service_tickets.index') }}" class="btn btn-outline-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% include "service_tickets/_equipment_modal.html" %}
+
+{{ customer_picker_scripts() }}
+<script>
+var unitSel = document.getElementById('unitSelect');
+
+// Repopulate the equipment dropdown with the picked customer's machines.
+window.onCustomerPicked = function (prefix, customer) {
+    if (prefix !== 'ticket') return;
+    unitSel.innerHTML = '';
+    if (!customer) {
+        unitSel.add(new Option('-- Pick a customer first --', ''));
+        unitSel.disabled = true;
+        return;
+    }
+    unitSel.disabled = false;
+    unitSel.add(new Option('-- Select --', ''));
+    fetch('/admin/equipment/for-customer/' + customer.id)
+        .then(function (r) { return r.json(); })
+        .then(function (d) {
+            var rows = d.results || [];
+            rows.forEach(function (u) { unitSel.add(new Option(u.label, u.id)); });
+            if (!rows.length) {
+                var o = new Option('No equipment on file — use "+ New"', '');
+                o.disabled = true;
+                unitSel.add(o);
+            }
+        })
+        .catch(function () {});
+};
+
+CustomerPicker.init('ticket');
+EquipmentQuickAdd.init({
+    quickAddUrl: "{{ url_for('service_tickets.equipment_quick_add') }}",
+    csrf: "{{ csrf_token() }}",
+    getCustomerId: function () {
+        var f = document.getElementById('customer_id-ticket');
+        return f ? f.value : '';
+    },
+    onCreated: function (unit) {
+        unitSel.disabled = false;
+        unitSel.add(new Option(unit.label, unit.id, true, true));
+    }
+});
+</script>
+{% endblock %}

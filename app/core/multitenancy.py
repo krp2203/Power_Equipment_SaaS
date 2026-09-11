@@ -6,8 +6,8 @@ from contextlib import contextmanager
 @contextmanager
 def global_tenant_bypass():
     """
-    Context manager to temporarily bypass tenant filtering.
-    Used during bridge key authentication to allow global lookup.
+    Context manager to temporarily bypass tenant filtering,
+    for the rare cases that need a cross-organization lookup.
     """
     g.ignore_tenant_filter = True
     try:

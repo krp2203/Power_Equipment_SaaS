@@ -153,6 +153,31 @@
                                     (Units)</a></li>
                         </ul>
                     </li>
+                    {% if g.current_org and g.current_org.id != 1 and g.current_org.modules and g.current_org.modules.get('pos') %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if 'equipment' in request.endpoint %}active{% endif %}"
+                            href="{{ url_for('equipment.index') }}">
+                            <i class="bi bi-tools me-2"></i>Equipment
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if 'pos' in request.endpoint or 'service_tickets' in request.endpoint %}active{% endif %}"
+                            href="{{ url_for('pos.hub') }}">
+                            <i class="bi bi-cash-coin me-2"></i>Point of Sale
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if 'purchasing' in request.endpoint %}active{% endif %}"
+                            href="#" id="purchasingDropdown" role="button" data-bs-toggle="dropdown"
+                            aria-expanded="false">
+                            <i class="bi bi-truck me-2"></i>Purchasing
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="purchasingDropdown">
+                            <li><a class="dropdown-item" href="{{ url_for('purchasing.vendors') }}">Vendors</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('purchasing.purchase_orders') }}">Purchase Orders</a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
                     {% if g.current_org and g.current_org.modules and g.current_org.modules.get('facebook') %}
                     <li class="nav-item">
                         <a class="nav-link {% if 'marketing' in request.endpoint %}active{% endif %}"
@@ -186,6 +211,12 @@
                                         class="bi bi-person-badge me-2"></i>My Profile</a></li>
                             <li><a class="dropdown-item" href="{{ url_for('settings.organization') }}"><i
                                         class="bi bi-sliders me-2"></i>Platform Settings</a></li>
+                            {% if g.current_org and g.current_org.id != 1 %}
+                            <li><a class="dropdown-item" href="{{ url_for('settings.markup_tiers') }}"><i
+                                        class="bi bi-graph-up me-2"></i>Parts Markup Tiers</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('settings.invoice_payment_options') }}"><i
+                                        class="bi bi-credit-card me-2"></i>Invoice Payment Options</a></li>
+                            {% endif %}
                             <!-- <li><a class="dropdown-item" href="{{ url_for('dealers.index') }}"><i
                                         class="bi bi-people me-2"></i>Sub-Dealers</a></li> -->
                             {% if g.current_org and g.current_org.id == 1 %}

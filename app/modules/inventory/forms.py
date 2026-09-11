@@ -29,5 +29,6 @@ class PartInventoryForm(FlaskForm):
     description = StringField('Description', validators=[Optional()])
     stock_on_hand = IntegerField('Stock On Hand', default=0)
     bin_location = StringField('Bin Location', validators=[Optional()])
+    display_on_web = BooleanField('Show on website', validators=[Optional()])
     image = FileField('Part Image', validators=[FileAllowed(['jpg', 'png', 'jpeg', 'webp'], 'Images only!')])
     submit = SubmitField('Save Part')

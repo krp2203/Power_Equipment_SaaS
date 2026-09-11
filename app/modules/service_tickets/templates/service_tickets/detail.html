@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+{% from "shared/part_picker.html" import part_picker_scripts %}
+{% block title %}Ticket #{{ ticket.id }}{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <h2 class="mb-1">
+                Service Ticket #{{ ticket.id }}
+                {% if ticket.status == 'Received' %}<span class="badge bg-secondary align-middle fs-6">{{ ticket.status }}</span>
+                {% elif ticket.status == 'In Progress' %}<span class="badge bg-info text-dark align-middle fs-6">{{ ticket.status }}</span>
+                {% elif ticket.status == 'Waiting on Parts' %}<span class="badge bg-warning text-dark align-middle fs-6">{{ ticket.status }}</span>
+                {% elif ticket.status == 'Ready for Pickup' %}<span class="badge bg-success align-middle fs-6">{{ ticket.status }}</span>
+                {% else %}<span class="badge bg-dark align-middle fs-6">{{ ticket.status }}</span>{% endif %}
+            </h2>
+            <div class="text-muted small">Intake {{ ticket.intake_date.strftime('%b %d, %Y') }}</div>
+        </div>
+        <form action="{{ url_for('service_tickets.update_status', ticket_id=ticket.id) }}" method="POST" class="d-flex gap-2">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                {% for s in statuses %}<option value="{{ s }}" {% if s == ticket.status %}selected{% endif %}>{{ s }}</option>{% endfor %}
+            </select>
+        </form>
+    </div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent fw-bold py-3">Customer &amp; Equipment</div>
+                <div class="card-body">
+                    <h6 class="mb-1">Customer</h6>
+                    {% if ticket.customer %}
+                    <p class="small mb-3">{{ ticket.customer.name }}{% if ticket.customer.company %}<br>{{ ticket.customer.company }}{% endif %}
+                        {% if ticket.customer.phone %}<br><a href="tel:{{ ticket.customer.phone }}">{{ ticket.customer.phone }}</a>{% endif %}</p>
+                    {% else %}<p class="text-muted small mb-3">No customer attached.</p>{% endif %}
+
+                    <h6 class="mb-1">Equipment</h6>
+                    {% if ticket.unit %}
+                    <p class="small mb-1">{{ ticket.unit.manufacturer }} {{ ticket.unit.model_number }}<br>SN: {{ ticket.unit.serial_number or 'N/A' }}
+                        <a href="{{ url_for('equipment.edit', unit_id=ticket.unit.id) }}" class="ms-1">edit</a></p>
+                    {% if ticket.unit.components %}
+                    <ul class="small text-muted mb-1 ps-3">
+                        {% for c in ticket.unit.components %}
+                        <li>{{ c.component_type }}: {{ ([c.manufacturer, c.model_number]|select|join(' ')) or '—' }}{% if c.serial_number %} &middot; SN {{ c.serial_number }}{% endif %}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                    {% else %}
+                    <p class="text-muted small mb-1">No equipment attached.</p>
+                    {% endif %}
+                    <button class="btn btn-sm btn-link p-0" type="button" data-bs-toggle="collapse" data-bs-target="#equipCollapse">
+                        {{ 'Change equipment' if ticket.unit else 'Attach equipment' }}
+                    </button>
+                    <div class="collapse mt-2" id="equipCollapse">
+                        <form method="POST" action="{{ url_for('service_tickets.update_unit', ticket_id=ticket.id) }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                            <div class="input-group input-group-sm mb-1">
+                                <select name="unit_id" id="unitSelect" class="form-select">
+                                    <option value="">-- None --</option>
+                                    {% for u in units %}<option value="{{ u.id }}" {% if ticket.unit_id == u.id %}selected{% endif %}>{{ u.manufacturer }} {{ u.model_number }} - SN {{ u.serial_number or 'N/A' }}</option>{% endfor %}
+                                </select>
+                                <button type="button" class="btn btn-outline-primary" data-bs-toggle="modal" data-bs-target="#addEquipmentModal"><i class="bi bi-plus-lg"></i></button>
+                            </div>
+                            <button type="submit" class="btn btn-sm btn-primary">Save</button>
+                        </form>
+                    </div>
+
+                    <h6 class="mb-1 mt-3">Technician</h6>
+                    <form method="POST" action="{{ url_for('service_tickets.update_technician', ticket_id=ticket.id) }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <select name="technician_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="">Unassigned</option>
+                            {% for tech in technicians %}<option value="{{ tech.id }}" {% if ticket.technician_id == tech.id %}selected{% endif %}>{{ ([tech.first_name, tech.last_name]|select|join(' ')) or tech.username }}{% if tech.role == 'admin' %} (admin){% endif %}</option>{% endfor %}
+                        </select>
+                        {% if not technicians %}<div class="form-text text-warning small">Add staff with the Technician role under Settings &rsaquo; Users.</div>{% endif %}
+                    </form>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-transparent fw-bold py-3">Reported Issue</div>
+                <div class="card-body"><p class="small mb-0">{{ ticket.reported_issue or '-' }}</p></div>
+            </div>
+
+            <div class="card border-0 shadow-sm" id="notes">
+                <div class="card-header bg-transparent fw-bold py-3">Notes</div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('service_tickets.add_note', ticket_id=ticket.id) }}" class="mb-3">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                        <textarea name="body" class="form-control form-control-sm mb-2" rows="3" placeholder="Add a note…" required></textarea>
+                        <button type="submit" class="btn btn-sm btn-primary">Add note</button>
+                    </form>
+                    {% if ticket.notes %}
+                    <div class="border-top pt-2">
+                        {% for n in ticket.notes %}
+                        <div class="mb-2 pb-2 {{ 'border-bottom' if not loop.last }}">
+                            <div class="small text-muted">
+                                {{ n.created_at.strftime('%b %d, %Y &nbsp;%I:%M %p') | safe }}
+                                {% if n.author %}&middot; {{ ([n.author.first_name, n.author.last_name]|select|join(' ')) or n.author.username }}{% endif %}
+                            </div>
+                            <div style="white-space:pre-wrap;">{{ n.body }}</div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="text-muted small mb-0">No notes yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent fw-bold py-3">Parts &amp; Labor</div>
+                <div class="card-body">
+                    {% if ticket.parts_used or ticket.labor_entries %}
+                    <table class="table table-sm mb-3">
+                        <tbody>
+                            {% for pu in ticket.parts_used %}
+                            <tr class="{{ 'text-muted' if pu.invoiced }}">
+                                <td>{{ pu.quantity }}x {{ pu.description_at_time_of_use or pu.part_number }}
+                                    {% if pu.invoiced %}<span class="badge bg-secondary">Invoiced</span>{% endif %}
+                                    {% if pu.on_order %}<span class="badge bg-warning text-dark">On order &mdash; PO #{{ pu.po_line_item.purchase_order.po_number }}</span>
+                                    {% elif pu.po_line_item_id %}<span class="badge bg-success">Special order received</span>{% endif %}</td>
+                                <td class="text-end">${{ '%.2f'|format(pu.quantity * pu.cost_at_time_of_use) }}</td>
+                                <td class="text-end" style="width:40px;">
+                                    {% if not pu.invoiced %}
+                                    <form action="{{ url_for('service_tickets.delete_part', ticket_id=ticket.id, part_id=pu.id) }}" method="POST" onsubmit="return confirm('Remove this part?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                        <button class="btn btn-sm btn-link text-danger p-0"><i class="bi bi-x-circle"></i></button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                            {% for le in ticket.labor_entries %}
+                            <tr class="{{ 'text-muted' if le.invoiced }}">
+                                <td>{{ le.hours_spent }}h &mdash; {{ le.description or 'Labor' }}
+                                    {% if le.invoiced %}<span class="badge bg-secondary">Invoiced</span>{% endif %}</td>
+                                <td class="text-end">${{ '%.2f'|format(le.hours_spent * le.rate_at_time_of_log) }}</td>
+                                <td class="text-end">
+                                    {% if not le.invoiced %}
+                                    <form action="{{ url_for('service_tickets.delete_labor', ticket_id=ticket.id, labor_id=le.id) }}" method="POST" onsubmit="return confirm('Remove this labor entry?');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                        <button class="btn btn-sm btn-link text-danger p-0"><i class="bi bi-x-circle"></i></button>
+                                    </form>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="fw-bold border-top">
+                                <td>Total</td>
+                                <td class="text-end" colspan="2">${{ '%.2f'|format(ticket.total_cost) }}</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                    {% endif %}
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="card bg-light border-0">
+                                <div class="card-body">
+                                    <h6>Add Part</h6>
+                                    <form action="{{ url_for('service_tickets.add_part', ticket_id=ticket.id) }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                        <input type="text" id="stPartSearch" class="form-control form-control-sm mb-1" placeholder="Search part # or description…" autocomplete="off">
+                                        <input type="hidden" name="part_inventory_id" id="stPartId">
+                                        <div id="stPartHint" class="small text-success mb-2 d-none"></div>
+                                        <details class="mb-2">
+                                            <summary class="small text-muted">Part not in inventory? Write it in</summary>
+                                            <div class="row g-1 mt-1">
+                                                <div class="col-4"><input type="text" name="part_number" placeholder="Part #" class="form-control form-control-sm"></div>
+                                                <div class="col-4"><input type="text" name="description" placeholder="Description" class="form-control form-control-sm"></div>
+                                                <div class="col-4"><input type="number" step="0.01" name="cost" placeholder="Cost ea." class="form-control form-control-sm"></div>
+                                            </div>
+                                        </details>
+                                        <div class="form-check form-switch mb-1">
+                                            <input class="form-check-input" type="checkbox" name="force_in_hand" value="1" id="stForce">
+                                            <label class="form-check-label small" for="stForce">Have it in hand &mdash; sell now, don't order</label>
+                                        </div>
+                                        <div class="row g-1">
+                                            <div class="col-8"><input type="number" name="quantity" value="1" min="1" class="form-control form-control-sm" placeholder="Qty"></div>
+                                            <div class="col-4"><button type="submit" class="btn btn-sm btn-primary w-100">Add</button></div>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card bg-light border-0">
+                                <div class="card-body">
+                                    <h6>Add Labor</h6>
+                                    <form action="{{ url_for('service_tickets.add_labor', ticket_id=ticket.id) }}" method="POST">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                        <div class="row g-1 mb-2">
+                                            <div class="col-6"><input type="number" step="0.1" name="hours_spent" placeholder="Hours" class="form-control form-control-sm" required></div>
+                                            <div class="col-6"><input type="number" step="0.01" name="rate" placeholder="Rate/hr" value="{{ current_user.labor_rate or g.current_org.default_labor_rate or '' }}" class="form-control form-control-sm"></div>
+                                        </div>
+                                        <input type="text" name="description" placeholder="Description" class="form-control form-control-sm mb-2">
+                                        <button type="submit" class="btn btn-sm btn-primary w-100">Add</button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if uninvoiced_parts or uninvoiced_labor %}
+                    <div class="d-grid mt-4">
+                        <a href="{{ url_for('pos.new_service_invoice', ticket_id=ticket.id) }}" class="btn btn-success btn-lg">
+                            <i class="bi bi-receipt me-1"></i>Generate Invoice
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if ticket.invoices %}
+            <div class="card border-0 shadow-sm mt-4">
+                <div class="card-header bg-transparent fw-bold py-3">Invoices</div>
+                <div class="card-body p-0">
+                    <table class="table mb-0">
+                        <tbody>
+                            {% for inv in ticket.invoices %}
+                            <tr>
+                                <td>#{{ inv.invoice_number }}</td>
+                                <td>{% if inv.status == 'paid' %}<span class="badge bg-success">Paid</span>{% else %}<span class="badge bg-warning text-dark">Unpaid</span>{% endif %}</td>
+                                <td class="text-end">${{ '%.2f'|format(inv.total) }}</td>
+                                <td class="text-end"><a href="{{ url_for('pos.view_invoice', invoice_id=inv.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% include "service_tickets/_equipment_modal.html" %}
+<script>
+EquipmentQuickAdd.init({
+    quickAddUrl: "{{ url_for('service_tickets.equipment_quick_add') }}",
+    csrf: "{{ csrf_token() }}",
+    getCustomerId: function () { return "{{ ticket.customer_id or '' }}"; },
+    onCreated: function (unit) {
+        var sel = document.getElementById('unitSelect');
+        sel.add(new Option(unit.label, unit.id, true, true));
+        sel.form.submit();
+    }
+});
+</script>
+
+{{ part_picker_scripts(url_for('inventory.search_parts')) }}
+<script>
+PartPicker.wire(
+    document.getElementById('stPartSearch'),
+    function (p) {
+        document.getElementById('stPartId').value = p.id;
+        var h = document.getElementById('stPartHint');
+        h.textContent = 'Selected ' + p.part_number + ' · $' + p.price.toFixed(2)
+            + (p.stock > 0 ? ' · ' + p.stock + ' in stock' : ' · special order');
+        h.classList.remove('d-none');
+    },
+    function () {
+        document.getElementById('stPartId').value = '';
+        document.getElementById('stPartHint').classList.add('d-none');
+    }
+);
+</script>
+{% endblock %}

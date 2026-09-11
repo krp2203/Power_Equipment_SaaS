@@ -469,98 +469,6 @@ def complete_chunk_upload():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-@marketing_bp.route('/marketing/download-bridge', methods=['POST'])
-@login_required
-def download_bridge():
-    """Generates a custom ZIP with config.json and the master bridge EXE."""
-    org = g.current_org
-    if not org:
-        flash("Organization not found.", "danger")
-        return redirect(url_for('marketing.dashboard'))
-
-    # 1. Generate Config
-    # Force the server URL to be the dealer's specific subdomain to avoid cross-domain/405 issues
-    base_domain = "bentcrankshaft.com"
-    scheme = request.scheme # 'https' or 'http'
-
-    # If the current host isn't already the dealer subdomain, construct it
-    if org.slug and org.id != 1:
-        server_url = f"{scheme}://{org.slug}.{base_domain}"
-    else:
-        server_url = request.host_url.rstrip('/')
-
-    config_data = {
-        "pos_bridge_key": org.pos_bridge_key,
-        "bridge_key": org.pos_bridge_key,
-        "slug": org.slug,
-        "dealer_slug": org.slug,
-        "name": org.name,
-        "dealer_name": org.name,
-        "server_url": server_url,
-        "url": server_url
-    }
-    
-    # 2. Setup ZIP in memory
-    memory_file = io.BytesIO()
-    
-    # Path to master EXE
-    exe_path = os.path.join(current_app.root_path, 'static/uploads/downloads/PES_Bridge.exe')
-    
-    if not os.path.exists(exe_path):
-        # Fallback check
-        alt_path = os.path.join(current_app.root_path, 'static/downloads/PES_Bridge.exe')
-        if os.path.exists(alt_path):
-            exe_path = alt_path
-        else:
-            flash(f"Master Bridge file not found. Please contact support.", "danger")
-            return redirect(url_for('marketing.dashboard'))
-
-    try:
-        with zipfile.ZipFile(memory_file, 'w', zipfile.ZIP_DEFLATED) as zf:
-            # Add config.json
-            zf.writestr('config.json', json.dumps(config_data, indent=4))
-            
-            # Add EXE
-            zf.write(exe_path, 'PES_Bridge.exe')
-            
-            # Add Run Hidden Script (VBS) with 15-minute loop
-            vbs_content = 'Set WshShell = CreateObject("WScript.Shell")\n'
-            vbs_content += 'strPath = Left(WScript.ScriptFullName, InStrRev(WScript.ScriptFullName, "\\"))\n'
-            vbs_content += 'WshShell.CurrentDirectory = strPath\n'
-            vbs_content += 'strExe = Chr(34) & strPath & "PES_Bridge.exe" & Chr(34)\n'
-            vbs_content += 'Do\n'
-            vbs_content += '    WshShell.Run strExe, 0, True\n'
-            vbs_content += '    WScript.Sleep 900000 \' Wait 15 minutes\n'
-            vbs_content += 'Loop'
-            zf.writestr('run_bridge_hidden.vbs', vbs_content)
-            
-            # Add a Readme
-            readme = "PES BRIDGE INSTRUCTIONS\n"
-            readme += "=======================\n\n"
-            readme += "1. Extract this ZIP file completely (Right-click > Extract All).\n"
-            readme += "2. **FIRST RUN**: Double-click 'PES_Bridge.exe' once. If Windows asks \n"
-            readme += "   for permission, click 'Run anyway'. Verify it syncs successfully.\n\n"
-            readme += "3. **BACKGROUND MODE**: Once the first run is done, use 'run_bridge_hidden.vbs'.\n"
-            readme += "   This will run the bridge silently in the background every 15 minutes.\n\n"
-            readme += "AUTOMATIC STARTUP:\n"
-            readme += "------------------\n"
-            readme += "To have the bridge start automatically when your computer turns on:\n"
-            readme += "1. Right-click 'run_bridge_hidden.vbs' and select 'Create Shortcut'.\n"
-            readme += "2. Copy/Move that SHORTCUT into your Windows Startup folder.\n"
-            readme += "   (DO NOT move the script itself, only the shortcut.)"
-            zf.writestr('README.txt', readme)
-            
-        memory_file.seek(0)
-        
-        return send_file(
-            memory_file,
-            mimetype='application/zip',
-            as_attachment=True,
-            download_name=f'PES_Bridge_{org.slug}.zip'
-        )
-    except Exception as e:
-        flash(f"Error generating download: {str(e)}", "danger")
-        return redirect(url_for('marketing.dashboard'))
 @marketing_bp.route('/marketing/history', methods=['GET'])
 @login_required
 def history():
@@ -588,21 +496,16 @@ def dashboard():
         total_dealers = Organization.query.count()
         active_dealers = Organization.query.filter_by(is_active=True).count()
 
-        # Check for Offline Bridges (> 1 hour since heartbeat)
-        cutoff = datetime.utcnow() - timedelta(hours=1)
-        offline_bridges = Organization.query.filter(
-            Organization.id != 1, # Ignore Master
-            Organization.is_active == True,
-            (Organization.last_bridge_heartbeat < cutoff) | (Organization.last_bridge_heartbeat == None)
-        ).all()
-
-        # Fetch All Tenants for Site Manager View
+        # How many dealers have the Point of Sale system switched on.
         tenants = Organization.query.order_by(Organization.id).all()
+        pos_enabled_count = sum(
+            1 for t in tenants if t.id != 1 and (t.modules or {}).get('pos')
+        )
 
         return render_template('main/saas_dashboard.html',
                              total_dealers=total_dealers,
                              active_dealers=active_dealers,
-                             offline_bridges=offline_bridges,
+                             pos_enabled_count=pos_enabled_count,
                              tenants=tenants,
                              now=datetime.utcnow())
 
@@ -614,19 +517,11 @@ def dashboard():
         if not org.onboarding_complete:
             return redirect(url_for('settings.onboarding'))
 
-        # Bridge Status
-        bridge_online = False
-        last_seen = org.last_bridge_heartbeat
-        if last_seen and (datetime.utcnow() - last_seen) < timedelta(minutes=15):
-             bridge_online = True
-
         # Inventory Stats
         parts_count = PartInventory.query.filter_by(organization_id=org.id).count()
         units_count = Unit.query.filter_by(organization_id=org.id, display_on_web=True).count()
 
         return render_template('main/dealer_dashboard.html',
-                             bridge_online=bridge_online,
-                             last_seen=last_seen,
                              parts_count=parts_count,
                              units_count=units_count,
                              now=datetime.utcnow())

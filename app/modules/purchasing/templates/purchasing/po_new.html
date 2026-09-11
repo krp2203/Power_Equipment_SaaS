@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}New Purchase Order{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h1><i class="bi bi-file-earmark-plus me-2"></i>New Purchase Order</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm" style="max-width: 600px;">
+        <div class="card-body">
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                <div class="mb-3">{{ form.vendor_id.label(class="form-label") }}{{ form.vendor_id(class="form-select") }}</div>
+                <div class="mb-3">{{ form.order_date.label(class="form-label") }}{{ form.order_date(class="form-control") }}</div>
+                <div class="mb-3">{{ form.expected_date.label(class="form-label") }}{{ form.expected_date(class="form-control") }}</div>
+                <div class="mb-3">{{ form.notes.label(class="form-label") }}{{ form.notes(class="form-control", rows=2) }}</div>
+                {{ form.submit(class="btn btn-primary") }}
+                <a href="{{ url_for('purchasing.hub') }}" class="btn btn-outline-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

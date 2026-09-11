@@ -6,7 +6,7 @@ import os
 from app.core.extensions import db
 from app.core.models import User
 from . import settings_bp
-from .forms import OrganizationSettingsForm, AddUserForm, EditUserForm
+from .forms import OrganizationSettingsForm, AddUserForm, EditUserForm, MarkupTierForm
 from itsdangerous import URLSafeSerializer
 from app.core.multitenancy import global_tenant_bypass
 from sqlalchemy.orm.attributes import flag_modified
@@ -43,23 +43,23 @@ def organization():
         form.custom_domain.data = org.custom_domain or ""
         
         # ARI
-        form.enable_ari.data = modules.get('ari', False)
         form.ari_dealer_id.data = org.ari_dealer_id
-        
-        # POS
-        form.pos_provider.data = org.pos_provider or 'none'
-        form.pos_bridge_key.data = org.pos_bridge_key
-        form.enable_pos.data = (org.pos_provider and org.pos_provider != 'none')
-        
+
+        # POS / Service rate defaults (stored in org.settings JSON as strings)
+        from decimal import Decimal as _D
+        _org_settings = org.settings or {}
+        def _as_dec(v):
+            try:
+                return _D(str(v)) if v not in (None, '') else None
+            except Exception:
+                return None
+        form.default_tax_rate.data = _as_dec(_org_settings.get('default_tax_rate'))
+        form.default_labor_rate.data = _as_dec(_org_settings.get('default_labor_rate'))
+
         # Facebook
         form.facebook_page_id.data = org.facebook_page_id
         form.facebook_access_token.data = org.facebook_access_token
-        
-        # Modules (Admin Toggles)
-        form.module_pos_sync.data = modules.get('pos_sync', False)
-        form.module_facebook.data = modules.get('facebook', False)
-        form.module_ari.data = modules.get('ari', False)
-        
+
         # Hero
         form.hero_title.data = theme.get('hero_title', f"Welcome to {org.name}")
         form.hero_tagline.data = theme.get('hero_tagline', "Your Premium Destination for Power Equipment, Parts, and Service.")
@@ -175,30 +175,24 @@ def organization():
             org.custom_domain = form.custom_domain.data.lower() if form.custom_domain.data else None
             
         org.ari_dealer_id = form.ari_dealer_id.data
-        org.pos_provider = form.pos_provider.data
-        org.pos_bridge_key = form.pos_bridge_key.data
+
+        # POS / Service rate defaults -> org.settings JSON
+        new_settings = dict(org.settings or {})
+        new_settings['default_tax_rate'] = (
+            str(form.default_tax_rate.data) if form.default_tax_rate.data is not None else None)
+        new_settings['default_labor_rate'] = (
+            str(form.default_labor_rate.data) if form.default_labor_rate.data is not None else None)
+        org.settings = new_settings
+        flag_modified(org, "settings")
+
         # Facebook - Skip manual update if empty (handled by OAuth)
         # org.facebook_page_id = form.facebook_page_id.data
         # org.facebook_access_token = form.facebook_access_token.data
         
-        if is_saas_admin:
-            # Update Modules flags
-            new_modules = org.modules or {}
-            new_modules['ari'] = form.module_ari.data
-            new_modules['facebook'] = form.module_facebook.data
-            new_modules['pos_sync'] = form.module_pos_sync.data
-            
-            # Backward compatibility for 'pos' field if it was used elsewhere
-            if form.module_pos_sync.data and form.pos_provider.data != 'none':
-                 new_modules['pos'] = form.pos_provider.data
-            else:
-                 if 'pos' in new_modules: del new_modules['pos']
-                 
-            org.modules = new_modules
-            flag_modified(org, "modules")
-        
+        # Module flags (pos / facebook / ari) are managed exclusively from the
+        # super-admin dashboard now, so nothing module-related is written here.
+
         flag_modified(org, "theme_config")
-        flag_modified(org, "modules")
 
         db.session.commit()
         
@@ -218,6 +212,11 @@ def add_user():
         existing_user = User.query.filter_by(username=form.username.data, organization_id=org.id).first()
         if existing_user:
             flash(f"Username '{form.username.data}' is already taken in your organization.", "danger")
+            return redirect(url_for('settings.organization') + "#users")
+
+        # Same for email - the (email, organization_id) pair is unique in the DB.
+        if form.email.data and User.query.filter_by(email=form.email.data, organization_id=org.id).first():
+            flash(f"Email '{form.email.data}' is already in use by another user in your organization.", "danger")
             return redirect(url_for('settings.organization') + "#users")
 
         new_user = User(
@@ -250,6 +249,10 @@ def edit_user(user_id):
         
     form = EditUserForm()
     if form.validate_on_submit():
+        clash = User.query.filter_by(email=form.email.data, organization_id=org.id).first()
+        if form.email.data and clash and clash.id != user.id:
+            flash(f"Email '{form.email.data}' is already in use by another user in your organization.", "danger")
+            return redirect(url_for('settings.organization') + "#users")
         user.email = form.email.data
         user.role = form.role.data
         db.session.commit()
@@ -524,3 +527,212 @@ def onboarding_save():
     
     flash("Your site setup is complete! Welcome aboard. 🎉", "success")
     return redirect(url_for('marketing.dashboard'))
+
+@settings_bp.route('/settings/markup-tiers', methods=['GET'])
+@login_required
+def markup_tiers():
+    from app.core.models import MarkupTier
+    org = g.current_org
+    if not org:
+        flash("No organization context found.", "danger")
+        return redirect(url_for('main.index'))
+
+    tiers = MarkupTier.query.filter_by(organization_id=org.id).order_by(MarkupTier.min_cost).all()
+    form = MarkupTierForm()
+    return render_template('settings/markup_tiers.html', tiers=tiers, form=form)
+
+@settings_bp.route('/settings/markup-tiers/add', methods=['POST'])
+@login_required
+def add_markup_tier():
+    from app.core.models import MarkupTier
+    org = g.current_org
+    form = MarkupTierForm()
+
+    if form.validate_on_submit():
+        if form.max_cost.data is not None and form.max_cost.data < form.min_cost.data:
+            flash("'Cost To' must be greater than or equal to 'Cost From'.", "danger")
+        else:
+            tier = MarkupTier(
+                organization_id=org.id,
+                min_cost=form.min_cost.data,
+                max_cost=form.max_cost.data,
+                markup_percent=form.markup_percent.data
+            )
+            db.session.add(tier)
+            db.session.commit()
+            flash("Markup tier added.", "success")
+    else:
+        flash("Please correct the errors and try again.", "danger")
+
+    return redirect(url_for('settings.markup_tiers'))
+
+@settings_bp.route('/settings/markup-tiers/<int:tier_id>/edit', methods=['POST'])
+@login_required
+def edit_markup_tier(tier_id):
+    from app.core.models import MarkupTier
+    org = g.current_org
+    tier = MarkupTier.query.filter_by(id=tier_id, organization_id=org.id).first_or_404()
+    form = MarkupTierForm()
+
+    if form.validate_on_submit():
+        if form.max_cost.data is not None and form.max_cost.data < form.min_cost.data:
+            flash("'Cost To' must be greater than or equal to 'Cost From'.", "danger")
+        else:
+            tier.min_cost = form.min_cost.data
+            tier.max_cost = form.max_cost.data
+            tier.markup_percent = form.markup_percent.data
+            db.session.commit()
+            flash("Markup tier updated.", "success")
+    else:
+        flash("Please correct the errors and try again.", "danger")
+
+    return redirect(url_for('settings.markup_tiers'))
+
+@settings_bp.route('/settings/markup-tiers/<int:tier_id>/delete', methods=['POST'])
+@login_required
+def delete_markup_tier(tier_id):
+    from app.core.models import MarkupTier
+    org = g.current_org
+    tier = MarkupTier.query.filter_by(id=tier_id, organization_id=org.id).first_or_404()
+    db.session.delete(tier)
+    db.session.commit()
+    flash("Markup tier removed.", "success")
+    return redirect(url_for('settings.markup_tiers'))
+
+
+# ====== INVOICE PAYMENT OPTIONS ======
+
+_PO_KINDS = ('link', 'qr', 'text')
+_PO_IMAGE_EXT = {'.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'}
+
+
+def _save_po_image(file_storage, org_id):
+    import uuid
+    ext = os.path.splitext(file_storage.filename)[1].lower()
+    if ext not in _PO_IMAGE_EXT:
+        return None, "Image must be a PNG, JPG, GIF, WEBP or SVG."
+    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'invoice_qr', str(org_id))
+    os.makedirs(upload_dir, exist_ok=True)
+    name = f"{uuid.uuid4().hex}{ext}"
+    file_storage.save(os.path.join(upload_dir, name))
+    return f"/static/uploads/invoice_qr/{org_id}/{name}", None
+
+
+def _apply_po_form(opt, org_id, form, files):
+    """Populate an InvoicePaymentOption from request form/files. Returns error str or None."""
+    from app.core.qr_service import generate_qr, delete_qr
+
+    kind = form.get('kind', '')
+    label = form.get('label', '').strip()
+    if kind not in _PO_KINDS:
+        return "Choose a type."
+    if not label:
+        return "Give it a label."
+
+    opt.kind = kind
+    opt.label = label
+    opt.always_show = bool(form.get('always_show'))
+    try:
+        opt.sort_order = int(form.get('sort_order') or 0)
+    except ValueError:
+        opt.sort_order = 0
+
+    if kind == 'link':
+        url = form.get('url', '').strip()
+        if not url:
+            return "Enter the payment URL."
+        opt.url = url
+        opt.body_text = None
+        if opt.image_url:
+            delete_qr(opt.image_url)
+            opt.image_url = None
+
+    elif kind == 'text':
+        body = form.get('body_text', '').strip()
+        if not body:
+            return "Enter the note text."
+        opt.body_text = body
+        opt.url = None
+        if opt.image_url:
+            delete_qr(opt.image_url)
+            opt.image_url = None
+
+    else:  # qr
+        opt.body_text = None
+        source = form.get('qr_source', 'url')
+        upload = files.get('qr_image')
+        if source == 'upload' and upload and upload.filename:
+            new_url, err = _save_po_image(upload, org_id)
+            if err:
+                return err
+            if opt.image_url:
+                delete_qr(opt.image_url)
+            opt.image_url = new_url
+            opt.url = None
+        else:
+            url = form.get('url', '').strip()
+            if not url:
+                return "Enter a URL to build the QR code from, or upload an image."
+            # regenerate only if the URL changed or there's no image yet
+            if url != (opt.url or '') or not opt.image_url:
+                opt.image_url = generate_qr(org_id, url, replace_url=opt.image_url)
+            opt.url = url
+    return None
+
+
+@settings_bp.route('/settings/invoice-options', methods=['GET'])
+@login_required
+def invoice_payment_options():
+    from app.core.models import InvoicePaymentOption
+    org = g.current_org
+    if not org:
+        return redirect(url_for('main.index'))
+    options = (InvoicePaymentOption.query.filter_by(organization_id=org.id)
+               .order_by(InvoicePaymentOption.sort_order, InvoicePaymentOption.id).all())
+    return render_template('settings/invoice_payment_options.html', options=options)
+
+
+@settings_bp.route('/settings/invoice-options/add', methods=['POST'])
+@login_required
+def add_invoice_payment_option():
+    from app.core.models import InvoicePaymentOption
+    org = g.current_org
+    opt = InvoicePaymentOption(organization_id=org.id)
+    err = _apply_po_form(opt, org.id, request.form, request.files)
+    if err:
+        flash(err, "danger")
+    else:
+        db.session.add(opt)
+        db.session.commit()
+        flash("Payment option added.", "success")
+    return redirect(url_for('settings.invoice_payment_options'))
+
+
+@settings_bp.route('/settings/invoice-options/<int:opt_id>/edit', methods=['POST'])
+@login_required
+def edit_invoice_payment_option(opt_id):
+    from app.core.models import InvoicePaymentOption
+    org = g.current_org
+    opt = InvoicePaymentOption.query.filter_by(id=opt_id, organization_id=org.id).first_or_404()
+    err = _apply_po_form(opt, org.id, request.form, request.files)
+    if err:
+        flash(err, "danger")
+    else:
+        db.session.commit()
+        flash("Payment option updated.", "success")
+    return redirect(url_for('settings.invoice_payment_options'))
+
+
+@settings_bp.route('/settings/invoice-options/<int:opt_id>/delete', methods=['POST'])
+@login_required
+def delete_invoice_payment_option(opt_id):
+    from app.core.models import InvoicePaymentOption
+    from app.core.qr_service import delete_qr
+    org = g.current_org
+    opt = InvoicePaymentOption.query.filter_by(id=opt_id, organization_id=org.id).first_or_404()
+    if opt.image_url:
+        delete_qr(opt.image_url)
+    db.session.delete(opt)
+    db.session.commit()
+    flash("Payment option removed.", "success")
+    return redirect(url_for('settings.invoice_payment_options'))

@@ -1,0 +1,97 @@
+{# Reusable "search as you type" part picker.
+   Usage:
+     {% from "shared/part_picker.html" import part_picker_scripts %}
+     ...once per page, after other scripts:
+     {{ part_picker_scripts(url_for('inventory.search_parts')) }}
+     <script>
+       PartPicker.wire(inputEl, function(part){ ... }, function(){ ...cleared... });
+     </script>
+   The results dropdown is appended to <body> so it is never clipped by a
+   card/table with overflow. #}
+
+{% macro part_picker_scripts(search_url) %}
+<script>
+window.PartPicker = (function () {
+    const SEARCH_URL = {{ search_url|tojson }};
+    const timers = new WeakMap();
+
+    function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : s; return d.innerHTML; }
+    function money(n) { return '$' + (Number(n) || 0).toFixed(2); }
+
+    function wire(input, onPick, onClear) {
+        if (!input || input.dataset.ppWired) return;
+        input.dataset.ppWired = '1';
+        input.setAttribute('autocomplete', 'off');
+
+        const box = document.createElement('div');
+        box.className = 'list-group shadow-sm';
+        box.style.cssText = 'position:absolute;z-index:1080;max-height:260px;overflow-y:auto;display:none;';
+        document.body.appendChild(box);
+
+        let picked = false;
+        let lastResults = [];
+
+        function place() {
+            const r = input.getBoundingClientRect();
+            box.style.left = (window.scrollX + r.left) + 'px';
+            box.style.top = (window.scrollY + r.bottom) + 'px';
+            box.style.minWidth = Math.max(r.width, 280) + 'px';
+        }
+        function hide() { box.style.display = 'none'; }
+
+        function render(results) {
+            lastResults = results;
+            if (!results.length) {
+                box.innerHTML = '<div class="list-group-item small text-muted">No matching parts. Use the description field to add a non-stock part.</div>';
+            } else {
+                box.innerHTML = results.map(function (p) {
+                    const meta = [p.manufacturer, p.description].filter(Boolean).join(' — ');
+                    const stock = p.stock > 0
+                        ? '<span class="text-success">' + p.stock + ' in stock</span>'
+                        : '<span class="text-muted">special order</span>';
+                    return '<button type="button" class="list-group-item list-group-item-action py-1">'
+                        + '<div class="d-flex justify-content-between"><strong class="font-monospace">' + esc(p.part_number) + '</strong><span>' + money(p.price) + '</span></div>'
+                        + '<div class="small text-muted d-flex justify-content-between gap-3"><span class="text-truncate">' + esc(meta) + '</span>' + stock + '</div>'
+                        + '</button>';
+                }).join('');
+                Array.prototype.forEach.call(box.children, function (btn, i) {
+                    btn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+                    btn.addEventListener('click', function () {
+                        const p = lastResults[i];
+                        picked = true;
+                        input.value = p.part_number + (p.description ? ' — ' + p.description : '');
+                        hide();
+                        onPick(p);
+                    });
+                });
+            }
+            place();
+            box.style.display = 'block';
+        }
+
+        input.addEventListener('input', function () {
+            if (picked) { picked = false; if (onClear) onClear(); }
+            clearTimeout(timers.get(input));
+            const q = input.value.trim();
+            if (q.length < 2) { hide(); return; }
+            timers.set(input, setTimeout(function () {
+                fetch(SEARCH_URL + '?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.json(); })
+                    .then(function (d) { render(d.results || []); })
+                    .catch(hide);
+            }, 220));
+        });
+        input.addEventListener('focus', function () {
+            if (box.innerHTML && input.value.trim().length >= 2 && !picked) { place(); box.style.display = 'block'; }
+        });
+        document.addEventListener('click', function (e) {
+            if (e.target !== input && !box.contains(e.target)) hide();
+        });
+        window.addEventListener('resize', hide);
+        window.addEventListener('scroll', function () { if (box.style.display === 'block') place(); }, true);
+    }
+
+    return { wire: wire };
+})();
+</script>
+{% endmacro %}

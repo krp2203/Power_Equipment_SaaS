@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}Invoice Payment Options{% endblock %}
+{% block content %}
+
+{% macro po_form(pfx, action, o=None) %}
+<form method="POST" action="{{ action }}" enctype="multipart/form-data" class="row g-2">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+    <div class="col-md-3">
+        <label class="form-label small">Type</label>
+        <select name="kind" class="form-select form-select-sm po-kind" data-pfx="{{ pfx }}">
+            <option value="link" {{ 'selected' if o and o.kind == 'link' }}>Button / link</option>
+            <option value="qr" {{ 'selected' if o and o.kind == 'qr' }}>QR code</option>
+            <option value="text" {{ 'selected' if o and o.kind == 'text' }}>Note / instructions</option>
+        </select>
+    </div>
+    <div class="col-md-5">
+        <label class="form-label small">Label</label>
+        <input type="text" name="label" class="form-control form-control-sm" value="{{ o.label if o else '' }}"
+               placeholder="e.g. Pay with Square" required>
+    </div>
+    <div class="col-md-2">
+        <label class="form-label small">Order</label>
+        <input type="number" name="sort_order" class="form-control form-control-sm" value="{{ o.sort_order if o else 0 }}">
+    </div>
+    <div class="col-md-2 d-flex align-items-end">
+        <div class="form-check">
+            <input type="checkbox" class="form-check-input" name="always_show" id="{{ pfx }}-always" {{ 'checked' if o and o.always_show }}>
+            <label class="form-check-label small" for="{{ pfx }}-always">Show when paid</label>
+        </div>
+    </div>
+
+    <div class="col-12 po-field po-field-link" data-pfx="{{ pfx }}">
+        <label class="form-label small">Payment URL</label>
+        <input type="url" name="url" class="form-control form-control-sm" value="{{ o.url if o and o.kind == 'link' else '' }}"
+               placeholder="https://square.link/u/...">
+    </div>
+
+    <div class="col-12 po-field po-field-qr" data-pfx="{{ pfx }}">
+        <div class="row g-2">
+            <div class="col-md-4">
+                <label class="form-label small">QR source</label>
+                <select name="qr_source" class="form-select form-select-sm">
+                    <option value="url">Generate from a URL</option>
+                    <option value="upload">Upload an image</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small">URL (for "generate")</label>
+                <input type="url" name="url" class="form-control form-control-sm"
+                       value="{{ o.url if o and o.kind == 'qr' else '' }}" placeholder="https://square.link/u/...">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small">Image (for "upload")</label>
+                <input type="file" name="qr_image" accept="image/*" class="form-control form-control-sm">
+            </div>
+        </div>
+        {% if o and o.kind == 'qr' and o.image_url %}<div class="small text-muted mt-1">Current: <img src="{{ o.image_url }}" style="height:40px;"></div>{% endif %}
+    </div>
+
+    <div class="col-12 po-field po-field-text" data-pfx="{{ pfx }}">
+        <label class="form-label small">Note text</label>
+        <textarea name="body_text" rows="2" class="form-control form-control-sm"
+                  placeholder="e.g. Make checks payable to Ken's Mowers LLC, 123 Main St.">{{ o.body_text if o and o.kind == 'text' else '' }}</textarea>
+    </div>
+
+    <div class="col-12">
+        <button type="submit" class="btn btn-sm btn-primary">{{ 'Save changes' if o else 'Add option' }}</button>
+    </div>
+</form>
+{% endmacro %}
+
+<div class="container py-4" style="max-width:900px;">
+    <h1><i class="bi bi-credit-card me-2"></i>Invoice Payment Options</h1>
+    <p class="text-muted">
+        Buttons, QR codes and notes that appear in a <strong>Payment Options</strong> block on every
+        invoice &mdash; on screen, in Print / Save-as-PDF, and in the emailed copy. Use them to point
+        customers at your Square / PayPal / other payment link, or to give payment instructions.
+        By default these are hidden once an invoice is marked Paid.
+    </p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header fw-bold">Add a payment option</div>
+        <div class="card-body">
+            {{ po_form('add', url_for('settings.add_invoice_payment_option')) }}
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-header fw-bold">Current options ({{ options|length }})</div>
+        <div class="card-body p-0">
+            <table class="table align-middle mb-0">
+                <thead class="table-light"><tr><th style="width:60px;">Order</th><th>Type</th><th>Label</th><th>Details</th><th>When paid</th><th></th></tr></thead>
+                <tbody>
+                    {% for o in options %}
+                    <tr>
+                        <td>{{ o.sort_order }}</td>
+                        <td><span class="badge bg-{{ {'link':'primary','qr':'dark','text':'secondary'}[o.kind] }}">{{ o.kind|upper }}</span></td>
+                        <td class="fw-bold">{{ o.label }}</td>
+                        <td class="small text-muted">
+                            {% if o.kind == 'link' %}<a href="{{ o.url }}" target="_blank">{{ o.url|truncate(50) }}</a>
+                            {% elif o.kind == 'qr' %}<img src="{{ o.image_url }}" style="height:44px;">{% if o.url %} <span>{{ o.url|truncate(40) }}</span>{% endif %}
+                            {% else %}{{ o.body_text|truncate(80) }}{% endif %}
+                        </td>
+                        <td>{% if o.always_show %}<span class="badge bg-success">Always show</span>{% else %}<span class="text-muted small">Hidden</span>{% endif %}</td>
+                        <td class="text-end text-nowrap">
+                            <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#edit-{{ o.id }}">Edit</button>
+                            <form method="POST" action="{{ url_for('settings.delete_invoice_payment_option', opt_id=o.id) }}" class="d-inline" onsubmit="return confirm('Remove this option?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    <tr class="collapse" id="edit-{{ o.id }}">
+                        <td colspan="6" class="bg-light">
+                            {{ po_form('edit-' ~ o.id, url_for('settings.edit_invoice_payment_option', opt_id=o.id), o) }}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No payment options yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function syncPoFields(sel) {
+    const pfx = sel.dataset.pfx;
+    const kind = sel.value;
+    document.querySelectorAll('.po-field[data-pfx="' + pfx + '"]').forEach(el => {
+        el.style.display = el.classList.contains('po-field-' + kind) ? 'block' : 'none';
+    });
+}
+document.querySelectorAll('.po-kind').forEach(sel => {
+    syncPoFields(sel);
+    sel.addEventListener('change', () => syncPoFields(sel));
+});
+</script>
+{% endblock %}

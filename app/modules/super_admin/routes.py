@@ -37,12 +37,10 @@ def add_tenant():
             slug=form.slug.data.lower(), # Enforce lowercase for subdomains
             custom_domain=form.custom_domain.data.lower() if form.custom_domain.data else None,
             settings={},
-            modules={'ari': False, 'pos': 'none'},
+            # New dealers start as a plain marketing site; the Point of Sale
+            # system is switched on per dealer from the Site Manager below.
+            modules={'ari': False, 'facebook': False, 'pos': False},
             theme_config={'primaryColor': '#2563EB', 'logo_url': None}, # Default Blue
-
-            # Auto-generate keys
-            pos_bridge_key=secrets.token_hex(32),
-            pos_provider='none',
 
             # Manually-created dealers also start on a free trial, same as
             # public self-service signups; convert via Site Manager's "Start Plan".
@@ -265,7 +263,7 @@ def update_modules(org_id):
     
     # We expect these switches to be in the form if they are present in the row
     # Checkbox logic: Presence in form = True, Absence = False
-    for key in ['pos_sync', 'facebook', 'ari']:
+    for key in ['pos', 'facebook', 'ari']:
         new_val = key in request.form
         if current_modules.get(key) != new_val:
             changes.append(f"{key}: {current_modules.get(key)} -> {new_val}")

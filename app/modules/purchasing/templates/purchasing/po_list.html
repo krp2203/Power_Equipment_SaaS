@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Purchase Orders{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1><i class="bi bi-file-earmark-text me-2"></i>Purchase Orders</h1>
+        <a href="{{ url_for('purchasing.new_purchase_order') }}" class="btn btn-primary"><i class="bi bi-plus-lg me-1"></i>New Purchase Order</a>
+    </div>
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr><th>PO #</th><th>Vendor</th><th>Status</th><th>Ordered</th><th>Expected</th><th>Created</th><th></th></tr>
+                </thead>
+                <tbody>
+                    {% for po in purchase_orders %}
+                    <tr>
+                        <td class="font-monospace">#{{ po.po_number }}</td>
+                        <td>{{ po.vendor.name }}</td>
+                        <td>
+                            {% if po.status == 'draft' %}<span class="badge bg-secondary">Draft</span>
+                            {% elif po.status == 'ordered' %}<span class="badge bg-info text-dark">Ordered</span>
+                            {% elif po.status == 'partially_received' %}<span class="badge bg-warning text-dark">Partially Received</span>
+                            {% elif po.status == 'received' %}<span class="badge bg-success">Received</span>
+                            {% else %}<span class="badge bg-dark">{{ po.status }}</span>{% endif %}
+                        </td>
+                        <td>{{ po.order_date or '-' }}</td>
+                        <td>{{ po.expected_date or '-' }}</td>
+                        <td>{{ po.created_at.strftime('%Y-%m-%d') }}</td>
+                        <td class="text-end"><a href="{{ url_for('purchasing.view_purchase_order', po_id=po.id) }}" class="btn btn-sm btn-outline-primary">View</a></td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="7" class="text-center text-muted py-4">No purchase orders yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

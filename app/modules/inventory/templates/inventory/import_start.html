@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Import Parts Price File{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1><i class="bi bi-upload me-2"></i>Import Parts Price File</h1>
+    <p class="text-muted">
+        Upload a manufacturer or vendor price file (CSV or Excel). You'll be able to
+        match its columns to the right fields and preview exactly what will change
+        before anything is saved.
+    </p>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    {% for category, message in messages %}
+    <div class="alert alert-{{ category }}">{{ message }}</div>
+    {% endfor %}
+    {% endif %}
+    {% endwith %}
+
+    <div class="card shadow-sm" style="max-width: 600px;">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('inventory.import_parts_upload') }}" enctype="multipart/form-data">
+                <div class="mb-3">
+                    <label class="form-label">Price File (.csv, .xlsx, .xls)</label>
+                    <input type="file" name="price_file" accept=".csv,.xlsx,.xls" class="form-control" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Continue</button>
+                <a href="{{ url_for('inventory.index') }}" class="btn btn-outline-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

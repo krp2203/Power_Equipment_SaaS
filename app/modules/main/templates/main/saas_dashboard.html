@@ -54,61 +54,21 @@
         </div>
 
         <div class="col-md-4">
-            <div class="card shadow-sm border-left-danger h-100 py-2">
+            <div class="card shadow-sm border-left-primary h-100 py-2">
                 <div class="card-body">
                     <div class="row no-gutters align-items-center">
                         <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">Offline Bridges</div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ offline_bridges|length }}</div>
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">POS-Enabled Sites</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ pos_enabled_count }}</div>
                         </div>
                         <div class="col-auto">
-                            <i class="bi bi-wifi-off fa-2x text-gray-300" style="font-size: 2rem;"></i>
+                            <i class="bi bi-cash-coin fa-2x text-gray-300" style="font-size: 2rem;"></i>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Offline Dealers Alert List -->
-    {% if offline_bridges %}
-    <div class="card shadow-sm mb-4 border-danger">
-        <div class="card-header bg-danger text-white">
-            <h6 class="m-0 font-weight-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Connectivity Alerts
-                (Offline > 1 Hr)</h6>
-        </div>
-        <div class="card-body p-0">
-            <div class="table-responsive">
-                <table class="table table-striped mb-0">
-                    <thead>
-                        <tr>
-                            <th>Dealer Name</th>
-                            <th>Contact</th>
-                            <th>Last Heartbeat</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for org in offline_bridges %}
-                        <tr>
-                            <td><strong>{{ org.name }}</strong></td>
-                            <td>{{ org.email or 'N/A' }}</td>
-                            <td class="text-danger">
-                                {{ org.last_bridge_heartbeat.strftime('%Y-%m-%d %I:%M %p') if org.last_bridge_heartbeat
-                                else 'Never' }}
-                            </td>
-                            <td>
-                                <a href="{{ url_for('super_admin.impersonate', org_id=org.id) }}"
-                                    class="btn btn-sm btn-outline-dark">Investigate</a>
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
-    {% endif %}
 
     <!-- Bulk Raise Price -->
     <div class="card shadow-sm mb-4">
@@ -223,8 +183,8 @@
                                     <input type="hidden" name="update_modules_trigger" value="1" />
 
                                     <div class="form-check form-switch mb-0">
-                                        <input class="form-check-input" type="checkbox" name="pos_sync" {% if
-                                            org.modules and org.modules.get('pos_sync') %}checked{% endif %}>
+                                        <input class="form-check-input" type="checkbox" name="pos" {% if
+                                            org.modules and org.modules.get('pos') %}checked{% endif %}>
                                         <span class="small fw-bold text-muted">POS</span>
                                     </div>
 
