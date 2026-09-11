@@ -20,10 +20,11 @@ export async function getDealerConfig(): Promise<DealerConfig> {
     let targetHost = host;
     let slug = '';
 
-    if (host === 'bentcrankshaft.com' || host === 'www.bentcrankshaft.com') {
-        // Root domain is treated as demo dealer (nginx internally rewrites to demo)
+    if (host === 'bentcrankshaft.com' || host === 'www.bentcrankshaft.com' || host === 'bentcrankshaft.local') {
+        // Root domain is treated as demo dealer (nginx internally rewrites to demo).
+        // bentcrankshaft.local is the test-environment equivalent of the production root domain.
         slug = 'demo';
-        targetHost = host; // Keep as bentcrankshaft.com, nginx will rewrite internally
+        targetHost = host; // Keep as-is, nginx will rewrite internally
     } else if (host.match(/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/)) {
         // If accessing via IP (local dev), use localhost
         targetHost = 'localhost';

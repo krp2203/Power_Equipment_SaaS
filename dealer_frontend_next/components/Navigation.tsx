@@ -115,8 +115,20 @@ export default function Navigation({ config }: { config: DealerConfig }) {
     <nav className="w-full py-3 text-white" style={{ backgroundColor: primaryColor }}>
       <style>{mobileStyles}</style>
       <div className="nav-grid w-full px-4" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', alignItems: 'center', gap: '16px', height: '100%' }}>
-        {/* Left column - Social media links */}
-        <div className="social-links flex gap-4 justify-center items-center h-full">
+        {/* Left column - Dealer Portal + Social media links */}
+        <div className="social-links flex gap-4 justify-start items-center h-full">
+          <a
+            href="/marketing/dashboard"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 rounded-md border border-white/70 px-3 py-1.5 text-sm font-semibold text-white whitespace-nowrap transition-colors hover:bg-white hover:text-gray-900"
+            title="Dealer Portal"
+          >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M11 7 9.6 8.4l2.6 2.6H2v2h10.2l-2.6 2.6L11 17l5-5-5-5zm9 12h-8v2h8c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-8v2h8v14z" />
+            </svg>
+            Dealer Portal
+          </a>
           {socialLinks.map((link) =>
             link.url ? (
               <a

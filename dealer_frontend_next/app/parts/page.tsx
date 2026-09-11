@@ -10,8 +10,8 @@ export default function PartsPage() {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Fetch local parts inventory
-        fetch('/api/v1/parts')
+        // Fetch local parts inventory (only parts the dealer flagged for the web)
+        fetch('/api/v1/parts', { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 setParts(data);
@@ -23,7 +23,7 @@ export default function PartsPage() {
             });
 
         // Fetch dealer config to check if ARI is enabled
-        fetch('/api/v1/site-info')
+        fetch('/api/v1/site-info', { cache: 'no-store' })
             .then(res => res.json())
             .then(data => {
                 const adapted: DealerConfig = {
