@@ -299,6 +299,108 @@ This is an automated email. Please do not reply directly to this message.
         return False
 
 
+def send_quote_request_email(org, quote_request, recipient_email):
+    """
+    Emails a dealer a customer's "request a quote" submission from the
+    public Parts page - part numbers + quantities the customer picked, plus
+    however they'd like to be reached back.
+    """
+    try:
+        rows_html = "".join(
+            f"<tr><td style='padding:4px 8px;border-bottom:1px solid #eee;font-family:monospace;'>{item.part_number}</td>"
+            f"<td style='padding:4px 8px;border-bottom:1px solid #eee;'>{item.description or ''}</td>"
+            f"<td style='padding:4px 8px;border-bottom:1px solid #eee;text-align:center;'>{item.quantity}</td></tr>"
+            for item in quote_request.items
+        )
+        rows_text = "\n".join(
+            f"  {item.quantity}x  {item.part_number}  {item.description or ''}"
+            for item in quote_request.items
+        )
+
+        html_body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #2c3e50;">New Parts Quote Request</h2>
+                    <p>
+                        <strong>From:</strong> {quote_request.customer_name}<br>
+                        {f"<strong>Email:</strong> {quote_request.customer_email}<br>" if quote_request.customer_email else ""}
+                        {f"<strong>Phone:</strong> {quote_request.customer_phone}<br>" if quote_request.customer_phone else ""}
+                    </p>
+                    {f'<p><strong>Notes:</strong><br>{quote_request.notes}</p>' if quote_request.notes else ''}
+                    <table style="border-collapse: collapse; width: 100%; margin-top: 12px;">
+                        <thead>
+                            <tr style="background:#f5f5f5;">
+                                <th style="padding:4px 8px;text-align:left;">Part #</th>
+                                <th style="padding:4px 8px;text-align:left;">Description</th>
+                                <th style="padding:4px 8px;text-align:center;">Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>{rows_html}</tbody>
+                    </table>
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+                    <p style="color: #666; font-size: 12px;">
+                        Submitted via {org.name}'s Parts page. Reply to this email to reach the customer directly.
+                    </p>
+                </div>
+            </body>
+        </html>
+        """
+
+        text_body = f"""New Parts Quote Request
+
+From: {quote_request.customer_name}
+{"Email: " + quote_request.customer_email if quote_request.customer_email else ""}
+{"Phone: " + quote_request.customer_phone if quote_request.customer_phone else ""}
+{"Notes: " + quote_request.notes if quote_request.notes else ""}
+
+{rows_text}
+
+Submitted via {org.name}'s Parts page.
+        """
+
+        msg = Message(
+            subject=f"Parts Quote Request from {quote_request.customer_name}",
+            recipients=[recipient_email],
+            html=html_body,
+            body=text_body,
+            sender=current_app.config.get('MAIL_SENDER', 'noreply@mail.bentcrankshaft.com'),
+            reply_to=quote_request.customer_email or None,
+        )
+        mail.send(msg)
+        print(f"✅ Quote request email sent to {recipient_email}")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to send quote request email: {str(e)}")
+        return False
+
+
+def send_admin_alert(subject, message):
+    """
+    Send a plain-text operational alert to the SaaS admin (ken@bentcrankshaft.com) -
+    for infrastructure conditions (a stuck worker, a growing task backlog, etc.)
+    that need a human to look, not a dealer-facing notification.
+
+    Args:
+        subject (str): Short summary, e.g. "Celery queue backlog: 87 tasks pending"
+        message (str): Plain-text body with the detail.
+    """
+    try:
+        admin_email = "ken@bentcrankshaft.com"
+        msg = Message(
+            subject=f"[Power Equipment SaaS] {subject}",
+            recipients=[admin_email],
+            body=message,
+            sender=current_app.config.get('MAIL_SENDER', 'noreply@mail.bentcrankshaft.com')
+        )
+        mail.send(msg)
+        print(f"✅ Admin alert sent to {admin_email}: {subject}")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to send admin alert ({subject}): {str(e)}")
+        return False
+
+
 def send_test_email(recipient_email):
     """
     Send a simple test email to verify mail configuration.

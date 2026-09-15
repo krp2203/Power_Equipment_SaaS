@@ -15,5 +15,5 @@ migrate = Migrate()
 # The include parameter tells Celery which modules contain tasks
 celery = Celery(
     'power_equip_saas',
-    include=['app.tasks.marketing']
+    include=['app.tasks.marketing', 'app.tasks.monitoring']
 )

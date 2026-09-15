@@ -4,7 +4,7 @@ Marketing tasks module for async posting to Facebook, Instagram, and other platf
 from celery import shared_task
 from datetime import datetime
 from app.core.extensions import db
-from app.core.models import FacebookPost, MediaContent, Organization
+from app.core.models import FacebookPost, MediaContent, Organization, ScheduledPost
 from app.integrations.facebook import get_facebook_service
 from flask import current_app
 
@@ -15,6 +15,32 @@ def make_absolute_url(url, org_slug):
         base = f"{org_slug}.bentcrankshaft.com" if org_slug and org_slug != 'demo' else "demo.bentcrankshaft.com"
         return f"https://{base}{url}"
     return url
+
+
+def get_or_create_scheduled_post(media_content, destination, scheduled_time):
+    """
+    Finds (or creates) the tracking row for one destination of a MediaContent
+    upload. Facebook already got this row - Instagram is unbuilt (post_media_task
+    never actually calls an Instagram API) so it's not created for that
+    destination. Returns the row so post_media_task can update its status
+    when the actual post attempt finishes, instead of the upload route
+    guessing "posted" before anything has happened.
+    """
+    existing = ScheduledPost.query.filter_by(
+        media_content_id=media_content.id, destination=destination
+    ).first()
+    if existing:
+        return existing
+    sp = ScheduledPost(
+        organization_id=media_content.organization_id,
+        media_content_id=media_content.id,
+        destination=destination,
+        scheduled_time=scheduled_time,
+        status='pending',
+    )
+    db.session.add(sp)
+    db.session.flush()
+    return sp
 
 @shared_task
 def post_video_task(org_id, message, media_url, title, fb_post_id):
@@ -61,10 +87,31 @@ def post_video_task(org_id, message, media_url, title, fb_post_id):
 
 
 @shared_task
-def post_media_task(org_id, message, media_url, title, media_content_id, post_to_instagram=False, media_type='image'):
+def post_media_task(org_id, message, media_url, title, media_content_id, post_to_instagram=False,
+                     media_type='image', scheduled_post_id=None):
     """
-    Async task to post media to Facebook and/or Instagram.
+    Async task to post media to Facebook. `post_to_instagram` is accepted for
+    forward-compat but currently does nothing - there's no Instagram API
+    integration built yet (see app/integrations/facebook.py), so the
+    Instagram checkbox is disabled in the upload UI rather than implying
+    this posts there too.
     """
+    def _update_tracking(status, post_id=None, error=None):
+        """Only flips status once the API call has actually returned -
+        never optimistically beforehand (that's what made a stuck worker
+        indistinguishable from a successful post in the data)."""
+        media = MediaContent.query.get(media_content_id)
+        if media:
+            media.status = status
+        if scheduled_post_id:
+            sp = db.session.get(ScheduledPost, scheduled_post_id)
+            if sp:
+                sp.status = status
+                sp.posted_time = datetime.utcnow()
+                sp.facebook_post_id = post_id
+                sp.error_message = error
+        db.session.commit()
+
     try:
         # Get organization and Facebook service
         org = Organization.query.get(org_id)
@@ -88,27 +135,19 @@ def post_media_task(org_id, message, media_url, title, media_content_id, post_to
         else:  # image
             success, post_id, error = fb_service.post_photo(message, media_url)
 
-        # Update the MediaContent status
-        media = MediaContent.query.get(media_content_id)
-        if media:
-            if success:
-                media.status = 'posted'
-                current_app.logger.info(f"Successfully posted media {media_content_id} to Facebook. Post ID: {post_id}")
-            else:
-                media.status = 'failed'
-                current_app.logger.error(f"Failed to post media {media_content_id}: {error}")
-            db.session.commit()
+        if success:
+            current_app.logger.info(f"Successfully posted media {media_content_id} to Facebook. Post ID: {post_id}")
+        else:
+            current_app.logger.error(f"Failed to post media {media_content_id}: {error}")
+        _update_tracking('posted' if success else 'failed', post_id=post_id, error=error)
 
         return {'success': success, 'media_id': media_content_id, 'post_id': post_id, 'error': error}
     except Exception as e:
         current_app.logger.error(f"Error in post_media_task: {str(e)}")
         if media_content_id:
             try:
-                media = MediaContent.query.get(media_content_id)
-                if media:
-                    media.status = 'failed'
-                    db.session.commit()
-            except:
+                _update_tracking('failed', error=str(e))
+            except Exception:
                 pass
         return {'success': False, 'error': str(e)}
 
@@ -147,8 +186,10 @@ def process_scheduled_posts():
                     message += f"\n\n{media.description}"
 
                 # Post to Facebook if enabled
+                queued_social = False
                 if media.post_to_facebook and fb_configured:
                     current_app.logger.info(f"Posting media {media.id} to Facebook...")
+                    sp = get_or_create_scheduled_post(media, 'facebook', now)
                     post_media_task.delay(
                         org.id,
                         message,
@@ -156,14 +197,19 @@ def process_scheduled_posts():
                         media.title,
                         media.id,
                         post_to_instagram=media.post_to_instagram,
-                        media_type=media.media_type
+                        media_type=media.media_type,
+                        scheduled_post_id=sp.id,
                     )
                     posted_count += 1
+                    queued_social = True
 
-                # Update status to posted (or pending if still posting)
-                media.status = 'posted'
+                # 'posting' if a Facebook post attempt was just queued (the task
+                # flips it to 'posted'/'failed' once the API call returns) -
+                # otherwise (banner-only, or FB not configured) there's nothing
+                # async left to do, so it's genuinely posted now.
+                media.status = 'posting' if queued_social else 'posted'
                 db.session.commit()
-                current_app.logger.info(f"Marked media {media.id} as posted and queued for social posting")
+                current_app.logger.info(f"Media {media.id}: {'queued for Facebook posting' if queued_social else 'marked posted (no social destination)'}")
 
             except Exception as e:
                 current_app.logger.error(f"Error processing scheduled post {media.id}: {str(e)}")

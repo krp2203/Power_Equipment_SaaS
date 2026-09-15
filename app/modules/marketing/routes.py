@@ -396,13 +396,19 @@ def complete_chunk_upload():
         if not (post_to_facebook or post_to_instagram or post_to_banner):
             return jsonify({'error': 'Please select at least one destination'}), 400
 
-        # Determine initial status and whether to post now
+        # Determine initial status and whether to post now.
+        # 'posting' (not 'posted') when Facebook posting is queued - the task
+        # flips it to 'posted'/'failed' once the API call actually returns,
+        # so a stuck worker shows up as "stuck", not as a false success.
         if scheduled_post_time:
             initial_status = 'scheduled'
             post_now = False
+        elif post_to_facebook:
+            initial_status = 'posting'
+            post_now = True
         else:
-            initial_status = 'posted' if (post_to_facebook or post_to_instagram or post_to_banner) else 'draft'
-            post_now = (post_to_facebook or post_to_instagram)
+            initial_status = 'posted' if post_to_banner else 'draft'
+            post_now = False
 
         # Create MediaContent record
         media_content = MediaContent(
@@ -425,25 +431,28 @@ def complete_chunk_upload():
 
         # Queue tasks for immediate posting
         current_app.logger.info(f"Video upload - post_now={post_now}, post_to_facebook={post_to_facebook}, post_to_instagram={post_to_instagram}")
-        if post_now:
-            from app.tasks.marketing import post_media_task
+        if post_now and post_to_facebook:
+            from app.tasks.marketing import post_media_task, get_or_create_scheduled_post
             message = f"{media_content.title}"
             if media_content.description:
                 message += f"\n\n{media_content.description}"
 
-            # Post to Facebook/Instagram
-            if post_to_facebook or post_to_instagram:
-                current_app.logger.info(f"Queueing post_media_task for media_content_id={media_content.id}, org_id={org.id}, media_type={media_type}")
-                task_result = post_media_task.delay(
-                    org.id,
-                    message,
-                    media_url,
-                    media_content.title,
-                    media_content.id,
-                    post_to_instagram,
-                    media_type
-                )
-                current_app.logger.info(f"Task queued with result: {task_result}")
+            # Tracking row Facebook posting was missing before - this is what
+            # lets a stuck/failed post actually show up in a query instead of
+            # only in worker logs.
+            sp = get_or_create_scheduled_post(media_content, 'facebook', datetime.utcnow())
+            current_app.logger.info(f"Queueing post_media_task for media_content_id={media_content.id}, org_id={org.id}, media_type={media_type}, scheduled_post_id={sp.id}")
+            task_result = post_media_task.delay(
+                org.id,
+                message,
+                media_url,
+                media_content.title,
+                media_content.id,
+                post_to_instagram,
+                media_type,
+                sp.id
+            )
+            current_app.logger.info(f"Task queued with result: {task_result}")
 
         # Create ScheduledPost for banner if selected
         if post_to_banner:
@@ -658,13 +667,19 @@ def media():
                         flash('Invalid date/time format.', 'danger')
                         return redirect(url_for('marketing.media'))
 
-            # Determine initial status
+            # Determine initial status. 'posting' (not 'posted') when Facebook
+            # posting is queued - the task flips it to 'posted'/'failed' once
+            # the API call actually returns, so a stuck worker shows up as
+            # "stuck", not as a false success.
             if schedule_mode == 'scheduled':
                 initial_status = 'scheduled'
                 post_now = False
+            elif post_to_facebook:
+                initial_status = 'posting'
+                post_now = True
             else:
-                initial_status = 'posted' if (post_to_facebook or post_to_instagram or post_to_banner) else 'draft'
-                post_now = (post_to_facebook or post_to_instagram)
+                initial_status = 'posted' if post_to_banner else 'draft'
+                post_now = False
 
             # Create MediaContent
             media_content = MediaContent(
@@ -685,24 +700,27 @@ def media():
             db.session.add(media_content)
             db.session.flush()  # Get the ID without committing
 
-            # Create ScheduledPost records for immediate posting to FB/IG
-            if post_now:
-                from app.tasks.marketing import post_media_task
+            # Create the Facebook tracking row + queue the post. This is what
+            # was missing before: Instagram/Facebook posts had no record at
+            # all until the task touched MediaContent, so a stuck worker and
+            # a successful post were indistinguishable in the data.
+            if post_now and post_to_facebook:
+                from app.tasks.marketing import post_media_task, get_or_create_scheduled_post
                 message = f"{media_content.title}"
                 if media_content.description:
                     message += f"\n\n{media_content.description}"
 
-                # Post to Facebook/Instagram
-                if post_to_facebook or post_to_instagram:
-                    task_result = post_media_task.delay(
-                        org.id,
-                        message,
-                        media_url,
-                        media_content.title,
-                        media_content.id,
-                        post_to_instagram,
-                        media_type
-                    )
+                sp = get_or_create_scheduled_post(media_content, 'facebook', datetime.utcnow())
+                task_result = post_media_task.delay(
+                    org.id,
+                    message,
+                    media_url,
+                    media_content.title,
+                    media_content.id,
+                    post_to_instagram,
+                    media_type,
+                    sp.id
+                )
 
             # Create ScheduledPost for banner if selected
             if post_to_banner:

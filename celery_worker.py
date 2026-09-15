@@ -25,6 +25,10 @@ celery.conf.update(
             'task': 'app.tasks.marketing.process_scheduled_posts',
             'schedule': crontab(minute='*'),  # Run every minute
         },
+        'check-queue-backlog': {
+            'task': 'app.tasks.monitoring.check_queue_backlog',
+            'schedule': crontab(minute='*/5'),  # Run every 5 minutes
+        },
     },
 )
 

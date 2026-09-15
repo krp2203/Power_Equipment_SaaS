@@ -19,10 +19,42 @@ services:
       - db
       - redis
 
+  # IMPORTANT: `docker compose restart worker` reuses the same container
+  # hostname, which can leave the next process's Celery mingle handshake
+  # stuck waiting on stale presence data Redis still has for the dead one -
+  # the worker never crashes, it just silently stops consuming. Always
+  # redeploy the worker with `docker compose up -d --force-recreate worker`
+  # (see scripts/restart_worker.sh) instead of a plain restart.
   worker:
     build: .
     restart: unless-stopped
     command: celery -A celery_worker.celery worker --loglevel=info
+    volumes:
+      - .:/app
+    env_file:
+      - .env
+    environment:
+      - FLASK_CONFIG=prod
+    depends_on:
+      - db
+      - redis
+    healthcheck:
+      # Catches exactly the "stuck, not crashed" failure mode above: if no
+      # worker answers a broadcast ping, this container is marked unhealthy
+      # even though the process is still technically running.
+      test: ["CMD-SHELL", "celery -A celery_worker.celery inspect ping --timeout 5"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # Runs the periodic tasks in celery_worker.py's beat_schedule (scheduled
+  # social posts, the queue-backlog check). Also needs --force-recreate on
+  # restart, same reasoning as worker above.
+  beat:
+    build: .
+    restart: unless-stopped
+    command: celery -A celery_worker.celery beat --loglevel=info
     volumes:
       - .:/app
     env_file:

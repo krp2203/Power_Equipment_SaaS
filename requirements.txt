@@ -4,7 +4,10 @@ Flask-Login
 Flask-Mail
 Flask-Migrate
 psycopg2-binary
-redis
+redis>=4.5.2,<5.1.0  # kombu (celery's broker transport) only declares support up to redis 5.x;
+                     # an unpinned "redis" here drifted to 8.x and silently broke the
+                     # worker's task/control consumption entirely (connects fine, never
+                     # consumes) - this pin is load-bearing, don't drop it
 celery
 authlib
 python-dotenv
