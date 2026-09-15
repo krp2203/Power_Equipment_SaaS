@@ -163,6 +163,10 @@ class Unit(db.Model):
     is_owned = db.Column(db.Boolean, default=False)
     display_on_web = db.Column(db.Boolean, default=False)
     push_to_facebook = db.Column(db.Boolean, default=False)
+    # Merchandising badges for the public whole-goods listing - independent
+    # of each other, a unit can be both.
+    is_closeout = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
+    is_special_price = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
 
     customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=True)
 
@@ -572,6 +576,44 @@ class Banner(db.Model):
 
     # Relationships
     organization = db.relationship('Organization', backref='banners')
+
+
+class QuoteRequest(db.Model):
+    """
+    A customer's "request a quote" submission from the public Parts page -
+    there's no shopping cart/checkout, so this is how a visitor sends a
+    dealer a list of part numbers + quantities they want priced. Persisted
+    (not just emailed) so nothing is lost if the email bounces/delays and a
+    dealer has a place to review submissions.
+    """
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+
+    customer_name = db.Column(db.String(150), nullable=False)
+    customer_email = db.Column(db.String(120), nullable=True)
+    customer_phone = db.Column(db.String(50), nullable=True)
+    notes = db.Column(db.Text)
+
+    status = db.Column(db.String(20), nullable=False, default='new')  # new, reviewed
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    items = db.relationship('QuoteRequestItem', backref='quote_request', lazy=True,
+                             order_by='QuoteRequestItem.id', cascade='all, delete-orphan')
+
+    __table_args__ = (
+        db.Index('ix_quote_request_org', 'organization_id'),
+    )
+
+
+class QuoteRequestItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    quote_request_id = db.Column(db.Integer, db.ForeignKey('quote_request.id'), nullable=False)
+    # Nullable + a text snapshot: keeps the request readable even if the part
+    # is later deleted/renumbered, same reasoning as invoice line snapshots.
+    part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id'), nullable=True)
+    part_number = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.String(255))
+    quantity = db.Column(db.Integer, nullable=False, default=1)
 
 
 class Customer(db.Model):

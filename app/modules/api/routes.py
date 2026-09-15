@@ -226,7 +226,9 @@ def get_inventory():
             "image": image_url,
             "description": unit.description,
             "condition": unit.condition or "New",
-            "year": unit.year
+            "year": unit.year,
+            "is_closeout": bool(unit.is_closeout),
+            "is_special_price": bool(unit.is_special_price)
         })
         
     return jsonify(results)
@@ -259,27 +261,104 @@ def get_inventory_filters():
 @api_bp.route('/v1/parts', methods=['GET'])
 def get_parts():
     from app.core.models import PartInventory
-    
+    from app.core.pricing_service import effective_unit_price
+
     if not g.current_org:
         return jsonify([])
-        
+
     # Public website: only parts the dealer has explicitly flagged for the web.
     parts = PartInventory.query.filter_by(
         organization_id=g.current_org.id, display_on_web=True
     ).order_by(PartInventory.updated_at.desc()).all()
-    
+
     results = []
     for part in parts:
+        # 0 (no cost/retail on file) means the frontend shows a "Call for
+        # Pricing" CTA instead of a price, same convention whole goods use.
         results.append({
             "id": part.id,
             "part_number": part.part_number,
             "manufacturer": part.manufacturer,
             "description": part.description,
             "stock": part.stock_on_hand,
-            "image": part.image_url
+            "image": part.image_url,
+            "price": float(effective_unit_price(part))
         })
-        
+
     return jsonify(results)
+
+
+@api_bp.route('/v1/quote-request', methods=['POST'])
+def create_quote_request():
+    """
+    Public endpoint behind the Parts page's "Request a Quote" flow - no
+    shopping cart/checkout exists, so a visitor just picks part numbers +
+    quantities and this emails the dealer the list. Persisted too, so a
+    submission isn't lost if the email bounces or is delayed.
+    """
+    from app.core.models import QuoteRequest, QuoteRequestItem, PartInventory, User
+    from app.core.email import send_quote_request_email
+
+    org = g.current_org
+    if not org:
+        return jsonify({'error': 'Tenant not found'}), 404
+
+    data = request.get_json(silent=True) or {}
+    customer_name = (data.get('customer_name') or '').strip()
+    customer_email = (data.get('customer_email') or '').strip() or None
+    customer_phone = (data.get('customer_phone') or '').strip() or None
+    notes = (data.get('notes') or '').strip() or None
+    items = data.get('items') or []
+
+    if not customer_name:
+        return jsonify({'error': 'Name is required.'}), 400
+    if not isinstance(items, list) or not items:
+        return jsonify({'error': 'Add at least one part before requesting a quote.'}), 400
+
+    quote = QuoteRequest(
+        organization_id=org.id,
+        customer_name=customer_name,
+        customer_email=customer_email,
+        customer_phone=customer_phone,
+        notes=notes,
+    )
+    db.session.add(quote)
+    db.session.flush()
+
+    for raw in items:
+        part_number = (raw.get('part_number') or '').strip()
+        if not part_number:
+            continue
+        try:
+            quantity = max(1, int(raw.get('quantity', 1)))
+        except (TypeError, ValueError):
+            quantity = 1
+        part_id = raw.get('part_id')
+        part = None
+        if part_id:
+            part = PartInventory.query.filter_by(id=part_id, organization_id=org.id).first()
+        db.session.add(QuoteRequestItem(
+            quote_request_id=quote.id,
+            part_inventory_id=part.id if part else None,
+            part_number=part_number,
+            description=(raw.get('description') or (part.description if part else None)),
+            quantity=quantity,
+        ))
+
+    db.session.commit()
+
+    if not quote.items:
+        return jsonify({'error': 'Add at least one valid part before requesting a quote.'}), 400
+
+    # Best-effort notification - the request is already saved either way.
+    recipient = (org.theme_config or {}).get('contact_email')
+    if not recipient:
+        admin = User.query.filter_by(organization_id=org.id, role='admin').first()
+        recipient = admin.email if admin else None
+    emailed = send_quote_request_email(org, quote, recipient) if recipient else False
+
+    return jsonify({'success': True, 'id': quote.id, 'emailed': emailed})
+
 
 @api_bp.route('/v1/service-status', methods=['GET'])
 def get_service_status():
@@ -361,7 +440,9 @@ def get_unit(id):
         "serial_number": unit.serial_number,
         "year": unit.year,
         "condition": unit.condition,
-        "unit_hours": unit.unit_hours
+        "unit_hours": unit.unit_hours,
+        "is_closeout": bool(unit.is_closeout),
+        "is_special_price": bool(unit.is_special_price)
     })
 
 

@@ -262,6 +262,8 @@ def add():
             description=form.description.data,
             status=form.status.data,
             display_on_web=form.display_on_web.data,
+            is_closeout=form.is_closeout.data,
+            is_special_price=form.is_special_price.data,
             is_inventory=True
         )
         db.session.add(unit)
@@ -319,7 +321,9 @@ def edit(id):
         unit.description = form.description.data
         unit.status = form.status.data
         unit.display_on_web = form.display_on_web.data
-        
+        unit.is_closeout = form.is_closeout.data
+        unit.is_special_price = form.is_special_price.data
+
         # Handle Image Upload (Replace Primary or Add)
         if form.primary_image.data:
             f = form.primary_image.data
@@ -623,3 +627,26 @@ def import_parts_confirm():
 
     flash(f"Import complete: {created} new part(s), {updated} updated, {skipped} skipped due to errors.", 'success')
     return redirect(url_for('inventory.index'))
+
+
+@inventory_bp.route('/quote-requests')
+@login_required
+def quote_requests():
+    """Parts quote requests submitted from the public site - emailed to the
+    dealer's contact address at submission time, and kept here too in case
+    that email didn't land."""
+    from app.core.models import QuoteRequest
+    requests_ = (QuoteRequest.query.filter_by(organization_id=g.current_org.id)
+                 .order_by(QuoteRequest.created_at.desc()).all())
+    new_count = sum(1 for r in requests_ if r.status == 'new')
+    return render_template('inventory/quote_requests.html', requests=requests_, new_count=new_count)
+
+
+@inventory_bp.route('/quote-requests/<int:id>/mark-reviewed', methods=['POST'])
+@login_required
+def mark_quote_reviewed(id):
+    from app.core.models import QuoteRequest
+    q = QuoteRequest.query.filter_by(id=id, organization_id=g.current_org.id).first_or_404()
+    q.status = 'reviewed'
+    db.session.commit()
+    return redirect(url_for('inventory.quote_requests'))

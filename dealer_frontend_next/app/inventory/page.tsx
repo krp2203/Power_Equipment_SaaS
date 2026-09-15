@@ -160,6 +160,16 @@ export default function InventoryPage() {
                                             {item.status}
                                         </span>
                                     )}
+                                    {item.is_closeout && (
+                                        <span className="px-3 py-1 rounded-full text-[12px] font-bold uppercase text-white shadow-sm bg-red-600">
+                                            Close Out
+                                        </span>
+                                    )}
+                                    {item.is_special_price && (
+                                        <span className="px-3 py-1 rounded-full text-[12px] font-bold uppercase text-white shadow-sm bg-purple-600">
+                                            Special Price
+                                        </span>
+                                    )}
                                     <span className={`px-3 py-1 rounded-full text-[12px] font-bold uppercase text-white shadow-sm ${item.condition === 'Used' ? 'bg-amber-600' : 'bg-blue-600'}`}>
                                         {item.condition || 'New'}
                                     </span>

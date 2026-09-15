@@ -151,6 +151,7 @@
                             </li>
                             <li><a class="dropdown-item" href="{{ url_for('inventory.manage') }}">Whole Goods
                                     (Units)</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('inventory.quote_requests') }}">Parts Quote Requests</a></li>
                         </ul>
                     </li>
                     {% if g.current_org and g.current_org.id != 1 and g.current_org.modules and g.current_org.modules.get('pos') %}

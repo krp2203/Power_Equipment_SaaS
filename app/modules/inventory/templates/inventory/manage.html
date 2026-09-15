@@ -78,6 +78,8 @@
                         </td>
                         <td>
                             <strong>{{ unit.year or '' }} {{ unit.manufacturer }} {{ unit.model_number }}</strong>
+                            {% if unit.is_closeout %}<span class="badge bg-danger ms-1">Close Out</span>{% endif %}
+                            {% if unit.is_special_price %}<span class="badge bg-purple text-white ms-1" style="background-color:#6f42c1;">Special Price</span>{% endif %}
                             <br>
                             <small class="text-muted">{{ unit.serial_number or 'No Serial' }}</small>
                         </td>

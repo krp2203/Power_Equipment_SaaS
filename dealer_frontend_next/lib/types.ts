@@ -60,6 +60,8 @@ export interface InventoryItem {
     condition?: string;
     unit_hours?: string;
     type?: string;
+    is_closeout?: boolean;
+    is_special_price?: boolean;
 }
 
 export interface PartItem {
@@ -69,6 +71,7 @@ export interface PartItem {
     description?: string;
     stock: number;
     image?: string;
+    price?: number;
 }
 
 export interface Advertisement {

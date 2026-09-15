@@ -90,10 +90,20 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
                     <div className="p-8 flex flex-col">
                         <div className="mb-6">
                             <h1 className="text-4xl font-bold text-gray-900 mb-2">{item.name}</h1>
-                            <div className="flex items-center gap-3 mb-4">
+                            <div className="flex items-center gap-3 mb-4 flex-wrap">
                                 <span className={`px-3 py-1 rounded-full text-sm font-bold uppercase text-white ${item.status === 'Sold' ? 'bg-red-500' : 'bg-green-600'}`}>
                                     {item.status}
                                 </span>
+                                {item.is_closeout && (
+                                    <span className="px-3 py-1 rounded-full text-sm font-bold uppercase text-white bg-red-600">
+                                        Close Out
+                                    </span>
+                                )}
+                                {item.is_special_price && (
+                                    <span className="px-3 py-1 rounded-full text-sm font-bold uppercase text-white bg-purple-600">
+                                        Special Price
+                                    </span>
+                                )}
                                 <span className="text-gray-500 text-sm">Stock #{item.id}</span>
                             </div>
                             <div className="text-4xl font-bold text-blue-600 mb-4">

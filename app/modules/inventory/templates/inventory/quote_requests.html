@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2><i class="bi bi-envelope-paper me-2"></i>Parts Quote Requests</h2>
+        <p class="text-muted">Submitted from the public Parts page's "Request a Quote" flow. Each one was also emailed to your contact address.</p>
+    </div>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+{% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }}">{{ message }}</div>{% endfor %}{% endif %}
+{% endwith %}
+
+{% if requests %}
+<div class="accordion" id="quoteRequests">
+    {% for r in requests %}
+    <div class="card shadow-sm mb-2">
+        <div class="card-header d-flex justify-content-between align-items-center py-2" style="cursor:pointer;"
+             data-bs-toggle="collapse" data-bs-target="#req{{ r.id }}">
+            <div>
+                {% if r.status == 'new' %}<span class="badge bg-primary me-2">New</span>{% else %}<span class="badge bg-light text-dark border me-2">Reviewed</span>{% endif %}
+                <strong>{{ r.customer_name }}</strong>
+                <span class="text-muted small ms-2">{{ r.items|length }} part{{ 's' if r.items|length != 1 }}</span>
+            </div>
+            <span class="text-muted small">{{ r.created_at.strftime('%b %d, %Y %I:%M %p') if r.created_at else '' }}</span>
+        </div>
+        <div class="collapse" id="req{{ r.id }}">
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        {% if r.customer_email %}<div><i class="bi bi-envelope me-1"></i><a href="mailto:{{ r.customer_email }}">{{ r.customer_email }}</a></div>{% endif %}
+                        {% if r.customer_phone %}<div><i class="bi bi-telephone me-1"></i><a href="tel:{{ r.customer_phone }}">{{ r.customer_phone }}</a></div>{% endif %}
+                    </div>
+                </div>
+                {% if r.notes %}<p class="text-muted"><strong>Notes:</strong> {{ r.notes }}</p>{% endif %}
+                <table class="table table-sm mb-3">
+                    <thead><tr><th>Part #</th><th>Description</th><th class="text-end">Qty</th></tr></thead>
+                    <tbody>
+                        {% for item in r.items %}
+                        <tr><td class="font-monospace">{{ item.part_number }}</td><td>{{ item.description or '-' }}</td><td class="text-end">{{ item.quantity }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% if r.status == 'new' %}
+                <form action="{{ url_for('inventory.mark_quote_reviewed', id=r.id) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                    <button type="submit" class="btn btn-sm btn-outline-secondary">Mark Reviewed</button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="card shadow-sm">
+    <div class="card-body text-center text-muted py-5">No quote requests yet.</div>
+</div>
+{% endif %}
+{% endblock %}

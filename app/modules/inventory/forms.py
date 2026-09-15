@@ -20,7 +20,9 @@ class InventoryItemForm(FlaskForm):
     
     status = SelectField('Status', choices=[('Available', 'Available'), ('Sold', 'Sold'), ('Pending', 'Pending')], default='Available')
     display_on_web = BooleanField('Display on Website', default=True)
-    
+    is_closeout = BooleanField('Close Out')
+    is_special_price = BooleanField('Special Price')
+
     submit = SubmitField('Save Unit')
 
 class PartInventoryForm(FlaskForm):
