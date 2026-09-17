@@ -130,10 +130,17 @@ class SquarePaymentService:
             print(f"Square Catalog Create Error: {e.body}", file=sys.stderr)
             return None
 
-    def start_subscription(self, customer_id, card_id, plan_variation_id, price_cents):
-        """Create a real recurring subscription with a per-dealer price override. Returns subscription_id or None."""
+    def start_subscription(self, customer_id, card_id, plan_variation_id, price_cents, start_date=None):
+        """
+        Create a real recurring subscription with a per-dealer price override.
+        `start_date` (YYYY-MM-DD) delays the first bill to that date - pass
+        one month out when the caller already collected the first month as
+        part of a one-time setup charge, otherwise Square bills the first
+        period immediately on creation, on top of that charge.
+        Returns subscription_id or None.
+        """
         try:
-            response = self.client.subscriptions.create(
+            kwargs = dict(
                 idempotency_key=str(uuid.uuid4()),
                 location_id=self.location_id,
                 customer_id=customer_id,
@@ -141,6 +148,9 @@ class SquarePaymentService:
                 plan_variation_id=plan_variation_id,
                 price_override_money={"amount": price_cents, "currency": "USD"}
             )
+            if start_date:
+                kwargs['start_date'] = start_date
+            response = self.client.subscriptions.create(**kwargs)
             return response.subscription.id
         except ApiError as e:
             print(f"Square Start Subscription Error: {e.body}", file=sys.stderr)

@@ -3,6 +3,8 @@ Shared billing logic used by both the super-admin "Start Plan" action and
 the dealer's own "Start My Plan" action. Trial orgs carry no card on file;
 converting to paid always collects a fresh card at the moment of activation.
 """
+import calendar
+from datetime import date
 
 SETUP_FEE_CENTS = 19900   # $199.00 one-time
 DEFAULT_MONTHLY_CENTS = 4900  # $49.00/mo, unless the org has a custom monthly_price
@@ -11,6 +13,20 @@ DEFAULT_MONTHLY_CENTS = 4900  # $49.00/mo, unless the org has a custom monthly_p
 class ActivationError(Exception):
     """Raised when starting a paid plan fails; message is safe to flash to the user."""
     pass
+
+
+def _one_month_from_today():
+    """YYYY-MM-DD one calendar month out, clamped to the shorter month's last
+    day (e.g. Jan 31 -> Feb 28/29). Used as the Square subscription's
+    start_date so its first bill lands a month from now, not immediately -
+    the one-time charge below already covers month one."""
+    today = date.today()
+    if today.month == 12:
+        year, month = today.year + 1, 1
+    else:
+        year, month = today.year, today.month + 1
+    day = min(today.day, calendar.monthrange(year, month)[1])
+    return date(year, month, day).isoformat()
 
 
 def activate_subscription(org, card_nonce, contact_email, contact_name):
@@ -64,7 +80,12 @@ def activate_subscription(org, card_nonce, contact_email, contact_name):
             "Contact support before retrying to avoid a duplicate charge."
         )
 
-    subscription_id = square.start_subscription(customer_id, card_id, plan_variation_id, monthly_price_cents)
+    # start_date one month out: the charge above already covers month one, so
+    # the subscription's own first bill should be next cycle, not today too.
+    subscription_id = square.start_subscription(
+        customer_id, card_id, plan_variation_id, monthly_price_cents,
+        start_date=_one_month_from_today(),
+    )
     if not subscription_id:
         raise ActivationError(
             f"Card was charged (payment {payment_id}) but the recurring subscription could not be created. "
