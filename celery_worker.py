@@ -29,6 +29,10 @@ celery.conf.update(
             'task': 'app.tasks.monitoring.check_queue_backlog',
             'schedule': crontab(minute='*/5'),  # Run every 5 minutes
         },
+        'check-cert-expiry': {
+            'task': 'app.tasks.monitoring.check_cert_expiry',
+            'schedule': crontab(hour=9, minute=0),  # Once daily
+        },
     },
 )
 

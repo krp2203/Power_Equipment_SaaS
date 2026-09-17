@@ -6,7 +6,10 @@ Docker's own health signals (RestartCount, Status: running) don't notice
 that, and a real backlog builds fast.
 """
 import os
+import ssl
+import socket
 import redis
+from datetime import datetime, date, timezone
 from celery import shared_task
 from flask import current_app
 
@@ -70,3 +73,102 @@ def check_queue_backlog():
         current_app.logger.error(f"check_queue_backlog: alert email failed - {e}")
 
     return {'depth': depth, 'alerted': alerted}
+
+
+# CT103's cert (bentcrankshaft.com) was issued manually and doesn't auto-renew -
+# nothing rotates it before it lapses. This nags well ahead of that date so it
+# gets renewed on purpose instead of discovered via a dealer's browser warning.
+CERT_HOST = 'bentcrankshaft.com'
+CERT_PORT = 443
+CERT_CONNECT_TIMEOUT = 10
+
+
+def _cert_not_after(host, port, timeout):
+    """Opens a verified TLS connection and returns the peer cert's notAfter
+    as a UTC datetime. Raises ssl.SSLError/ssl.CertificateError if the cert
+    is already invalid/expired/mismatched - the caller treats that as its
+    own (more urgent) case rather than a network failure."""
+    context = ssl.create_default_context()
+    with socket.create_connection((host, port), timeout=timeout) as sock:
+        with context.wrap_socket(sock, server_hostname=host) as ssock:
+            cert = ssock.getpeercert()
+    # e.g. 'Dec 16 23:59:59 2026 GMT' - notAfter/notBefore are always GMT per
+    # the X.509 spec, so strip the literal suffix rather than rely on %Z
+    # (unreliable across platforms/locales in strptime).
+    not_after_str = cert['notAfter'].replace(' GMT', '')
+    return datetime.strptime(not_after_str, '%b %d %H:%M:%S %Y').replace(tzinfo=timezone.utc)
+
+
+@shared_task
+def check_cert_expiry():
+    """
+    Runs daily via Celery Beat. Warns well before CERT_HOST's TLS certificate
+    expires, and separately (daily, until fixed) if it's already invalid -
+    a plain days-remaining check would just error out and go silent exactly
+    when the cert has already lapsed, which is the one time this matters most.
+    """
+    threshold_days = int(os.getenv('CERT_EXPIRY_ALERT_DAYS', '21'))
+    runbook = (
+        "Runbook: ask the CT103 agent to run `certbot --nginx --expand` to reissue it. "
+        "If the permanent wildcard fix (certbot-dns-google) has landed by then, this "
+        "whole check can be deleted instead."
+    )
+
+    try:
+        not_after = _cert_not_after(CERT_HOST, CERT_PORT, CERT_CONNECT_TIMEOUT)
+    except (ssl.SSLError, ssl.CertificateError) as e:
+        current_app.logger.error(f"check_cert_expiry: {CERT_HOST} cert is invalid/expired - {e}")
+        alerted = False
+        try:
+            r = _redis_client()
+            # Re-alerts once per calendar day until someone fixes it, rather
+            # than only once ever - this is worse than "expiring soon".
+            key = f"cert_invalid_alert_sent:{date.today().isoformat()}"
+            if r.set(key, '1', nx=True, ex=60 * 60 * 24 * 2):
+                from app.core.email import send_admin_alert
+                send_admin_alert(
+                    f"{CERT_HOST} TLS certificate is already invalid",
+                    f"A TLS handshake to {CERT_HOST}:{CERT_PORT} failed certificate "
+                    f"validation just now: {e}\n\n"
+                    f"This means dealer sites are likely showing a browser security "
+                    f"warning right now.\n\n{runbook}"
+                )
+                alerted = True
+        except Exception as e2:
+            current_app.logger.error(f"check_cert_expiry: alert email failed - {e2}")
+        return {'valid': False, 'alerted': alerted}
+    except Exception as e:
+        # Network/DNS/timeout - not a cert problem, don't alert on it here.
+        current_app.logger.error(f"check_cert_expiry: couldn't check {CERT_HOST} - {e}")
+        return {'error': str(e)}
+
+    days_left = (not_after - datetime.now(timezone.utc)).days
+    expiry_date = not_after.date().isoformat()
+
+    if days_left > threshold_days:
+        current_app.logger.info(f"{CERT_HOST} cert OK: expires {expiry_date} ({days_left} days out)")
+        return {'valid': True, 'expiry_date': expiry_date, 'days_left': days_left, 'alerted': False}
+
+    current_app.logger.warning(f"{CERT_HOST} cert expires {expiry_date} - only {days_left} day(s) left")
+
+    alerted = False
+    try:
+        r = _redis_client()
+        # Keyed to the expiry date itself, not a time cooldown: fires exactly
+        # once per cert cycle, and automatically starts alerting again on its
+        # own once the cert is renewed to a new (different) expiry date - no
+        # code change needed when that happens.
+        key = f"cert_expiry_alert_sent:{expiry_date}"
+        if r.set(key, '1', nx=True, ex=60 * 60 * 24 * 45):
+            from app.core.email import send_admin_alert
+            send_admin_alert(
+                f"{CERT_HOST} certificate expires {expiry_date} ({days_left} days)",
+                f"The TLS certificate for {CERT_HOST} expires on {expiry_date} - "
+                f"{days_left} day(s) from now. It was issued manually and does not "
+                f"auto-renew.\n\n{runbook}"
+            )
+            alerted = True
+    except Exception as e:
+        current_app.logger.error(f"check_cert_expiry: alert email failed - {e}")
+
+    return {'valid': True, 'expiry_date': expiry_date, 'days_left': days_left, 'alerted': alerted}
