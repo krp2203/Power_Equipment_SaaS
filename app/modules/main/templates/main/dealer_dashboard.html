@@ -68,7 +68,7 @@
         {{ tile('equipment.index', 'bi-tools', 'Equipment') }}
         {% endif %}
         {{ tile('inventory.index', 'bi-box-seam', 'Parts Inventory') }}
-        {% if g.current_org.modules.get('marketing') or g.current_org.modules.get('facebook') %}
+        {% if g.current_org.modules.get('marketing') %}
         {{ tile('marketing.index', 'bi-megaphone', 'Marketing') }}
         {% endif %}
         {% if _is_admin %}
