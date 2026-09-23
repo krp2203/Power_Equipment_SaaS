@@ -276,11 +276,21 @@ def parse_pdf():
         current_app.logger.exception(f"Error parsing PDF: {e}")
         return jsonify({'error': str(e)}), 500
 
+def _marketing_enabled():
+    """These endpoints back the /marketing/media page, which is gated on
+    modules.marketing - they had no gate of their own (reachable directly
+    even with the page hidden), so check it here too."""
+    org = g.current_org
+    return bool(org and org.modules.get('marketing'))
+
+
 @marketing_bp.route('/marketing/init-chunk-upload', methods=['POST'])
 @login_required
 @csrf.exempt
 def init_chunk_upload():
     """Initialize chunked upload session"""
+    if not _marketing_enabled():
+        return jsonify({'error': 'Marketing module not enabled'}), 403
     return chunk_upload.init_chunk_upload()
 
 @marketing_bp.route('/marketing/upload-chunk', methods=['POST'])
@@ -288,6 +298,8 @@ def init_chunk_upload():
 @csrf.exempt
 def upload_chunk():
     """Upload individual chunk"""
+    if not _marketing_enabled():
+        return jsonify({'error': 'Marketing module not enabled'}), 403
     return chunk_upload.upload_chunk()
 
 @marketing_bp.route('/marketing/complete-chunk-upload', methods=['POST'])
@@ -295,6 +307,8 @@ def upload_chunk():
 @csrf.exempt
 def complete_chunk_upload():
     """Complete chunked upload and create MediaContent record"""
+    if not _marketing_enabled():
+        return jsonify({'error': 'Marketing module not enabled'}), 403
     try:
         # Handle both JSON and FormData requests
         if request.is_json:
@@ -343,6 +357,15 @@ def complete_chunk_upload():
         org = g.current_org
         if not org:
             return jsonify({'error': 'Organization not found'}), 400
+
+        # Facebook/Instagram posting is a separate module from the banner/
+        # media page itself - don't let a direct POST here request it unless
+        # both the module and an actual connection are in place, matching
+        # media()'s own fb_configured check.
+        fb_configured = bool(org.modules.get('facebook') and org.facebook_page_id and org.facebook_access_token)
+        if not fb_configured:
+            post_to_facebook = False
+            post_to_instagram = False
 
         # Assemble chunks
         unique_filename, file_path = chunk_upload.assemble_chunks(upload_id, org.id)
@@ -582,12 +605,14 @@ def media():
     import uuid
 
     org = g.current_org
-    if not org.modules.get('facebook'):
+    if not org.modules.get('marketing'):
         flash('Marketing module not enabled.', 'warning')
         return redirect(url_for('main.index'))
 
-    # Check if Facebook is configured
-    fb_configured = bool(org.facebook_page_id and org.facebook_access_token)
+    # Facebook/Instagram posting is a separate module from the banner/media
+    # page itself - only offer those destinations if it's also on, in
+    # addition to actually having a page connected.
+    fb_configured = bool(org.modules.get('facebook') and org.facebook_page_id and org.facebook_access_token)
 
     if request.method == 'POST':
         try:
@@ -759,6 +784,9 @@ def media():
 @login_required
 def delete_media(id):
     """Delete a media item"""
+    if not _marketing_enabled():
+        flash('Marketing module not enabled.', 'warning')
+        return redirect(url_for('main.index'))
     media = MediaContent.query.filter_by(id=id, organization_id=g.current_org.id).first_or_404()
     db.session.delete(media)
     db.session.commit()
@@ -770,6 +798,8 @@ def delete_media(id):
 @login_required
 def get_media_details(id):
     """Get media details for editing"""
+    if not _marketing_enabled():
+        return jsonify({'error': 'Marketing module not enabled'}), 403
     media = MediaContent.query.filter_by(id=id, organization_id=g.current_org.id).first_or_404()
 
     return jsonify({
@@ -788,13 +818,18 @@ def get_media_details(id):
 @login_required
 def update_media(id):
     """Update media details"""
+    if not _marketing_enabled():
+        flash('Marketing module not enabled.', 'warning')
+        return redirect(url_for('main.index'))
     media = MediaContent.query.filter_by(id=id, organization_id=g.current_org.id).first_or_404()
+    org = g.current_org
+    fb_configured = bool(org.modules.get('facebook') and org.facebook_page_id and org.facebook_access_token)
 
     media.title = request.form.get('title') or media.title
     media.description = request.form.get('description')
     media.link_url = request.form.get('link_url')
-    media.post_to_facebook = 'post_to_facebook' in request.form
-    media.post_to_instagram = 'post_to_instagram' in request.form
+    media.post_to_facebook = fb_configured and 'post_to_facebook' in request.form
+    media.post_to_instagram = fb_configured and 'post_to_instagram' in request.form
     media.post_to_banner = 'post_to_banner' in request.form
 
     db.session.commit()
