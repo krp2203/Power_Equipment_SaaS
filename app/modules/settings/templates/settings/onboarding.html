@@ -266,7 +266,8 @@
             <button type="button" class="btn btn-wizard-prev px-4" id="prevBtn" style="visibility: hidden;">
                 <i class="bi bi-arrow-left me-1"></i> Back
             </button>
-            <a href="{{ url_for('marketing.dashboard') }}" class="btn btn-link text-muted" id="skipBtn">Skip for now</a>
+            <button type="submit" formaction="{{ url_for('settings.onboarding_skip') }}" formnovalidate
+                    class="btn btn-link text-muted" id="skipBtn">Skip for now</button>
             <button type="button" class="btn btn-wizard-next px-4 fw-bold" id="nextBtn">
                 Next <i class="bi bi-arrow-right ms-1"></i>
             </button>

@@ -85,7 +85,7 @@ export default function Header({ config, heroTitle, heroTagline }: { config: Dea
                 <div className="header-grid w-full px-4 py-1" style={{ display: 'grid', gridTemplateColumns: '1fr 5fr 1fr', alignItems: 'center', gap: '16px', minHeight: '170px' }}>
                     {/* Logo Section - Left Column */}
                     <div className="flex items-center justify-start">
-                        {config.theme.hero_show_logo && config.theme.logoUrl && (
+                        {config.theme.logoUrl && (
                             <img
                                 src={config.theme.logoUrl}
                                 alt={config.name}

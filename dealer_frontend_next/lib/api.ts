@@ -67,7 +67,6 @@ export async function getDealerConfig(): Promise<DealerConfig> {
                 // Hero
                 hero_title: data.theme?.heroTitle,
                 hero_tagline: data.theme?.heroTagline,
-                hero_show_logo: data.theme?.heroShowLogo !== undefined ? data.theme.heroShowLogo : true, // Use API value or default to true
 
                 // Features (API returns camelCase)
                 feat_inventory_title: data.theme?.featInventoryTitle,

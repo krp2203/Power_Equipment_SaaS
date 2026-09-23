@@ -73,8 +73,7 @@ def organization():
         # Hero
         form.hero_title.data = theme.get('hero_title', f"Welcome to {org.name}")
         form.hero_tagline.data = theme.get('hero_tagline', "Your Premium Destination for Power Equipment, Parts, and Service.")
-        form.hero_show_logo.data = theme.get('hero_show_logo', False)
-        
+
         # Features
         form.feat_inventory_title.data = theme.get('feat_inventory_title', "Huge Selection")
         form.feat_inventory_text.data = theme.get('feat_inventory_text', "Browse our wide range of mowers, chainsaws, and blowers from top brands.")
@@ -157,7 +156,6 @@ def organization():
         # Save Text Customizations
         new_theme['hero_title'] = form.hero_title.data
         new_theme['hero_tagline'] = form.hero_tagline.data
-        new_theme['hero_show_logo'] = form.hero_show_logo.data
         new_theme['feat_inventory_title'] = form.feat_inventory_title.data
         new_theme['feat_inventory_text'] = form.feat_inventory_text.data
         new_theme['feat_parts_title'] = form.feat_parts_title.data
@@ -537,6 +535,24 @@ def onboarding_save():
     
     flash("Your site setup is complete! Welcome aboard. 🎉", "success")
     return redirect(url_for('marketing.dashboard'))
+
+
+@settings_bp.route('/settings/onboarding/skip', methods=['POST'])
+@login_required
+def onboarding_skip():
+    """"Skip for now" on the wizard - marks onboarding done without saving
+    any of the form's fields, so the dashboard's onboarding_complete guard
+    (marketing/routes.py's dashboard()) stops bouncing them straight back
+    here. They can always finish setup later from full Settings."""
+    org = g.current_org
+    if not org:
+        flash("No organization context found.", "danger")
+        return redirect(url_for('main.index'))
+
+    org.onboarding_complete = True
+    db.session.commit()
+    return redirect(url_for('marketing.dashboard'))
+
 
 @settings_bp.route('/settings/markup-tiers', methods=['GET'])
 @login_required

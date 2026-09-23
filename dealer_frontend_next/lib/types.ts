@@ -14,7 +14,6 @@ export interface DealerConfig {
         // Hero
         hero_title?: string;
         hero_tagline?: string;
-        hero_show_logo?: boolean;
 
         // Features
         feat_inventory_title?: string;
