@@ -59,7 +59,7 @@ def generate_video_thumbnail(video_path, output_path, frame='0'):
         current_app.logger.warning(f"Video thumbnail generation error: {str(e)}")
         return False
 
-@marketing_bp.route('/marketing', methods=['GET', 'POST'])
+@marketing_bp.route('/marketing', methods=['GET', 'POST'], strict_slashes=False)
 @login_required
 def index():
     """Redirect to the universal media management page"""
