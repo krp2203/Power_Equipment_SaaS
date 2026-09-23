@@ -268,7 +268,13 @@ def update_modules(org_id):
         if current_modules.get(key) != new_val:
             changes.append(f"{key}: {current_modules.get(key)} -> {new_val}")
             current_modules[key] = new_val
-    
+
+    # facebook posting only happens from the marketing/media page - it has no
+    # standalone destination, so it can't be on while marketing is off.
+    if current_modules.get('facebook') and not current_modules.get('marketing'):
+        current_modules['facebook'] = False
+        changes.append("facebook: forced off (marketing is off, so Facebook has no page to post from)")
+
     current_app.logger.info(f"Form data for Org {org_id}: {request.form}")
 
     if changes:
@@ -309,8 +315,14 @@ def update_modules_ajax(org_id):
         modules = {}
         
     modules[module_key] = is_enabled
+
+    # Same invariant as the form-based update-modules route: Facebook posting
+    # only happens from the marketing/media page, so it can't be on without it.
+    if modules.get('facebook') and not modules.get('marketing'):
+        modules['facebook'] = False
+
     org.modules = modules
-    
+
     from sqlalchemy.orm.attributes import flag_modified
     flag_modified(org, "modules")
     
