@@ -39,7 +39,7 @@ def add_tenant():
             settings={},
             # New dealers start as a plain marketing site; the Point of Sale
             # system is switched on per dealer from the Site Manager below.
-            modules={'ari': False, 'facebook': False, 'pos': False},
+            modules={'ari': False, 'facebook': False, 'marketing': False, 'pos': False},
             theme_config={'primaryColor': '#2563EB', 'logo_url': None}, # Default Blue
 
             # Manually-created dealers also start on a free trial, same as
@@ -263,7 +263,7 @@ def update_modules(org_id):
     
     # We expect these switches to be in the form if they are present in the row
     # Checkbox logic: Presence in form = True, Absence = False
-    for key in ['pos', 'facebook', 'ari']:
+    for key in ['pos', 'marketing', 'facebook', 'ari']:
         new_val = key in request.form
         if current_modules.get(key) != new_val:
             changes.append(f"{key}: {current_modules.get(key)} -> {new_val}")

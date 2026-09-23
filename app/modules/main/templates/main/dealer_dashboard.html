@@ -68,6 +68,9 @@
         {{ tile('equipment.index', 'bi-tools', 'Equipment') }}
         {% endif %}
         {{ tile('inventory.index', 'bi-box-seam', 'Parts Inventory') }}
+        {% if g.current_org.modules.get('marketing') or g.current_org.modules.get('facebook') %}
+        {{ tile('marketing.index', 'bi-megaphone', 'Marketing') }}
+        {% endif %}
         {% if _is_admin %}
         {{ tile('settings.organization', 'bi-gear', 'Site Settings') }}
         {{ tile('settings.invoice_payment_options', 'bi-credit-card', 'Payment Options') }}
@@ -124,6 +127,13 @@
                             </div>
                             {% endif %}
 
+                            <!-- Marketing Check -->
+                            {% if g.current_org.modules.get('marketing') %}
+                            <div class="mb-1">
+                                <i class="bi bi-check-circle-fill text-success me-1"></i> Marketing (Banners)
+                            </div>
+                            {% endif %}
+
                             <!-- Facebook Check -->
                             {% if g.current_org.modules.get('facebook') %}
                             <div>
@@ -135,7 +145,8 @@
                             </div>
                             {% endif %}
 
-                            {% if not g.current_org.modules.get('pos') and not g.current_org.modules.get('ari') and not g.current_org.modules.get('facebook') %}
+                            {% if not g.current_org.modules.get('pos') and not g.current_org.modules.get('ari')
+                                and not g.current_org.modules.get('marketing') and not g.current_org.modules.get('facebook') %}
                             <div class="text-muted small">No active add-ons.</div>
                             {% endif %}
                         </div>
@@ -163,6 +174,9 @@
                         <li>Use <strong>Point of Sale</strong> for counter sales, invoicing, service tickets, and purchasing.</li>
                         {% endif %}
                         <li>Check <strong>Settings</strong> to update your site content and review which modules are active.</li>
+                        {% if g.current_org.modules.get('marketing') %}
+                        <li>Use <strong>Marketing</strong> to upload photos/videos as banners on your website.</li>
+                        {% endif %}
                         {% if g.current_org.modules.get('facebook') %}
                         <li>Promote your equipment directly to your Facebook Page with one click.</li>
                         {% endif %}
