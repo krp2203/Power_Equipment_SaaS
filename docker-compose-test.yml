@@ -27,18 +27,34 @@ services:
       timeout: 5s
       retries: 5
 
-  # IMPORTANT: `docker restart <container>` / `docker compose restart worker`
-  # reuses the same container hostname, which can leave the next process's
-  # Celery mingle handshake stuck waiting on stale presence data Redis still
-  # has for the dead one - the worker never crashes, it just silently stops
-  # consuming. Redeploy with `docker compose up -d --force-recreate worker`
-  # (see scripts/restart_worker.sh) instead of a plain restart.
+  # IMPORTANT (two separate, both real, both confirmed on this exact stack):
+  # 1. `docker restart <container>` / `docker compose restart worker` reuses
+  #    the same container hostname, which can leave the next process's
+  #    Celery mingle handshake stuck waiting on stale presence data Redis
+  #    still has for the dead one - the worker never crashes, it just
+  #    silently stops consuming. Redeploy with
+  #    `docker compose up -d --force-recreate worker` (see
+  #    scripts/restart_worker.sh) instead of a plain restart.
+  # 2. Independent of #1: this Celery/kombu/redis-py combination can hang
+  #    the worker's main connection inside the gossip bootstep's pidbox
+  #    BRPOP loop and never reach the real task queue at all, even on a
+  #    freshly-recreated container with a brand-new hostname - reproduced
+  #    directly (redis MONITOR showed the worker's only BRPOP looping
+  #    forever against `<id>.reply.celery.pidbox`, never once against
+  #    `celery`, the real task list). --without-gossip/-mingle/-heartbeat
+  #    below sidesteps it entirely; none of the three do anything useful for
+  #    a single-worker deployment like this one anyway (gossip/mingle are
+  #    for multi-worker awareness, heartbeat is for Flower/`celery events`,
+  #    none of which this app uses). This is also why `celery inspect`/
+  #    `celery status` no longer work against this worker - they rely on
+  #    the same pidbox mechanism - hence the healthcheck below uses a real
+  #    task round-trip instead.
   worker:
     image: python:3.11-slim
     restart: unless-stopped
     working_dir: /app
     # NO FFmpeg installation - PIL fallback used in code
-    command: sh -c "pip install -q --no-cache-dir -r requirements.txt && celery -A celery_worker.celery worker --loglevel=info"
+    command: sh -c "pip install -q --no-cache-dir -r requirements.txt && celery -A celery_worker.celery worker --loglevel=info --without-gossip --without-mingle --without-heartbeat"
     volumes:
       - .:/app
     env_file:
@@ -54,12 +70,16 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      # Catches a worker that's stuck (not crashed): if no worker answers a
-      # broadcast ping, this container is marked unhealthy even though the
-      # process is technically still running.
-      test: ["CMD-SHELL", "celery -A celery_worker.celery inspect ping --timeout 5"]
+      # Not `celery inspect ping` - with gossip disabled above it can no
+      # longer answer pidbox broadcasts at all, and even before that change
+      # it was an unreliable signal here (confirmed: it reported a worker
+      # unhealthy in production while that same worker was demonstrably,
+      # verifiably draining its queue at the time). Proves the one thing
+      # that actually matters instead: a real task queued right now gets a
+      # real result back.
+      test: ["CMD-SHELL", "python -c 'from celery_worker import debug_task; debug_task.delay().get(timeout=10)'"]
       interval: 60s
-      timeout: 10s
+      timeout: 15s
       retries: 3
       start_period: 90s
 

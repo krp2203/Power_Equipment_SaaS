@@ -61,11 +61,12 @@ def check_queue_backlog():
                 f"The Celery task queue ('{QUEUE_NAME}') has {depth} pending tasks, "
                 f"above the alert threshold of {threshold}.\n\n"
                 f"This usually means a worker stopped consuming without crashing "
-                f"(check `docker compose ps` / `celery -A celery_worker.celery inspect ping`) "
+                f"(check `docker compose ps` - not `celery inspect`/`status`, which no longer "
+                f"work against this worker now that gossip is disabled) "
                 f"rather than the queue being genuinely busy.\n\n"
-                f"If the worker needs restarting, use "
-                f"`docker compose up -d --force-recreate worker` - a plain `restart` reuses "
-                f"the container hostname and can leave the next worker's Celery mingle "
+                f"Redeploy it with `scripts/restart_worker.sh` (or "
+                f"`docker compose up -d --force-recreate worker` directly) - a plain `restart` "
+                f"reuses the container hostname and can leave the next worker's Celery mingle "
                 f"handshake stuck against stale presence data from the dead process."
             )
             alerted = True
