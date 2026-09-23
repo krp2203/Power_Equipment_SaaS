@@ -351,6 +351,50 @@ def update_price(org_id):
     flash(f"'{org.name}' monthly price set to ${new_price_dollars:.2f}.", "success")
     return redirect(url_for('marketing.dashboard'))
 
+
+@super_admin_bp.route('/tenants/<int:org_id>/update-custom-domain', methods=['POST'])
+@login_required
+def update_custom_domain(org_id):
+    """
+    Sites are created with just a subdomain; a custom domain typically gets
+    added later (e.g. once a trial converts to paid) - this is the only
+    place to do that outside of impersonating the dealer and hunting
+    through their own Settings page. Re-sends the same setup-checklist
+    email add_tenant() sends at creation (SSL cert, nginx config, DNS)
+    whenever the domain is actually set/changed, since that only ever fired
+    once before - at creation - and was silently lost for every dealer
+    who added a domain afterward instead of at signup.
+    """
+    if g.current_org_id != 1 and not session.get('impersonation_origin_org'):
+        flash("Unauthorized. Master access required.", "danger")
+        return redirect(url_for('main.index'))
+
+    org = Organization.query.get_or_404(org_id)
+    old_domain = org.custom_domain
+    new_domain = (request.form.get('custom_domain') or '').strip().lower() or None
+
+    org.custom_domain = new_domain
+    db.session.commit()
+
+    if new_domain and new_domain != old_domain:
+        try:
+            from app.core.email import send_dealer_admin_notification
+            send_dealer_admin_notification(
+                dealer_name=org.name,
+                dealer_slug=org.slug,
+                custom_domain=new_domain
+            )
+            flash(f"Custom domain for '{org.name}' set to '{new_domain}'. Setup checklist emailed to you.", "success")
+        except Exception as e:
+            flash(f"Custom domain saved, but the setup-checklist email failed to send: {e}", "warning")
+    elif new_domain:
+        flash(f"Custom domain for '{org.name}' updated.", "success")
+    else:
+        flash(f"Custom domain removed for '{org.name}'.", "success")
+
+    return redirect(url_for('marketing.dashboard'))
+
+
 @super_admin_bp.route('/tenants/bulk-raise-price', methods=['POST'])
 @login_required
 def bulk_raise_price():

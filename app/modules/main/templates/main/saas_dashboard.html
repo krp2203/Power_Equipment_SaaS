@@ -134,6 +134,19 @@
                                 {% if not org.is_active %}
                                 <span class="badge bg-danger ms-2">Inactive</span>
                                 {% endif %}
+                                {% if org.id != 1 %}
+                                <div class="small text-muted mt-1">
+                                    {{ org.slug }}.bentcrankshaft.com
+                                </div>
+                                <form action="{{ url_for('super_admin.update_custom_domain', org_id=org.id) }}" method="POST"
+                                    class="d-flex align-items-center gap-1 mt-1">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                    <input type="text" name="custom_domain" placeholder="Custom domain (e.g. bobsmowers.com)"
+                                        value="{{ org.custom_domain or '' }}"
+                                        class="form-control form-control-sm" style="width:180px; font-size:0.75rem;">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary py-0" style="font-size:0.65rem;">SAVE</button>
+                                </form>
+                                {% endif %}
                             </td>
                             <td>
                                 {% if org.id != 1 %}
