@@ -610,7 +610,7 @@ class QuoteRequestItem(db.Model):
     quote_request_id = db.Column(db.Integer, db.ForeignKey('quote_request.id'), nullable=False)
     # Nullable + a text snapshot: keeps the request readable even if the part
     # is later deleted/renumbered, same reasoning as invoice line snapshots.
-    part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id'), nullable=True)
+    part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id', ondelete='SET NULL'), nullable=True)
     part_number = db.Column(db.String(100), nullable=False)
     description = db.Column(db.String(255))
     quantity = db.Column(db.Integer, nullable=False, default=1)
@@ -737,7 +737,7 @@ class InvoiceLineItem(db.Model):
     unit_price = db.Column(db.Numeric(10, 2), nullable=False)
     line_total = db.Column(db.Numeric(10, 2), nullable=False)
 
-    part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id'), nullable=True)
+    part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id', ondelete='SET NULL'), nullable=True)
     unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=True)
     # Set when this part line was short on stock and got special-ordered.
     po_line_item_id = db.Column(db.Integer, db.ForeignKey('purchase_order_line_item.id'), nullable=True)
@@ -782,7 +782,7 @@ class PurchaseOrderLineItem(db.Model):
     purchase_order_id = db.Column(db.Integer, db.ForeignKey('purchase_order.id'), nullable=False)
 
     line_type = db.Column(db.String(20), nullable=False, default='part')  # part, whole_good
-    part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id'), nullable=True)
+    part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id', ondelete='SET NULL'), nullable=True)
 
     # For 'part' lines ordering something not yet in PartInventory, or as a
     # readable snapshot regardless; for 'whole_good' lines, describes the unit.
@@ -860,7 +860,7 @@ class ServiceTicketPart(db.Model):
     invoiced = db.Column(db.Boolean, default=False, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
-    part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id'), nullable=True)
+    part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id', ondelete='SET NULL'), nullable=True)
     # Set when this part was short on stock and got special-ordered.
     po_line_item_id = db.Column(db.Integer, db.ForeignKey('purchase_order_line_item.id'), nullable=True)
 
