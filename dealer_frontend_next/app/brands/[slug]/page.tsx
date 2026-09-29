@@ -11,6 +11,7 @@ export default function BrandCatalogPage({ params }: { params: Promise<{ slug: s
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [quoteItem, setQuoteItem] = useState<CatalogItem | null>(null);
+    const [categoryFilter, setCategoryFilter] = useState<string>('');
 
     useEffect(() => {
         fetch(`/api/v1/manufacturer-catalog/${slug}`)
@@ -45,6 +46,9 @@ export default function BrandCatalogPage({ params }: { params: Promise<{ slug: s
         if (b[0] === 'Other') return -1;
         return a[0].localeCompare(b[0]);
     });
+    const visibleGroups = categoryFilter
+        ? orderedGroups.filter(([category]) => category === categoryFilter)
+        : orderedGroups;
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -63,7 +67,31 @@ export default function BrandCatalogPage({ params }: { params: Promise<{ slug: s
                     <p className="text-gray-500 text-xl font-medium">No models listed yet.</p>
                 </div>
             ) : (
-                orderedGroups.map(([category, groupItems]) => (
+                <>
+                {orderedGroups.length > 1 && (
+                    <div className="flex flex-wrap justify-center gap-2 mb-10">
+                        <button
+                            onClick={() => setCategoryFilter('')}
+                            className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${
+                                categoryFilter === '' ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            }`}
+                        >
+                            All
+                        </button>
+                        {orderedGroups.map(([category]) => (
+                            <button
+                                key={category}
+                                onClick={() => setCategoryFilter(category)}
+                                className={`px-4 py-2 rounded-full text-sm font-bold transition-colors ${
+                                    categoryFilter === category ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                }`}
+                            >
+                                {category}
+                            </button>
+                        ))}
+                    </div>
+                )}
+                {visibleGroups.map(([category, groupItems]) => (
                     <div key={category} className="mb-12">
                         <h2 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 border-b pb-2">
                             {category}
@@ -96,7 +124,8 @@ export default function BrandCatalogPage({ params }: { params: Promise<{ slug: s
                             ))}
                         </div>
                     </div>
-                ))
+                ))}
+                </>
             )}
 
             {quoteItem && (

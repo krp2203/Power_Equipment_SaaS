@@ -329,33 +329,49 @@ def get_inventory_filters():
     if not g.current_org:
         return jsonify({"manufacturers": [], "types": []})
 
-    # Get unique manufacturers and types that are currently in inventory
-    manufacturers = db.session.query(Unit.manufacturer).filter_by(
-        organization_id=g.current_org.id,
-        is_inventory=True,
-        display_on_web=True
-    ).filter(Unit.status != 'Sold').distinct().all()
+    org_id = g.current_org.id
+    # Each side can narrow the other - picking a manufacturer narrows the type/
+    # category list to just that brand's, and vice versa. The manufacturer
+    # list itself is only narrowed by `type`, never by `manufacturer` (and
+    # symmetrically for the type list), so neither dropdown narrows itself
+    # down to just its own current selection.
+    manufacturer = request.args.get('manufacturer')
+    unit_type = request.args.get('type')
 
-    types = db.session.query(Unit.type).filter_by(
-        organization_id=g.current_org.id,
-        is_inventory=True,
-        display_on_web=True
-    ).filter(Unit.status != 'Sold').distinct().all()
+    def unit_base():
+        return Unit.query.filter_by(
+            organization_id=org_id, is_inventory=True, display_on_web=True
+        ).filter(Unit.status != 'Sold')
 
-    catalog_manufacturers = db.session.query(ManufacturerBrand.name).filter_by(
-        organization_id=g.current_org.id).distinct().all()
+    manufacturers_q = unit_base()
+    if unit_type:
+        manufacturers_q = manufacturers_q.filter(Unit.type == unit_type)
+    manufacturers = {row[0] for row in manufacturers_q.with_entities(Unit.manufacturer).distinct().all() if row[0]}
 
-    # Catalog items' "category" is the closest equivalent to Unit.type - union
-    # them so the Type filter covers special-order entries too.
-    catalog_categories = db.session.query(ManufacturerCatalogItem.category).filter_by(
-        organization_id=g.current_org.id, is_active=True).distinct().all()
+    types_q = unit_base()
+    if manufacturer:
+        types_q = types_q.filter(Unit.manufacturer == manufacturer)
+    types = {row[0] for row in types_q.with_entities(Unit.type).distinct().all() if row[0]}
 
-    manufacturer_names = {m[0] for m in manufacturers if m[0]} | {m[0] for m in catalog_manufacturers if m[0]}
-    type_names = {t[0] for t in types if t[0]} | {c[0] for c in catalog_categories if c[0]}
+    for brand in ManufacturerBrand.query.filter_by(organization_id=org_id).all():
+        items_q = ManufacturerCatalogItem.query.filter_by(brand_id=brand.id, is_active=True)
+
+        # Manufacturer list: this brand counts if it has any active item
+        # matching the current type filter (or any active item at all).
+        brand_items_for_type = items_q.filter(ManufacturerCatalogItem.category == unit_type) if unit_type else items_q
+        if brand_items_for_type.first():
+            manufacturers.add(brand.name)
+
+        # Type list: only this brand's categories count, and only if the
+        # manufacturer filter (if any) matches this brand.
+        if not manufacturer or brand.name == manufacturer:
+            for row in items_q.with_entities(ManufacturerCatalogItem.category).distinct().all():
+                if row[0]:
+                    types.add(row[0])
 
     return jsonify({
-        "manufacturers": sorted(manufacturer_names),
-        "types": sorted(type_names)
+        "manufacturers": sorted(manufacturers),
+        "types": sorted(types)
     })
 
 @api_bp.route('/v1/parts', methods=['GET'])

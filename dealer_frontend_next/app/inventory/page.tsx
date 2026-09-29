@@ -10,28 +10,33 @@ export default function InventoryPage() {
     const [loading, setLoading] = useState(true);
     const [filterOptions, setFilterOptions] = useState<{ manufacturers: string[], types: string[] }>({ manufacturers: [], types: [] });
 
-    // Filter State
-    const [filterType, setFilterType] = useState('manufacturer'); // 'manufacturer' or 'type'
-    const [filterValue, setFilterValue] = useState('');
+    // Filter State - manufacturer and type/category are independent and combine
+    const [manufacturerFilter, setManufacturerFilter] = useState('');
+    const [typeFilter, setTypeFilter] = useState('');
     const [sortBy, setSortBy] = useState('price');
     const [sortOrder, setSortOrder] = useState('desc');
     const [quoteItem, setQuoteItem] = useState<InventoryItem | null>(null);
     const [inStockOnly, setInStockOnly] = useState(false);
 
+    // Each dropdown's options narrow based on the other's current selection,
+    // so picking a manufacturer only offers categories that brand actually has,
+    // and vice versa.
     useEffect(() => {
-        // Fetch Filter Options
-        fetch('/api/v1/inventory/filters')
+        const params = new URLSearchParams();
+        if (manufacturerFilter) params.append('manufacturer', manufacturerFilter);
+        if (typeFilter) params.append('type', typeFilter);
+
+        fetch(`/api/v1/inventory/filters?${params.toString()}`)
             .then(res => res.json())
             .then(data => setFilterOptions(data))
             .catch(err => console.error("Failed to load filters", err));
-    }, []);
+    }, [manufacturerFilter, typeFilter]);
 
     useEffect(() => {
         setLoading(true);
         const params = new URLSearchParams();
-        if (filterValue) {
-            params.append(filterType, filterValue);
-        }
+        if (manufacturerFilter) params.append('manufacturer', manufacturerFilter);
+        if (typeFilter) params.append('type', typeFilter);
         params.append('sort', sortBy);
         params.append('order', sortOrder);
 
@@ -45,14 +50,11 @@ export default function InventoryPage() {
                 console.error("Failed to load inventory", err);
                 setLoading(false);
             });
-    }, [filterType, filterValue, sortBy, sortOrder]);
-
-    const handleFilterTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        setFilterType(e.target.value);
-        setFilterValue(''); // Reset value when type changes
-    };
+    }, [manufacturerFilter, typeFilter, sortBy, sortOrder]);
 
     const displayedItems = inStockOnly ? items.filter(i => i.source !== 'catalog') : items;
+    const hasFilters = manufacturerFilter || typeFilter;
+    const clearFilters = () => { setManufacturerFilter(''); setTypeFilter(''); };
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -60,32 +62,32 @@ export default function InventoryPage() {
 
             {/* Filter Bar */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 mb-10">
-                <div className="grid grid-cols-1 md:grid-cols-5 gap-6 items-end">
-                    {/* Select Filter Category */}
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-6 items-end">
+                    {/* Manufacturer */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">Filter By</label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Manufacturer</label>
                         <select
-                            value={filterType}
-                            onChange={handleFilterTypeChange}
+                            value={manufacturerFilter}
+                            onChange={(e) => setManufacturerFilter(e.target.value)}
                             className="w-full h-12 rounded-xl border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-gray-900"
                         >
-                            <option value="manufacturer">Manufacturer</option>
-                            <option value="type">Type / Category</option>
+                            <option value="">All Manufacturers</option>
+                            {filterOptions.manufacturers.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                            ))}
                         </select>
                     </div>
 
-                    {/* Select Value */}
+                    {/* Type / Category */}
                     <div>
-                        <label className="block text-sm font-semibold text-gray-700 mb-2">
-                            Select {filterType === 'manufacturer' ? 'Manufacturer' : 'Type'}
-                        </label>
+                        <label className="block text-sm font-semibold text-gray-700 mb-2">Type / Category</label>
                         <select
-                            value={filterValue}
-                            onChange={(e) => setFilterValue(e.target.value)}
+                            value={typeFilter}
+                            onChange={(e) => setTypeFilter(e.target.value)}
                             className="w-full h-12 rounded-xl border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all text-gray-900"
                         >
-                            <option value="">All {filterType === 'manufacturer' ? 'Manufacturers' : 'Equipment'}</option>
-                            {(filterType === 'manufacturer' ? filterOptions.manufacturers : filterOptions.types).map(opt => (
+                            <option value="">All Types</option>
+                            {filterOptions.types.map(opt => (
                                 <option key={opt} value={opt}>{opt}</option>
                             ))}
                         </select>
@@ -126,13 +128,13 @@ export default function InventoryPage() {
                     </div>
 
                     {/* Results Count/Clear */}
-                    <div className="flex items-center justify-between md:justify-end gap-4 h-12">
+                    <div className="flex items-center justify-between md:justify-end gap-4 h-12 lg:col-span-2">
                         <span className="text-sm text-gray-500 font-medium">
                             {loading ? '...' : displayedItems.length} Units Found
                         </span>
-                        {filterValue && (
+                        {hasFilters && (
                             <button
-                                onClick={() => setFilterValue('')}
+                                onClick={clearFilters}
                                 className="text-sm font-bold text-blue-600 hover:text-blue-800"
                             >
                                 Clear Filters X
@@ -150,7 +152,7 @@ export default function InventoryPage() {
                 <div className="text-center py-24 bg-gray-50 rounded-3xl border-2 border-dashed border-gray-200">
                     <p className="text-gray-500 text-xl font-medium">No results match your current filters.</p>
                     <button
-                        onClick={() => { setFilterValue(''); setFilterType('manufacturer'); setInStockOnly(false); }}
+                        onClick={() => { clearFilters(); setInStockOnly(false); }}
                         className="mt-4 text-blue-600 font-bold underline"
                     >
                         View all inventory
