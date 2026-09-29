@@ -1,7 +1,8 @@
 import os
 import re
+from io import BytesIO
 
-from flask import render_template, g, redirect, url_for, flash, request
+from flask import render_template, g, redirect, url_for, flash, request, send_file, abort
 from flask_login import login_required
 
 from . import catalog_bp
@@ -307,6 +308,60 @@ def import_items(brand_id):
         summary += f", {image_failures} image(s) couldn't be fetched"
     flash(summary, 'warning' if image_failures else 'success')
     return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
+
+
+@catalog_bp.route('/admin/manufacturer-catalog/<int:brand_id>/export', methods=['GET'])
+@login_required
+def export_items(brand_id):
+    """
+    Super Admin only: exports a brand's models in the exact column format
+    import_items() reads, so a brand built once on one dealer's site can be
+    downloaded and re-uploaded onto another's (typically while impersonating
+    it) instead of re-entering it or juggling a spreadsheet kept elsewhere.
+    Deliberately not offered to dealers - g.is_superuser stays true for the
+    whole time a Super Admin is impersonating a dealer, so this works the
+    same way from an impersonated session as from their own.
+    """
+    import pandas as pd
+
+    if not g.is_superuser:
+        abort(403)
+
+    org = g.current_org
+    brand = ManufacturerBrand.query.filter_by(id=brand_id, organization_id=org.id).first_or_404()
+    items = ManufacturerCatalogItem.query.filter_by(brand_id=brand.id).order_by(
+        ManufacturerCatalogItem.display_order, ManufacturerCatalogItem.id).all()
+
+    # image_url is stored relative (e.g. /static/uploads/...) - has to be
+    # made absolute against *this* org's own public domain, since importing
+    # it elsewhere means fetching it back over the network from wherever it
+    # actually lives, not from the destination site.
+    def _absolute_image_url(url):
+        if not url:
+            return ''
+        return f"https://{org.slug}.bentcrankshaft.com{url}"
+
+    df = pd.DataFrame([{
+        'Model Name': item.model_name,
+        'Category': item.category or '',
+        'Description': item.description or '',
+        'Image URL': _absolute_image_url(item.image_url),
+    } for item in items])
+
+    file_format = request.args.get('format', 'xlsx')
+    buffer = BytesIO()
+    if file_format == 'csv':
+        df.to_csv(buffer, index=False)
+        mimetype = 'text/csv'
+        ext = 'csv'
+    else:
+        df.to_excel(buffer, index=False)
+        mimetype = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        ext = 'xlsx'
+    buffer.seek(0)
+
+    download_name = f"{brand.slug}-catalog.{ext}"
+    return send_file(buffer, mimetype=mimetype, as_attachment=True, download_name=download_name)
 
 
 @catalog_bp.route('/admin/manufacturer-catalog/<int:brand_id>/items/<int:item_id>/delete', methods=['POST'])
