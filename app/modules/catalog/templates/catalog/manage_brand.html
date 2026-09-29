@@ -4,9 +4,24 @@
 
 {% block content %}
 <div class="container py-4">
-    <p><a href="{{ url_for('catalog.index') }}"><i class="bi bi-arrow-left me-1"></i>All Brands</a></p>
-    <h1><i class="bi bi-badge-ad me-2"></i>{{ brand.name }}</h1>
-    <p class="text-muted">Public page: <a href="/brands/{{ brand.slug }}" target="_blank">/brands/{{ brand.slug }}</a></p>
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <p><a href="{{ url_for('catalog.index') }}"><i class="bi bi-arrow-left me-1"></i>All Brands</a></p>
+            <h1><i class="bi bi-badge-ad me-2"></i>{{ brand.name }}</h1>
+            <p class="text-muted">Public page: <a href="/brands/{{ brand.slug }}" target="_blank">/brands/{{ brand.slug }}</a></p>
+        </div>
+        {% if g.is_superuser %}
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-download me-1"></i>Download
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><a class="dropdown-item" href="{{ url_for('catalog.export_items', brand_id=brand.id, format='xlsx') }}">as .xlsx</a></li>
+                <li><a class="dropdown-item" href="{{ url_for('catalog.export_items', brand_id=brand.id, format='csv') }}">as .csv</a></li>
+            </ul>
+        </div>
+        {% endif %}
+    </div>
 
     <div class="card shadow-sm mb-4">
         <div class="card-header">Brand Page Details</div>
