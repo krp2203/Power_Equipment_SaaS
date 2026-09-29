@@ -612,7 +612,9 @@ class QuoteRequestItem(db.Model):
     # is later deleted/renumbered, same reasoning as invoice line snapshots.
     part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id', ondelete='SET NULL'), nullable=True)
     part_number = db.Column(db.String(100), nullable=False)
-    description = db.Column(db.String(255))
+    # Text, not String(255) - this also holds full manufacturer catalog
+    # descriptions (marketing copy), which regularly run past 255 chars.
+    description = db.Column(db.Text)
     quantity = db.Column(db.Integer, nullable=False, default=1)
 
 

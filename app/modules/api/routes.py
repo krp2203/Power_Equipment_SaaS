@@ -1,4 +1,4 @@
-from flask import jsonify, g, request
+from flask import jsonify, g, request, current_app
 from . import api_bp
 from app.core.extensions import db
 
@@ -444,7 +444,7 @@ def create_quote_request():
     db.session.flush()
 
     for raw in items:
-        part_number = (raw.get('part_number') or '').strip()
+        part_number = (raw.get('part_number') or '').strip()[:100]
         if not part_number:
             continue
         try:
@@ -463,7 +463,12 @@ def create_quote_request():
             quantity=quantity,
         ))
 
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Failed to save quote request")
+        return jsonify({'error': 'Something went wrong saving your request. Please try again.'}), 500
 
     if not quote.items:
         return jsonify({'error': 'Add at least one valid part before requesting a quote.'}), 400
