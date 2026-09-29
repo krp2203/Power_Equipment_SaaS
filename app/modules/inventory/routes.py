@@ -1,12 +1,12 @@
-from flask import render_template, g, redirect, url_for, flash, request, current_app
+from flask import render_template, g, redirect, url_for, flash, request
 from flask_login import login_required
 from . import inventory_bp
 from app.core.models import Unit, UnitImage, PartInventory
 from app.core.extensions import db
 from .forms import InventoryItemForm, PartInventoryForm
 from app.core.pricing_service import compute_extended_price, effective_unit_price, recalculate_extended_prices
+from app.core.uploads import save_image_upload, UploadError
 import os
-from werkzeug.utils import secure_filename
 
 
 def _org_markup_tiers(org_id):
@@ -81,16 +81,11 @@ def add_part():
 
         # Handle Image Upload
         if form.image.data:
-            f = form.image.data
-            filename = secure_filename(f"{part.part_number}_{f.filename}")
-            upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'parts', str(g.current_org.id))
-            os.makedirs(upload_dir, exist_ok=True)
-            
-            import uuid
-            ext = os.path.splitext(filename)[1]
-            unique_filename = f"{uuid.uuid4().hex}{ext}"
-            f.save(os.path.join(upload_dir, unique_filename))
-            part.image_url = f"/static/uploads/parts/{g.current_org.id}/{unique_filename}"
+            try:
+                part.image_url = save_image_upload(form.image.data, 'parts', g.current_org.id)
+            except UploadError as e:
+                flash(str(e), 'danger')
+                return redirect(url_for('inventory.index'))
 
         try:
             db.session.add(part)
@@ -128,16 +123,11 @@ def edit_part(id):
 
         # Handle Image Upload
         if form.image.data:
-            f = form.image.data
-            filename = secure_filename(f"{part.part_number}_{f.filename}")
-            upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'parts', str(g.current_org.id))
-            os.makedirs(upload_dir, exist_ok=True)
-
-            import uuid
-            ext = os.path.splitext(filename)[1]
-            unique_filename = f"{uuid.uuid4().hex}{ext}"
-            f.save(os.path.join(upload_dir, unique_filename))
-            part.image_url = f"/static/uploads/parts/{g.current_org.id}/{unique_filename}"
+            try:
+                part.image_url = save_image_upload(form.image.data, 'parts', g.current_org.id)
+            except UploadError as e:
+                flash(str(e), 'danger')
+                return redirect(url_for('inventory.index'))
 
         db.session.commit()
         flash('Part updated successfully.', 'success')
@@ -271,24 +261,16 @@ def add():
         
         # Handle Image Upload
         if form.primary_image.data:
-            f = form.primary_image.data
-            filename = secure_filename(f.filename)
-            # Save to static/uploads/inventory/{org_id}/
-            upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'inventory', str(g.current_org.id))
-            os.makedirs(upload_dir, exist_ok=True)
-            
-            # Make unique filename
-            import uuid
-            ext = os.path.splitext(filename)[1]
-            unique_filename = f"{uuid.uuid4().hex}{ext}"
-            f.save(os.path.join(upload_dir, unique_filename))
-            
-            # Create UnitImage
-            image_url = f"/static/uploads/inventory/{g.current_org.id}/{unique_filename}"
-            image = UnitImage(unit_id=unit.id, image_url=image_url, is_primary=True)
-            db.session.add(image)
-            db.session.commit()
-            
+            try:
+                image_url = save_image_upload(form.primary_image.data, 'inventory', g.current_org.id)
+                image = UnitImage(unit_id=unit.id, image_url=image_url, is_primary=True)
+                db.session.add(image)
+                db.session.commit()
+            except UploadError as e:
+                # The unit itself already saved successfully - only the image failed.
+                flash(f'Unit added, but the image was rejected: {e}', 'warning')
+                return redirect(url_for('inventory.manage'))
+
         flash('Unit added successfully.', 'success')
         return redirect(url_for('inventory.manage'))
         
@@ -326,18 +308,12 @@ def edit(id):
 
         # Handle Image Upload (Replace Primary or Add)
         if form.primary_image.data:
-            f = form.primary_image.data
-            filename = secure_filename(f.filename)
-            upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'inventory', str(g.current_org.id))
-            os.makedirs(upload_dir, exist_ok=True)
-            
-            import uuid
-            ext = os.path.splitext(filename)[1]
-            unique_filename = f"{uuid.uuid4().hex}{ext}"
-            f.save(os.path.join(upload_dir, unique_filename))
-            
-            image_url = f"/static/uploads/inventory/{g.current_org.id}/{unique_filename}"
-            
+            try:
+                image_url = save_image_upload(form.primary_image.data, 'inventory', g.current_org.id)
+            except UploadError as e:
+                flash(str(e), 'danger')
+                return redirect(url_for('inventory.edit', id=unit.id))
+
             # Check existing primary
             existing_primary = UnitImage.query.filter_by(unit_id=unit.id, is_primary=True).first()
             if existing_primary:
