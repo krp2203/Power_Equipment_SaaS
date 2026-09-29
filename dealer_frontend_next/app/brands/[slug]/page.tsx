@@ -3,15 +3,19 @@
 import { useEffect, useState, use } from 'react';
 import { CatalogBrandDetail, CatalogItem } from '@/lib/types';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import RequestQuoteForm from '@/components/RequestQuoteForm';
 
 export default function BrandCatalogPage({ params }: { params: Promise<{ slug: string }> }) {
     const { slug } = use(params);
+    const searchParams = useSearchParams();
     const [data, setData] = useState<CatalogBrandDetail | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [quoteItem, setQuoteItem] = useState<CatalogItem | null>(null);
-    const [categoryFilter, setCategoryFilter] = useState<string>('');
+    // Pre-select from ?category=... (e.g. linked from the /inventory grid),
+    // falling back to showing all.
+    const [categoryFilter, setCategoryFilter] = useState<string>(searchParams.get('category') || '');
 
     useEffect(() => {
         fetch(`/api/v1/manufacturer-catalog/${slug}`)

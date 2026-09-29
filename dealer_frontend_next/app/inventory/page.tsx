@@ -231,7 +231,15 @@ export default function InventoryPage() {
                                         <>
                                             <div className="flex flex-col">
                                                 <span className="text-xs text-gray-400 font-bold uppercase">Availability</span>
-                                                <span className="text-sm font-bold text-gray-700">Order from manufacturer</span>
+                                                <span className="text-sm font-bold text-gray-700 mb-1">Order from manufacturer</span>
+                                                {item.brand_slug && (
+                                                    <Link
+                                                        href={`/brands/${item.brand_slug}${item.category ? `?category=${encodeURIComponent(item.category)}` : ''}`}
+                                                        className="text-xs font-bold text-blue-600 hover:text-blue-800"
+                                                    >
+                                                        View in {item.manufacturer} Catalog &rarr;
+                                                    </Link>
+                                                )}
                                             </div>
                                             <button
                                                 onClick={() => setQuoteItem(item)}

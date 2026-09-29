@@ -194,6 +194,8 @@ def _serialize_catalog_item(item, brand):
         "is_closeout": False,
         "is_special_price": False,
         "source": "catalog",
+        "brand_slug": brand.slug,
+        "category": item.category,
     }
 
 

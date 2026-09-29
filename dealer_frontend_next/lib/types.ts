@@ -64,6 +64,9 @@ export interface InventoryItem {
     // Present on catalog (special-order, not real stock) entries mixed into
     // /api/v1/inventory - real Unit rows come back with source: "inventory".
     source?: 'inventory' | 'catalog';
+    // Catalog entries only - lets the inventory grid link back to the brand page.
+    brand_slug?: string;
+    category?: string | null;
 }
 
 export interface CatalogBrandSummary {
