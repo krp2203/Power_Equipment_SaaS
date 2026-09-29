@@ -616,6 +616,52 @@ class QuoteRequestItem(db.Model):
     quantity = db.Column(db.Integer, nullable=False, default=1)
 
 
+class ManufacturerBrand(db.Model):
+    """A dealer-maintained manufacturer catalog page (e.g. /brands/scag) - lists a
+    brand's lineup for dealer co-op/program compliance, independent of live
+    inventory. Not to be confused with theme_config['brand_logos'], which is just
+    the unlabeled logo carousel on the homepage."""
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+
+    name = db.Column(db.String(100), nullable=False)
+    slug = db.Column(db.String(100), nullable=False)
+    logo_url = db.Column(db.String(500))
+    intro_text = db.Column(db.Text)
+    display_order = db.Column(db.Integer, default=0)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    items = db.relationship('ManufacturerCatalogItem', backref='brand', lazy=True,
+                             order_by='ManufacturerCatalogItem.display_order',
+                             cascade='all, delete-orphan')
+
+    __table_args__ = (
+        db.UniqueConstraint('organization_id', 'slug', name='uq_manufacturer_brand_org_slug'),
+        db.Index('ix_manufacturer_brand_org', 'organization_id'),
+    )
+
+
+class ManufacturerCatalogItem(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    brand_id = db.Column(db.Integer, db.ForeignKey('manufacturer_brand.id', ondelete='CASCADE'), nullable=False)
+
+    model_name = db.Column(db.String(150), nullable=False)
+    # Free-text so a dealer isn't boxed into a fixed taxonomy (matches how
+    # manufacturers group their own lineups, e.g. "Zero-Turn Riding Mowers",
+    # "Stand-On Mowers") - left blank, the item just sits in an "Other" group.
+    category = db.Column(db.String(100))
+    description = db.Column(db.Text)
+    image_url = db.Column(db.String(500))
+    display_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True, nullable=False, server_default=db.true())
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.Index('ix_manufacturer_catalog_item_brand', 'brand_id'),
+    )
+
+
 class Customer(db.Model):
     """An end customer of the dealer (equipment owner / invoice bill-to), distinct from Dealer/Contact (sub-dealer network)."""
     id = db.Column(db.Integer, primary_key=True)

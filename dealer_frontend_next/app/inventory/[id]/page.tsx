@@ -107,7 +107,7 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
                                 <span className="text-gray-500 text-sm">Stock #{item.id}</span>
                             </div>
                             <div className="text-4xl font-bold text-blue-600 mb-4">
-                                {item.price > 0 ? `$${item.price.toLocaleString()}` : 'Call for Price'}
+                                {item.price && item.price > 0 ? `$${item.price.toLocaleString()}` : 'Call for Price'}
                             </div>
                         </div>
 
