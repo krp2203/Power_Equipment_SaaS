@@ -594,6 +594,11 @@ class QuoteRequest(db.Model):
     customer_phone = db.Column(db.String(50), nullable=True)
     notes = db.Column(db.Text)
 
+    # 'parts' (Parts page cart) or 'equipment' (manufacturer catalog / brand
+    # pages) - different departments at some dealers, so the review page and
+    # notification email read differently depending on which.
+    request_type = db.Column(db.String(20), nullable=False, default='parts', server_default='parts')
+
     status = db.Column(db.String(20), nullable=False, default='new')  # new, reviewed
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

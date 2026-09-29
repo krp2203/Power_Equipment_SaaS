@@ -3,8 +3,8 @@
 {% block content %}
 <div class="row mb-4">
     <div class="col-md-8">
-        <h2><i class="bi bi-envelope-paper me-2"></i>Parts Quote Requests</h2>
-        <p class="text-muted">Submitted from the public Parts page's "Request a Quote" flow. Each one was also emailed to your contact address.</p>
+        <h2><i class="bi bi-envelope-paper me-2"></i>Quote Requests</h2>
+        <p class="text-muted">Submitted from the public Parts page or a manufacturer catalog page's "Request a Quote" flow. Each one was also emailed to your contact address.</p>
     </div>
 </div>
 
@@ -20,8 +20,9 @@
              data-bs-toggle="collapse" data-bs-target="#req{{ r.id }}">
             <div>
                 {% if r.status == 'new' %}<span class="badge bg-primary me-2">New</span>{% else %}<span class="badge bg-light text-dark border me-2">Reviewed</span>{% endif %}
+                {% if r.request_type == 'equipment' %}<span class="badge bg-teal text-white me-2" style="background-color:#0d9488;">Equipment</span>{% else %}<span class="badge bg-secondary me-2">Parts</span>{% endif %}
                 <strong>{{ r.customer_name }}</strong>
-                <span class="text-muted small ms-2">{{ r.items|length }} part{{ 's' if r.items|length != 1 }}</span>
+                <span class="text-muted small ms-2">{{ r.items|length }} item{{ 's' if r.items|length != 1 }}</span>
             </div>
             <span class="text-muted small">{{ r.created_at.strftime('%b %d, %Y %I:%M %p') if r.created_at else '' }}</span>
         </div>
@@ -35,7 +36,7 @@
                 </div>
                 {% if r.notes %}<p class="text-muted"><strong>Notes:</strong> {{ r.notes }}</p>{% endif %}
                 <table class="table table-sm mb-3">
-                    <thead><tr><th>Part #</th><th>Description</th><th class="text-end">Qty</th></tr></thead>
+                    <thead><tr><th>{{ 'Model' if r.request_type == 'equipment' else 'Part #' }}</th><th>Description</th><th class="text-end">Qty</th></tr></thead>
                     <tbody>
                         {% for item in r.items %}
                         <tr><td class="font-monospace">{{ item.part_number }}</td><td>{{ item.description or '-' }}</td><td class="text-end">{{ item.quantity }}</td></tr>
