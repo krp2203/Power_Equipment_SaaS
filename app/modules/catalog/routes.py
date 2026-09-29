@@ -1,14 +1,12 @@
-import os
 import re
-import uuid
 
-from flask import render_template, g, redirect, url_for, flash, request, current_app
+from flask import render_template, g, redirect, url_for, flash, request
 from flask_login import login_required
-from werkzeug.utils import secure_filename
 
 from . import catalog_bp
 from app.core.extensions import db
 from app.core.models import ManufacturerBrand, ManufacturerCatalogItem
+from app.core.uploads import save_image_upload, UploadError
 
 
 def _slugify(name):
@@ -31,13 +29,7 @@ def _unique_slug(org_id, name, exclude_id=None):
 
 
 def _save_upload(file_storage, org_id):
-    filename = secure_filename(file_storage.filename)
-    ext = os.path.splitext(filename)[1]
-    upload_dir = os.path.join(current_app.root_path, 'static', 'uploads', 'manufacturer_catalog', str(org_id))
-    os.makedirs(upload_dir, exist_ok=True)
-    unique_filename = f"{uuid.uuid4().hex}{ext}"
-    file_storage.save(os.path.join(upload_dir, unique_filename))
-    return f"/static/uploads/manufacturer_catalog/{org_id}/{unique_filename}"
+    return save_image_upload(file_storage, 'manufacturer_catalog', org_id)
 
 
 @catalog_bp.route('/admin/manufacturer-catalog', methods=['GET'])
@@ -67,7 +59,11 @@ def add_brand():
 
     logo = request.files.get('logo')
     if logo and logo.filename:
-        brand.logo_url = _save_upload(logo, org.id)
+        try:
+            brand.logo_url = _save_upload(logo, org.id)
+        except UploadError as e:
+            flash(str(e), 'danger')
+            return redirect(url_for('catalog.index'))
 
     db.session.add(brand)
     db.session.commit()
@@ -121,7 +117,11 @@ def edit_brand(brand_id):
 
     logo = request.files.get('logo')
     if logo and logo.filename:
-        brand.logo_url = _save_upload(logo, org.id)
+        try:
+            brand.logo_url = _save_upload(logo, org.id)
+        except UploadError as e:
+            flash(str(e), 'danger')
+            return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
 
     db.session.commit()
     flash('Brand updated.', 'success')
@@ -161,7 +161,11 @@ def add_item(brand_id):
 
     photo = request.files.get('photo')
     if photo and photo.filename:
-        item.image_url = _save_upload(photo, org.id)
+        try:
+            item.image_url = _save_upload(photo, org.id)
+        except UploadError as e:
+            flash(str(e), 'danger')
+            return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
 
     db.session.add(item)
     db.session.commit()
@@ -188,7 +192,11 @@ def edit_item(brand_id, item_id):
 
     photo = request.files.get('photo')
     if photo and photo.filename:
-        item.image_url = _save_upload(photo, org.id)
+        try:
+            item.image_url = _save_upload(photo, org.id)
+        except UploadError as e:
+            flash(str(e), 'danger')
+            return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
 
     db.session.commit()
     flash('Model updated.', 'success')
