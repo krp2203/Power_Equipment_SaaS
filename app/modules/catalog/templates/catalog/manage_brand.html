@@ -68,6 +68,68 @@
         </div>
     </div>
 
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">Import Models from Spreadsheet</div>
+        <div class="card-body">
+            <p class="text-muted small mb-3">
+                Columns: <strong>Model Name</strong> (required), Category, Description, Image URL.
+                Re-uploading the same file updates existing models (matched by name) instead of duplicating them.
+            </p>
+            <form method="POST" action="{{ url_for('catalog.import_items', brand_id=brand.id) }}"
+                  enctype="multipart/form-data" id="import-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div id="drop-zone" class="border border-2 border-dashed rounded-3 text-center py-5 px-3"
+                     style="cursor: pointer; transition: background-color 0.15s;">
+                    <i class="bi bi-cloud-arrow-up fs-2 text-muted d-block mb-2"></i>
+                    <span id="drop-zone-text" class="text-muted">
+                        Drag and drop a .xlsx or .csv file here, or click to choose one
+                    </span>
+                    <input type="file" name="spreadsheet" id="spreadsheet-input" accept=".xlsx,.xls,.csv" class="d-none" required>
+                </div>
+                <div class="text-end mt-2">
+                    <button type="submit" class="btn btn-primary">Import</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const dropZone = document.getElementById('drop-zone');
+            const input = document.getElementById('spreadsheet-input');
+            const text = document.getElementById('drop-zone-text');
+
+            const showFile = (file) => {
+                if (file) text.textContent = file.name;
+            };
+
+            dropZone.addEventListener('click', () => input.click());
+            input.addEventListener('change', () => showFile(input.files[0]));
+
+            ['dragenter', 'dragover'].forEach(evt => {
+                dropZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.style.backgroundColor = '#f0f7ff';
+                });
+            });
+            ['dragleave', 'drop'].forEach(evt => {
+                dropZone.addEventListener(evt, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    dropZone.style.backgroundColor = '';
+                });
+            });
+            dropZone.addEventListener('drop', (e) => {
+                const file = e.dataTransfer.files[0];
+                if (file) {
+                    input.files = e.dataTransfer.files;
+                    showFile(file);
+                }
+            });
+        })();
+    </script>
+
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <table class="table table-hover mb-0 align-middle">

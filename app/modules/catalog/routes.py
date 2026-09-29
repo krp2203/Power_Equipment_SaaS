@@ -1,3 +1,4 @@
+import os
 import re
 
 from flask import render_template, g, redirect, url_for, flash, request
@@ -6,7 +7,7 @@ from flask_login import login_required
 from . import catalog_bp
 from app.core.extensions import db
 from app.core.models import ManufacturerBrand, ManufacturerCatalogItem
-from app.core.uploads import save_image_upload, UploadError
+from app.core.uploads import save_image_upload, save_image_from_url, UploadError
 
 
 def _slugify(name):
@@ -200,6 +201,111 @@ def edit_item(brand_id, item_id):
 
     db.session.commit()
     flash('Model updated.', 'success')
+    return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
+
+
+@catalog_bp.route('/admin/manufacturer-catalog/<int:brand_id>/items/import', methods=['POST'])
+@login_required
+def import_items(brand_id):
+    """
+    Bulk create/update this brand's models from an uploaded .xlsx/.csv, so a
+    whole manufacturer lineup can be loaded in one shot instead of the
+    one-model-at-a-time form. Expected columns (case-insensitive, a few
+    common aliases accepted): Model Name (required), Category, Description,
+    Image URL. Matches existing items by model name (case-insensitive) within
+    this brand and updates them instead of duplicating, so the same file can
+    be re-uploaded after edits without piling up duplicates.
+    """
+    import pandas as pd
+
+    org = g.current_org
+    brand = ManufacturerBrand.query.filter_by(id=brand_id, organization_id=org.id).first_or_404()
+
+    file = request.files.get('spreadsheet')
+    if not file or not file.filename:
+        flash('Choose a .xlsx or .csv file first.', 'danger')
+        return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
+
+    ext = os.path.splitext(file.filename)[1].lower()
+    try:
+        if ext == '.csv':
+            df = pd.read_csv(file)
+        elif ext in ('.xlsx', '.xls'):
+            df = pd.read_excel(file)
+        else:
+            flash(f"Unsupported file type '{ext}'. Upload a .xlsx or .csv file.", 'danger')
+            return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
+    except Exception as e:
+        flash(f"Couldn't read that file: {e}", 'danger')
+        return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
+
+    col_map = {}
+    for col in df.columns:
+        key = str(col).strip().lower()
+        if key in ('model name', 'model', 'name'):
+            col_map['model_name'] = col
+        elif key in ('category', 'type'):
+            col_map['category'] = col
+        elif key in ('description', 'desc'):
+            col_map['description'] = col
+        elif key in ('image url', 'image', 'photo url', 'photo'):
+            col_map['image_url'] = col
+
+    if 'model_name' not in col_map:
+        flash('Spreadsheet needs a "Model Name" column.', 'danger')
+        return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
+
+    def cell(row, key):
+        if key not in col_map:
+            return None
+        val = row.get(col_map[key])
+        if val is None:
+            return None
+        text = str(val).strip()
+        return text if text and text.lower() != 'nan' else None
+
+    existing_by_name = {
+        item.model_name.strip().lower(): item
+        for item in ManufacturerCatalogItem.query.filter_by(brand_id=brand.id).all()
+    }
+
+    created = updated = skipped = image_failures = 0
+
+    for _, row in df.iterrows():
+        model_name = cell(row, 'model_name')
+        if not model_name:
+            skipped += 1
+            continue
+
+        existing = existing_by_name.get(model_name.lower())
+        if existing:
+            item = existing
+            updated += 1
+        else:
+            item = ManufacturerCatalogItem(organization_id=org.id, brand_id=brand.id, model_name=model_name)
+            db.session.add(item)
+            existing_by_name[model_name.lower()] = item
+            created += 1
+
+        item.model_name = model_name
+        item.category = cell(row, 'category')
+        item.description = cell(row, 'description')
+
+        image_url_value = cell(row, 'image_url')
+        if image_url_value:
+            try:
+                item.image_url = save_image_from_url(image_url_value, 'manufacturer_catalog', org.id)
+            except UploadError:
+                image_failures += 1
+
+    db.session.commit()
+
+    summary = f"Imported: {created} new, {updated} updated"
+    if skipped:
+        summary += f", {skipped} row(s) skipped (no model name)"
+    if image_failures:
+        summary += f", {image_failures} image(s) couldn't be fetched"
+    flash(summary, 'warning' if image_failures else 'success')
     return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
 
 
