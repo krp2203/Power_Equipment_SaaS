@@ -1,32 +1,37 @@
 # Python
+# These are unbounded in the standard Python.gitignore template, but this repo
+# also has a Next.js app (dealer_frontend_next/) whose App Router routes are
+# just directories under app/ - "parts" and "lib" already collided with
+# Next.js source dirs once each. Anchored to repo root, where actual Python
+# packaging artifacts would appear, not wherever a route happens to be named.
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 .Python
-build/
+/build/
 develop-eggs/
-dist/
+/dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
-parts/
+/lib/
+/lib64/
+/parts/
 sdist/
-var/
+/var/
 wheels/
 pip-wheel-metadata/
-share/python-wheels/
+/share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 MANIFEST
 
 # Virtual environments
-venv/
-env/
-ENV/
+/venv/
+/env/
+/ENV/
 env.bak/
 venv.bak/
 .venv/
