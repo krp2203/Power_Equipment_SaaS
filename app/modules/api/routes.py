@@ -427,6 +427,7 @@ def create_quote_request():
     customer_phone = (data.get('customer_phone') or '').strip() or None
     notes = (data.get('notes') or '').strip() or None
     items = data.get('items') or []
+    request_type = data.get('request_type') if data.get('request_type') in ('parts', 'equipment') else 'parts'
 
     if not customer_name:
         return jsonify({'error': 'Name is required.'}), 400
@@ -439,6 +440,7 @@ def create_quote_request():
         customer_email=customer_email,
         customer_phone=customer_phone,
         notes=notes,
+        request_type=request_type,
     )
     db.session.add(quote)
     db.session.flush()

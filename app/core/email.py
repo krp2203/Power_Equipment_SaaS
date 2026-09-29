@@ -301,10 +301,21 @@ This is an automated email. Please do not reply directly to this message.
 
 def send_quote_request_email(org, quote_request, recipient_email):
     """
-    Emails a dealer a customer's "request a quote" submission from the
-    public Parts page - part numbers + quantities the customer picked, plus
-    however they'd like to be reached back.
+    Emails a dealer a customer's "request a quote" submission - either a
+    list of part numbers + quantities from the public Parts page, or a
+    single equipment model from a manufacturer catalog/brand page. Wording
+    (subject, heading, column labels, footer) adapts to which, since parts
+    and equipment sales are separate departments at some dealers.
     """
+    is_equipment = quote_request.request_type == 'equipment'
+    noun = 'Equipment' if is_equipment else 'Parts'
+    item_col_label = 'Model' if is_equipment else 'Part #'
+    source_line = (
+        f"Submitted via {org.name}'s manufacturer catalog page."
+        if is_equipment else
+        f"Submitted via {org.name}'s Parts page."
+    )
+
     try:
         rows_html = "".join(
             f"<tr><td style='padding:4px 8px;border-bottom:1px solid #eee;font-family:monospace;'>{item.part_number}</td>"
@@ -321,7 +332,7 @@ def send_quote_request_email(org, quote_request, recipient_email):
         <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #2c3e50;">New Parts Quote Request</h2>
+                    <h2 style="color: #2c3e50;">New {noun} Quote Request</h2>
                     <p>
                         <strong>From:</strong> {quote_request.customer_name}<br>
                         {f"<strong>Email:</strong> {quote_request.customer_email}<br>" if quote_request.customer_email else ""}
@@ -331,7 +342,7 @@ def send_quote_request_email(org, quote_request, recipient_email):
                     <table style="border-collapse: collapse; width: 100%; margin-top: 12px;">
                         <thead>
                             <tr style="background:#f5f5f5;">
-                                <th style="padding:4px 8px;text-align:left;">Part #</th>
+                                <th style="padding:4px 8px;text-align:left;">{item_col_label}</th>
                                 <th style="padding:4px 8px;text-align:left;">Description</th>
                                 <th style="padding:4px 8px;text-align:center;">Qty</th>
                             </tr>
@@ -340,14 +351,14 @@ def send_quote_request_email(org, quote_request, recipient_email):
                     </table>
                     <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
                     <p style="color: #666; font-size: 12px;">
-                        Submitted via {org.name}'s Parts page. Reply to this email to reach the customer directly.
+                        {source_line} Reply to this email to reach the customer directly.
                     </p>
                 </div>
             </body>
         </html>
         """
 
-        text_body = f"""New Parts Quote Request
+        text_body = f"""New {noun} Quote Request
 
 From: {quote_request.customer_name}
 {"Email: " + quote_request.customer_email if quote_request.customer_email else ""}
@@ -356,11 +367,11 @@ From: {quote_request.customer_name}
 
 {rows_text}
 
-Submitted via {org.name}'s Parts page.
+{source_line}
         """
 
         msg = Message(
-            subject=f"Parts Quote Request from {quote_request.customer_name}",
+            subject=f"{noun} Quote Request from {quote_request.customer_name}",
             recipients=[recipient_email],
             html=html_body,
             body=text_body,

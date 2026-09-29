@@ -33,6 +33,7 @@ export default function RequestQuoteForm({ itemLabel, itemDescription, onClose }
                     customer_email: email || undefined,
                     customer_phone: phone || undefined,
                     notes: message || undefined,
+                    request_type: 'equipment',
                     items: [{
                         part_number: itemLabel,
                         description: itemDescription || undefined,

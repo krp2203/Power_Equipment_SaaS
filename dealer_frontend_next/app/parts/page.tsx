@@ -118,6 +118,7 @@ export default function PartsPage() {
                     customer_email: customerEmail,
                     customer_phone: customerPhone,
                     notes,
+                    request_type: 'parts',
                     items: quoteLines.map(l => ({
                         part_id: l.part_id, part_number: l.part_number, description: l.description, quantity: l.quantity
                     })),
