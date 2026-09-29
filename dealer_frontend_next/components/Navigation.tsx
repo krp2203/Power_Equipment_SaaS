@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { DealerConfig, CatalogBrandSummary } from '@/lib/types';
 
@@ -27,7 +27,8 @@ const mobileStyles = `
       gap: 4px !important;
       font-size: 14px !important;
     }
-    .nav-items a {
+    .nav-items a,
+    .nav-items button {
       font-size: 14px !important;
       padding: 4px 8px !important;
     }
@@ -49,6 +50,10 @@ export default function Navigation({ config }: { config: DealerConfig }) {
   const phoneNumber = config.theme.contact_phone || '';
   const address = config.theme.contact_address || '';
   const [brands, setBrands] = useState<CatalogBrandSummary[]>([]);
+  // Click/tap-toggled rather than CSS :hover - hover has no reliable
+  // equivalent on touchscreens, which was why this didn't work on mobile.
+  const [isBrandsOpen, setIsBrandsOpen] = useState(false);
+  const brandsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch('/api/v1/manufacturer-catalog/brands')
@@ -56,6 +61,21 @@ export default function Navigation({ config }: { config: DealerConfig }) {
       .then(setBrands)
       .catch(() => setBrands([]));
   }, []);
+
+  useEffect(() => {
+    if (!isBrandsOpen) return;
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
+      if (brandsRef.current && !brandsRef.current.contains(e.target as Node)) {
+        setIsBrandsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
+  }, [isBrandsOpen]);
 
   // Create Google Maps URL from address
   const mapsUrl = address
@@ -163,6 +183,33 @@ export default function Navigation({ config }: { config: DealerConfig }) {
           >
             Home
           </Link>
+          {brands.length > 0 && (
+            <div className="relative" ref={brandsRef}>
+              <button
+                type="button"
+                onClick={() => setIsBrandsOpen(open => !open)}
+                className="text-2xl font-bold text-white hover:opacity-80 transition-opacity whitespace-nowrap cursor-pointer bg-transparent border-0 p-0"
+              >
+                Brands
+              </button>
+              {isBrandsOpen && (
+                <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 z-20">
+                  <div className="bg-white rounded-lg shadow-xl py-2 min-w-[180px]">
+                    {brands.map((b) => (
+                      <Link
+                        key={b.slug}
+                        href={`/brands/${b.slug}`}
+                        onClick={() => setIsBrandsOpen(false)}
+                        className="block px-4 py-2 text-base font-semibold text-gray-800 hover:bg-gray-100 whitespace-nowrap"
+                      >
+                        {b.name}
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           <Link
             href="/inventory"
             className="text-2xl font-bold text-white hover:opacity-80 transition-opacity whitespace-nowrap"
@@ -187,26 +234,6 @@ export default function Navigation({ config }: { config: DealerConfig }) {
           >
             Contact
           </Link>
-          {brands.length > 0 && (
-            <div className="relative group">
-              <span className="text-2xl font-bold text-white hover:opacity-80 transition-opacity whitespace-nowrap cursor-pointer">
-                Brands
-              </span>
-              <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 hidden group-hover:block z-20">
-                <div className="bg-white rounded-lg shadow-xl py-2 min-w-[180px]">
-                  {brands.map((b) => (
-                    <Link
-                      key={b.slug}
-                      href={`/brands/${b.slug}`}
-                      className="block px-4 py-2 text-base font-semibold text-gray-800 hover:bg-gray-100 whitespace-nowrap"
-                    >
-                      {b.name}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Right column - Contact links right-aligned */}
