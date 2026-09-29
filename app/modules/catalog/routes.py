@@ -8,7 +8,7 @@ from flask_login import login_required
 from . import catalog_bp
 from app.core.extensions import db
 from app.core.models import ManufacturerBrand, ManufacturerCatalogItem
-from app.core.uploads import save_image_upload, save_image_from_url, UploadError
+from app.core.uploads import save_image_upload, save_image_from_url, UploadError, MAX_SPREADSHEET_BYTES
 
 
 def _slugify(name):
@@ -225,6 +225,14 @@ def import_items(brand_id):
     file = request.files.get('spreadsheet')
     if not file or not file.filename:
         flash('Choose a .xlsx or .csv file first.', 'danger')
+        return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
+
+    file.stream.seek(0, os.SEEK_END)
+    size = file.stream.tell()
+    file.stream.seek(0)
+    if size > MAX_SPREADSHEET_BYTES:
+        flash(f"File is too large ({size // (1024 * 1024)}MB). "
+              f"Max size is {MAX_SPREADSHEET_BYTES // (1024 * 1024)}MB.", 'danger')
         return redirect(url_for('catalog.manage_brand', brand_id=brand.id))
 
     ext = os.path.splitext(file.filename)[1].lower()
