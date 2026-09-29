@@ -169,19 +169,93 @@ def get_site_info():
 
     return jsonify(response)
 
-@api_bp.route('/v1/inventory', methods=['GET'])
-def get_inventory():
-    from app.core.models import Unit, UnitImage
-    
+def _catalog_brand_query(org_id, manufacturer=None):
+    from app.core.models import ManufacturerBrand
+    query = ManufacturerBrand.query.filter_by(organization_id=org_id)
+    if manufacturer:
+        query = query.filter(ManufacturerBrand.name == manufacturer)
+    return query
+
+
+def _serialize_catalog_item(item, brand):
+    return {
+        "id": f"catalog-{item.id}",
+        "name": f"{brand.name} {item.model_name}".strip(),
+        "manufacturer": brand.name,
+        "model": item.model_name,
+        "type": item.category,
+        "price": None,
+        "stock": None,
+        "status": "Special Order",
+        "image": item.image_url,
+        "description": item.description,
+        "condition": None,
+        "year": None,
+        "is_closeout": False,
+        "is_special_price": False,
+        "source": "catalog",
+    }
+
+
+@api_bp.route('/v1/manufacturer-catalog/brands', methods=['GET'])
+def get_catalog_brands():
+    from app.core.models import ManufacturerBrand, ManufacturerCatalogItem
+
     if not g.current_org:
         return jsonify([])
-        
+
+    brands = _catalog_brand_query(g.current_org.id).order_by(
+        ManufacturerBrand.display_order, ManufacturerBrand.name).all()
+
+    results = []
+    for brand in brands:
+        has_active_item = ManufacturerCatalogItem.query.filter_by(
+            brand_id=brand.id, is_active=True).first()
+        if has_active_item:
+            results.append({"name": brand.name, "slug": brand.slug, "logo_url": brand.logo_url})
+
+    return jsonify(results)
+
+
+@api_bp.route('/v1/manufacturer-catalog/<slug>', methods=['GET'])
+def get_catalog_brand(slug):
+    from app.core.models import ManufacturerBrand, ManufacturerCatalogItem
+
+    if not g.current_org:
+        return jsonify({'error': 'Tenant not found'}), 404
+
+    brand = ManufacturerBrand.query.filter_by(organization_id=g.current_org.id, slug=slug).first()
+    if not brand:
+        return jsonify({'error': 'Brand not found'}), 404
+
+    items = ManufacturerCatalogItem.query.filter_by(brand_id=brand.id, is_active=True).order_by(
+        ManufacturerCatalogItem.display_order, ManufacturerCatalogItem.id).all()
+
+    return jsonify({
+        "brand": {"name": brand.name, "logo_url": brand.logo_url, "intro_text": brand.intro_text},
+        "items": [{
+            "id": item.id,
+            "model_name": item.model_name,
+            "category": item.category,
+            "description": item.description,
+            "image_url": item.image_url,
+        } for item in items],
+    })
+
+
+@api_bp.route('/v1/inventory', methods=['GET'])
+def get_inventory():
+    from app.core.models import Unit, UnitImage, ManufacturerCatalogItem
+
+    if not g.current_org:
+        return jsonify([])
+
     # Filters
     manufacturer = request.args.get('manufacturer')
     unit_type = request.args.get('type')
     sort = request.args.get('sort', 'id')
     order = request.args.get('order', 'desc')
-    
+
     query = Unit.query.filter_by(organization_id=g.current_org.id, is_inventory=True, display_on_web=True)
     query = query.filter(Unit.status != 'Sold')  # don't advertise units that are already sold
 
@@ -189,7 +263,7 @@ def get_inventory():
         query = query.filter(Unit.manufacturer == manufacturer)
     if unit_type:
         query = query.filter(Unit.type == unit_type)
-        
+
     # Sorting
     if sort == 'price':
         query = query.order_by(Unit.price.asc() if order == 'asc' else Unit.price.desc())
@@ -201,15 +275,15 @@ def get_inventory():
         query = query.order_by(Unit.year.asc() if order == 'asc' else Unit.year.desc())
     else:
         query = query.order_by(Unit.id.desc())
-        
+
     units = query.all()
-    
+
     results = []
     for unit in units:
         # get primary image
         primary_img = UnitImage.query.filter_by(unit_id=unit.id, is_primary=True).first()
         image_url = primary_img.image_url if primary_img else None
-        
+
         # If no primary, grab first
         if not image_url and unit.images:
             image_url = unit.images[0].image_url
@@ -228,18 +302,33 @@ def get_inventory():
             "condition": unit.condition or "New",
             "year": unit.year,
             "is_closeout": bool(unit.is_closeout),
-            "is_special_price": bool(unit.is_special_price)
+            "is_special_price": bool(unit.is_special_price),
+            "source": "inventory",
         })
-        
+
+    # Special-order catalog models (not real stock - no price/serial, just a lineup
+    # entry a dealer can order) get appended so they're discoverable from the
+    # general listing too. The "type" filter matches them by category instead of
+    # Unit.type - it's the closest equivalent grouping they have.
+    catalog_entries = []
+    for brand in _catalog_brand_query(g.current_org.id, manufacturer).all():
+        item_query = ManufacturerCatalogItem.query.filter_by(brand_id=brand.id, is_active=True)
+        if unit_type:
+            item_query = item_query.filter(ManufacturerCatalogItem.category == unit_type)
+        for item in item_query.all():
+            catalog_entries.append(_serialize_catalog_item(item, brand))
+    catalog_entries.sort(key=lambda e: (e['manufacturer'] or '', e.get('type') or '', e['model'] or ''))
+    results.extend(catalog_entries)
+
     return jsonify(results)
 
 @api_bp.route('/v1/inventory/filters', methods=['GET'])
 def get_inventory_filters():
-    from app.core.models import Unit
-    
+    from app.core.models import Unit, ManufacturerBrand, ManufacturerCatalogItem
+
     if not g.current_org:
         return jsonify({"manufacturers": [], "types": []})
-        
+
     # Get unique manufacturers and types that are currently in inventory
     manufacturers = db.session.query(Unit.manufacturer).filter_by(
         organization_id=g.current_org.id,
@@ -252,10 +341,21 @@ def get_inventory_filters():
         is_inventory=True,
         display_on_web=True
     ).filter(Unit.status != 'Sold').distinct().all()
-    
+
+    catalog_manufacturers = db.session.query(ManufacturerBrand.name).filter_by(
+        organization_id=g.current_org.id).distinct().all()
+
+    # Catalog items' "category" is the closest equivalent to Unit.type - union
+    # them so the Type filter covers special-order entries too.
+    catalog_categories = db.session.query(ManufacturerCatalogItem.category).filter_by(
+        organization_id=g.current_org.id, is_active=True).distinct().all()
+
+    manufacturer_names = {m[0] for m in manufacturers if m[0]} | {m[0] for m in catalog_manufacturers if m[0]}
+    type_names = {t[0] for t in types if t[0]} | {c[0] for c in catalog_categories if c[0]}
+
     return jsonify({
-        "manufacturers": sorted([m[0] for m in manufacturers if m[0]]),
-        "types": sorted([t[0] for t in types if t[0]])
+        "manufacturers": sorted(manufacturer_names),
+        "types": sorted(type_names)
     })
 
 @api_bp.route('/v1/parts', methods=['GET'])

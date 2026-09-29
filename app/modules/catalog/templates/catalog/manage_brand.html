@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+
+{% block title %}{{ brand.name }} Catalog{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <p><a href="{{ url_for('catalog.index') }}"><i class="bi bi-arrow-left me-1"></i>All Brands</a></p>
+    <h1><i class="bi bi-badge-ad me-2"></i>{{ brand.name }}</h1>
+    <p class="text-muted">Public page: <a href="/brands/{{ brand.slug }}" target="_blank">/brands/{{ brand.slug }}</a></p>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">Brand Page Details</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('catalog.edit_brand', brand_id=brand.id) }}" enctype="multipart/form-data" class="row g-2 align-items-end">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div class="col-md-4">
+                    <label class="form-label small">Manufacturer Name</label>
+                    <input type="text" name="name" class="form-control" value="{{ brand.name }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">Logo {% if brand.logo_url %}(current shown below, upload to replace){% endif %}</label>
+                    <input type="file" name="logo" class="form-control" accept="image/*">
+                    {% if brand.logo_url %}
+                    <img src="{{ brand.logo_url }}" alt="{{ brand.name }}" class="mt-2" style="height: 32px; object-fit: contain;">
+                    {% endif %}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Intro Text</label>
+                    <input type="text" name="intro_text" class="form-control" value="{{ brand.intro_text or '' }}">
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary w-100">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">Add a Model</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('catalog.add_item', brand_id=brand.id) }}" enctype="multipart/form-data" class="row g-2 align-items-end">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <div class="col-md-2">
+                    <label class="form-label small">Model Name</label>
+                    <input type="text" name="model_name" class="form-control" placeholder="e.g. Turf Tiger III" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Category</label>
+                    <input type="text" name="category" class="form-control" list="category-options" placeholder="e.g. Zero-Turn Mowers">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small">Description</label>
+                    <input type="text" name="description" class="form-control">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Photo</label>
+                    <input type="file" name="photo" class="form-control" accept="image/*">
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-primary w-100">Add</button>
+                </div>
+            </form>
+            <datalist id="category-options">
+                {% for cat in categories %}
+                <option value="{{ cat }}">
+                {% endfor %}
+            </datalist>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light">
+                    <tr>
+                        <th>Photo</th>
+                        <th>Model / Category</th>
+                        <th>Description</th>
+                        <th>Active</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for category, group in grouped_items %}
+                    <tr class="table-light">
+                        <td colspan="5" class="fw-bold small text-uppercase text-muted">{{ category }}</td>
+                    </tr>
+                    {% for item in group %}
+                    <tr>
+                        <td style="width: 70px;">
+                            {% if item.image_url %}
+                            <img src="{{ item.image_url }}" alt="{{ item.model_name }}" style="height: 44px; width: 60px; object-fit: cover; border-radius: 4px;">
+                            {% endif %}
+                        </td>
+                        <td colspan="4" class="p-2">
+                            <form method="POST" action="{{ url_for('catalog.edit_item', brand_id=brand.id, item_id=item.id) }}"
+                                enctype="multipart/form-data" class="row g-2 align-items-center">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <div class="col-md-2">
+                                    <input type="text" name="model_name" value="{{ item.model_name }}" class="form-control form-control-sm" required>
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="text" name="category" value="{{ item.category or '' }}" class="form-control form-control-sm" list="category-options">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" name="description" value="{{ item.description or '' }}" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="file" name="photo" class="form-control form-control-sm" accept="image/*">
+                                </div>
+                                <div class="col-md-1 form-check">
+                                    <input type="checkbox" name="is_active" class="form-check-input" {% if item.is_active %}checked{% endif %}>
+                                    <label class="form-check-label small">Active</label>
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Save</button>
+                                    <button type="submit" formaction="{{ url_for('catalog.delete_item', brand_id=brand.id, item_id=item.id) }}"
+                                        class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('Remove this model?');">Delete</button>
+                                </div>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    {% else %}
+                    <tr><td colspan="5" class="text-center text-muted py-4">No models yet &mdash; add one above.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

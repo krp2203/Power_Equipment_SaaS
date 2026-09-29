@@ -193,6 +193,9 @@ def create_app(config_name=None):
     from app.modules.inventory import inventory_bp
     app.register_blueprint(inventory_bp, url_prefix='/admin/inventory')
 
+    from app.modules.catalog import catalog_bp
+    app.register_blueprint(catalog_bp)
+
     from app.modules.service_tickets import service_tickets_bp
     app.register_blueprint(service_tickets_bp, url_prefix='/admin/service-tickets')
 

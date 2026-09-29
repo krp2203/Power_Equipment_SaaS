@@ -45,10 +45,10 @@ export interface DealerConfig {
 }
 
 export interface InventoryItem {
-    id: number;
+    id: number | string;
     name: string;
-    price: number;
-    stock: number;
+    price: number | null;
+    stock: number | null;
     status: string;
     image?: string;
     description?: string;
@@ -61,6 +61,32 @@ export interface InventoryItem {
     type?: string;
     is_closeout?: boolean;
     is_special_price?: boolean;
+    // Present on catalog (special-order, not real stock) entries mixed into
+    // /api/v1/inventory - real Unit rows come back with source: "inventory".
+    source?: 'inventory' | 'catalog';
+}
+
+export interface CatalogBrandSummary {
+    name: string;
+    slug: string;
+    logo_url?: string | null;
+}
+
+export interface CatalogItem {
+    id: number;
+    model_name: string;
+    category?: string | null;
+    description?: string | null;
+    image_url?: string | null;
+}
+
+export interface CatalogBrandDetail {
+    brand: {
+        name: string;
+        logo_url?: string | null;
+        intro_text?: string | null;
+    };
+    items: CatalogItem[];
 }
 
 export interface PartItem {
