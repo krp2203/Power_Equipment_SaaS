@@ -78,11 +78,21 @@ def add_brand():
 @catalog_bp.route('/admin/manufacturer-catalog/<int:brand_id>', methods=['GET'])
 @login_required
 def manage_brand(brand_id):
+    from app.core.models import Unit
     org = g.current_org
     brand = ManufacturerBrand.query.filter_by(id=brand_id, organization_id=org.id).first_or_404()
     items = ManufacturerCatalogItem.query.filter_by(brand_id=brand.id).order_by(
         ManufacturerCatalogItem.display_order, ManufacturerCatalogItem.id).all()
-    categories = sorted({item.category for item in items if item.category})
+
+    # Suggest existing catalog categories AND real inventory's Unit.type values,
+    # so a dealer typing "Stand-On Mowers" sees that "Stand On Mowers" already
+    # exists elsewhere and can reuse the exact spelling instead of creating a
+    # near-duplicate that won't merge in the /inventory filter.
+    existing_categories = {item.category for item in
+        ManufacturerCatalogItem.query.filter_by(organization_id=org.id).all() if item.category}
+    existing_unit_types = {row[0] for row in
+        db.session.query(Unit.type).filter_by(organization_id=org.id).distinct().all() if row[0]}
+    categories = sorted(existing_categories | existing_unit_types)
 
     grouped = {}
     for item in items:
