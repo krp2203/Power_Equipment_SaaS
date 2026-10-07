@@ -33,14 +33,6 @@ class OrganizationSettingsForm(FlaskForm):
     brand_logo_7 = FileField('Brand Logo 7', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
     brand_logo_8 = FileField('Brand Logo 8', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
 
-    # Features Customization
-    feat_inventory_title = StringField('Inventory Section Title')
-    feat_inventory_text = TextAreaField('Inventory Section Description')
-    feat_parts_title = StringField('Parts Section Title')
-    feat_parts_text = TextAreaField('Parts Section Description')
-    feat_service_title = StringField('Service Section Title')
-    feat_service_text = TextAreaField('Service Section Description')
-
     # Contact Customization
     contact_phone = StringField('Contact Phone')
     contact_email = StringField('Contact Email')
