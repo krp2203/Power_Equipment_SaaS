@@ -74,14 +74,6 @@ def organization():
         form.hero_title.data = theme.get('hero_title', f"Welcome to {org.name}")
         form.hero_tagline.data = theme.get('hero_tagline', "Your Premium Destination for Power Equipment, Parts, and Service.")
 
-        # Features
-        form.feat_inventory_title.data = theme.get('feat_inventory_title', "Huge Selection")
-        form.feat_inventory_text.data = theme.get('feat_inventory_text', "Browse our wide range of mowers, chainsaws, and blowers from top brands.")
-        form.feat_parts_title.data = theme.get('feat_parts_title', "Genuine Parts")
-        form.feat_parts_text.data = theme.get('feat_parts_text', "Find the exact part you need with our detailed diagrams.")
-        form.feat_service_title.data = theme.get('feat_service_title', "Expert Service")
-        form.feat_service_text.data = theme.get('feat_service_text', "Our certified technicians are ready to keep your equipment running like new.")
-        
         # Contact
         form.contact_phone.data = theme.get('contact_phone', "(555) 123-4567")
         form.contact_email.data = theme.get('contact_email', "sales@example.com")
@@ -156,12 +148,6 @@ def organization():
         # Save Text Customizations
         new_theme['hero_title'] = form.hero_title.data
         new_theme['hero_tagline'] = form.hero_tagline.data
-        new_theme['feat_inventory_title'] = form.feat_inventory_title.data
-        new_theme['feat_inventory_text'] = form.feat_inventory_text.data
-        new_theme['feat_parts_title'] = form.feat_parts_title.data
-        new_theme['feat_parts_text'] = form.feat_parts_text.data
-        new_theme['feat_service_title'] = form.feat_service_title.data
-        new_theme['feat_service_text'] = form.feat_service_text.data
         new_theme['contact_phone'] = form.contact_phone.data
         new_theme['contact_email'] = form.contact_email.data
         new_theme['contact_address'] = form.contact_address.data

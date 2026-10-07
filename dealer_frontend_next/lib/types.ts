@@ -15,14 +15,6 @@ export interface DealerConfig {
         hero_title?: string;
         hero_tagline?: string;
 
-        // Features
-        feat_inventory_title?: string;
-        feat_inventory_text?: string;
-        feat_parts_title?: string;
-        feat_parts_text?: string;
-        feat_service_title?: string;
-        feat_service_text?: string;
-
         // Contact
         contact_phone?: string;
         contact_email?: string;
