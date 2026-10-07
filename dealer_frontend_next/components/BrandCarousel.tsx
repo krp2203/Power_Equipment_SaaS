@@ -46,10 +46,6 @@ export default function BrandCarousel({ logos, logoUrls }: BrandCarouselProps) {
 
     return (
         <section className="py-8 bg-white overflow-hidden border-t border-gray-100">
-            <div className="container mx-auto px-4 mb-6 text-center">
-                <h3 className="text-xl font-semibold text-gray-400 uppercase tracking-widest">Our Brands</h3>
-            </div>
-
             <div className="relative w-full overflow-hidden">
                 {/* Gradient Masks */}
                 <div className="absolute top-0 left-0 w-32 h-full bg-gradient-to-r from-white to-transparent z-10"></div>
