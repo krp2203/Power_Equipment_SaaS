@@ -74,7 +74,7 @@ export default function AdvertisementCarousel({
       {/* Advertisement Carousel - Constrained Width with Border */}
       <div className="w-full bg-white pb-6 pt-2">
         <style>{mobileStyles}</style>
-        <div className="carousel-grid w-full px-4" style={{ display: 'grid', gridTemplateColumns: '1fr 5fr 1fr', alignItems: 'center', gap: '16px' }}>
+        <div className="carousel-grid w-full px-4" style={{ display: 'grid', gridTemplateColumns: '1fr 12fr 1fr', alignItems: 'center', gap: '16px' }}>
           {/* Spacer Left */}
           <div className="hidden md:block"></div>
 
@@ -103,7 +103,7 @@ export default function AdvertisementCarousel({
                   <video
                     src={currentAd.image}
                     poster={currentAd.thumbnail}
-                    className="carousel-video h-80 w-auto object-cover hover:opacity-90 transition-opacity"
+                    className="carousel-video h-80 w-full object-cover hover:opacity-90 transition-opacity"
                     controls={false}
                     preload="none"
                   />
@@ -111,7 +111,7 @@ export default function AdvertisementCarousel({
                   <img
                     src={currentAd.thumbnail || currentAd.image}
                     alt={currentAd.title}
-                    className="carousel-image h-80 w-auto object-cover hover:opacity-90 transition-opacity"
+                    className="carousel-image h-80 w-full object-cover hover:opacity-90 transition-opacity"
                   />
                 )}
               </button>
