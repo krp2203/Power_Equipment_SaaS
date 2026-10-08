@@ -59,8 +59,13 @@
 
                     <div class="mb-3">
                         <label class="form-label">{{ form.primary_image.label }}</label>
-                        {{ form.primary_image(class="form-control", id="primary-image-input") }}
-                        <div class="form-text">Tip: you can also paste an image directly (Ctrl+V / Cmd+V) instead of browsing for a file.</div>
+                        {{ form.primary_image(class="d-none", id="primary-image-input") }}
+                        <div id="image-drop-zone" class="border border-2 border-dashed rounded-3 text-center py-4 px-3" style="cursor: pointer;">
+                            <i class="bi bi-image fs-3 text-muted d-block mb-1"></i>
+                            <span id="image-drop-zone-text" class="text-muted">
+                                Click to browse for an image, or paste one (Ctrl+V / Cmd+V) anywhere on this page
+                            </span>
+                        </div>
                         <div id="pasted-image-preview" class="mt-2" style="display: none;">
                             <small class="text-muted">Pasted image:</small><br>
                             <img id="pasted-image-preview-img" class="img-thumbnail" style="height: 100px;">
@@ -151,14 +156,36 @@
             toggleSerialField();
         });
 
-        // Paste-to-upload for the primary image: lets a dealer paste a
-        // screenshot/copied image (Ctrl+V) straight in, instead of only
-        // being able to browse for a file. Scoped to only act when the
-        // clipboard actually contains image data, so it never interferes
-        // with normal text pasting elsewhere on the form.
+        // Primary image: browse-via-click-zone + paste-to-upload. The real
+        // <input type="file"> is hidden (d-none) because clicking it always
+        // pops the native OS file picker immediately - that made it
+        // impossible to tell where it was safe to paste instead, since the
+        // picker would hijack the click. The visible box triggers the
+        // hidden input on click (so browsing still works exactly as
+        // before) while paste listens on the whole document, so it works
+        // no matter what's focused - no special click-to-arm step needed.
         const imageInput = document.getElementById('primary-image-input');
+        const dropZone = document.getElementById('image-drop-zone');
+        const dropZoneText = document.getElementById('image-drop-zone-text');
         const previewWrap = document.getElementById('pasted-image-preview');
         const previewImg = document.getElementById('pasted-image-preview-img');
+
+        function showSelectedImage(file) {
+            if (dropZoneText) dropZoneText.textContent = `Selected: ${file.name || 'pasted image'}`;
+            if (previewWrap && previewImg) {
+                previewImg.src = URL.createObjectURL(file);
+                previewWrap.style.display = 'block';
+            }
+        }
+
+        if (dropZone && imageInput) {
+            dropZone.addEventListener('click', () => imageInput.click());
+            imageInput.addEventListener('change', () => {
+                if (imageInput.files && imageInput.files[0]) {
+                    showSelectedImage(imageInput.files[0]);
+                }
+            });
+        }
 
         document.addEventListener('paste', function (e) {
             if (!imageInput) return;
@@ -173,11 +200,7 @@
                     const dataTransfer = new DataTransfer();
                     dataTransfer.items.add(file);
                     imageInput.files = dataTransfer.files;
-
-                    if (previewWrap && previewImg) {
-                        previewImg.src = URL.createObjectURL(file);
-                        previewWrap.style.display = 'block';
-                    }
+                    showSelectedImage(file);
 
                     e.preventDefault();
                     break;
