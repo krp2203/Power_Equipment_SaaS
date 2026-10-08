@@ -189,9 +189,18 @@ def organization():
         flag_modified(org, "theme_config")
 
         db.session.commit()
-        
+
         flash("Settings updated successfully.", "success")
-        return redirect(url_for('settings.organization'))
+        # Redirect back to whichever tab was active (tracked via the
+        # active_tab hidden field), not always the default "Branding" tab -
+        # otherwise saving from Site Content (e.g. brand logo uploads)
+        # dumps you on a different tab with no easy way to confirm what
+        # actually saved.
+        allowed_tabs = {'branding', 'content', 'integrations', 'users'}
+        active_tab = request.form.get('active_tab', 'branding')
+        if active_tab not in allowed_tabs:
+            active_tab = 'branding'
+        return redirect(url_for('settings.organization') + f'#{active_tab}')
 
     return render_template('settings/organization.html', form=form, add_user_form=add_user_form, edit_user_form=edit_user_form, users=users)
 
