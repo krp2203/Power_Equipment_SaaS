@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { getDealerConfig } from '@/lib/api';
 import BrandCarousel from '@/components/BrandCarousel';
 import AdvertisementCarousel from '@/components/AdvertisementCarousel';
+import FeaturedInventory from '@/components/FeaturedInventory';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,9 @@ export default async function Home() {
       {advertisements && advertisements.length > 0 && (
         <AdvertisementCarousel advertisements={advertisements} />
       )}
+
+      {/* Featured Inventory (closeout / special price / new arrivals) */}
+      <FeaturedInventory />
     </div>
   );
 }

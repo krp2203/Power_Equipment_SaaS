@@ -245,6 +245,66 @@ def get_catalog_brand(slug):
     })
 
 
+@api_bp.route('/v1/inventory/highlights', methods=['GET'])
+def get_inventory_highlights():
+    """
+    Powers the homepage's "Featured Inventory" section: units that are
+    closeout, special-priced, or added in the last 30 days (Unit.created_at
+    is nullable - existing units predating that column never qualify as new
+    arrivals, which is correct since we don't actually know when they were
+    added). Closeout/special-price items sort first since they're
+    time-sensitive, newest arrivals fill the rest, capped at 6.
+    """
+    from app.core.models import Unit, UnitImage
+    from datetime import datetime, timedelta
+
+    if not g.current_org:
+        return jsonify([])
+
+    cutoff = datetime.utcnow() - timedelta(days=30)
+
+    query = Unit.query.filter_by(
+        organization_id=g.current_org.id, is_inventory=True, display_on_web=True
+    ).filter(Unit.status != 'Sold').filter(
+        db.or_(Unit.is_closeout.is_(True), Unit.is_special_price.is_(True), Unit.created_at >= cutoff)
+    )
+    # Pull a bit more than needed so the deals-first/newest-first priority
+    # sort (done in Python below, to avoid a DB-specific CASE expression)
+    # has enough candidates to pick the right 6 from.
+    candidates = query.order_by(Unit.created_at.desc()).limit(30).all()
+
+    def sort_key(unit):
+        is_deal = unit.is_closeout or unit.is_special_price
+        return (0 if is_deal else 1, -(unit.created_at.timestamp() if unit.created_at else 0))
+
+    units = sorted(candidates, key=sort_key)[:6]
+
+    results = []
+    for unit in units:
+        primary_img = UnitImage.query.filter_by(unit_id=unit.id, is_primary=True).first()
+        image_url = primary_img.image_url if primary_img else (unit.images[0].image_url if unit.images else None)
+
+        reasons = []
+        if unit.is_closeout:
+            reasons.append('closeout')
+        if unit.is_special_price:
+            reasons.append('special_price')
+        if unit.created_at and unit.created_at >= cutoff:
+            reasons.append('new_arrival')
+
+        results.append({
+            "id": unit.id,
+            "name": f"{unit.manufacturer or ''} {unit.model_number or ''}".strip(),
+            "manufacturer": unit.manufacturer,
+            "price": float(unit.price) if unit.price else 0.0,
+            "image": image_url,
+            "condition": unit.condition or "New",
+            "reasons": reasons,
+        })
+
+    return jsonify(results)
+
+
 @api_bp.route('/v1/inventory', methods=['GET'])
 def get_inventory():
     from app.core.models import Unit, UnitImage, ManufacturerCatalogItem
