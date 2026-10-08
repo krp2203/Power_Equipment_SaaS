@@ -103,7 +103,7 @@ export default function AdvertisementCarousel({
                   <video
                     src={currentAd.image}
                     poster={currentAd.thumbnail}
-                    className="carousel-video h-80 w-full object-cover hover:opacity-90 transition-opacity"
+                    className="carousel-video h-80 w-full object-contain hover:opacity-90 transition-opacity"
                     controls={false}
                     preload="none"
                   />
@@ -111,7 +111,7 @@ export default function AdvertisementCarousel({
                   <img
                     src={currentAd.thumbnail || currentAd.image}
                     alt={currentAd.title}
-                    className="carousel-image h-80 w-full object-cover hover:opacity-90 transition-opacity"
+                    className="carousel-image h-80 w-full object-contain hover:opacity-90 transition-opacity"
                   />
                 )}
               </button>
