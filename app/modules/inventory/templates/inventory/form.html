@@ -59,7 +59,12 @@
 
                     <div class="mb-3">
                         <label class="form-label">{{ form.primary_image.label }}</label>
-                        {{ form.primary_image(class="form-control") }}
+                        {{ form.primary_image(class="form-control", id="primary-image-input") }}
+                        <div class="form-text">Tip: you can also paste an image directly (Ctrl+V / Cmd+V) instead of browsing for a file.</div>
+                        <div id="pasted-image-preview" class="mt-2" style="display: none;">
+                            <small class="text-muted">Pasted image:</small><br>
+                            <img id="pasted-image-preview-img" class="img-thumbnail" style="height: 100px;">
+                        </div>
                         {% if unit and unit.images %}
                         <div class="mt-2">
                             <small class="text-muted">Current Primary Image:</small><br>
@@ -144,6 +149,40 @@
         conditionSelect.addEventListener('change', function () {
             console.log("Condition changed to:", this.value);
             toggleSerialField();
+        });
+
+        // Paste-to-upload for the primary image: lets a dealer paste a
+        // screenshot/copied image (Ctrl+V) straight in, instead of only
+        // being able to browse for a file. Scoped to only act when the
+        // clipboard actually contains image data, so it never interferes
+        // with normal text pasting elsewhere on the form.
+        const imageInput = document.getElementById('primary-image-input');
+        const previewWrap = document.getElementById('pasted-image-preview');
+        const previewImg = document.getElementById('pasted-image-preview-img');
+
+        document.addEventListener('paste', function (e) {
+            if (!imageInput) return;
+            const items = (e.clipboardData || window.clipboardData || {}).items;
+            if (!items) return;
+
+            for (const item of items) {
+                if (item.type && item.type.indexOf('image') === 0) {
+                    const file = item.getAsFile();
+                    if (!file) continue;
+
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    imageInput.files = dataTransfer.files;
+
+                    if (previewWrap && previewImg) {
+                        previewImg.src = URL.createObjectURL(file);
+                        previewWrap.style.display = 'block';
+                    }
+
+                    e.preventDefault();
+                    break;
+                }
+            }
         });
     });
 </script>
