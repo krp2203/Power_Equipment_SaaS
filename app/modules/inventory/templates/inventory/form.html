@@ -60,11 +60,14 @@
                     <div class="mb-3">
                         <label class="form-label">{{ form.primary_image.label }}</label>
                         {{ form.primary_image(class="d-none", id="primary-image-input") }}
-                        <div id="image-drop-zone" class="border border-2 border-dashed rounded-3 text-center py-4 px-3" style="cursor: pointer;">
+                        <div id="image-drop-zone" tabindex="0" class="border border-2 border-dashed rounded-3 text-center py-4 px-3" style="cursor: text; outline: none;">
                             <i class="bi bi-image fs-3 text-muted d-block mb-1"></i>
-                            <span id="image-drop-zone-text" class="text-muted">
-                                Click to browse for an image, or paste one (Ctrl+V / Cmd+V) anywhere on this page
+                            <span id="image-drop-zone-text" class="text-muted d-block mb-2">
+                                Click here, then paste an image (Ctrl+V / Cmd+V)
                             </span>
+                            <button type="button" id="browse-image-btn" class="btn btn-sm btn-outline-secondary">
+                                Or browse for a file&hellip;
+                            </button>
                         </div>
                         <div id="pasted-image-preview" class="mt-2" style="display: none;">
                             <small class="text-muted">Pasted image:</small><br>
@@ -158,15 +161,19 @@
 
         // Primary image: browse-via-click-zone + paste-to-upload. The real
         // <input type="file"> is hidden (d-none) because clicking it always
-        // pops the native OS file picker immediately - that made it
-        // impossible to tell where it was safe to paste instead, since the
-        // picker would hijack the click. The visible box triggers the
-        // hidden input on click (so browsing still works exactly as
-        // before) while paste listens on the whole document, so it works
-        // no matter what's focused - no special click-to-arm step needed.
+        // pops the native OS file picker immediately - clicking the zone
+        // used to do the same (triggering the hidden input), which meant
+        // there was never anywhere safe to click first and paste after.
+        // Now the zone itself is just a focusable (tabindex) click target
+        // that does nothing but focus + show it's "armed" - only the
+        // explicit "Browse..." button opens the file picker. Paste listens
+        // on the whole document regardless of focus, so clicking the zone
+        // isn't strictly required, but it gives a confident, visible place
+        // to click first.
         const imageInput = document.getElementById('primary-image-input');
         const dropZone = document.getElementById('image-drop-zone');
         const dropZoneText = document.getElementById('image-drop-zone-text');
+        const browseBtn = document.getElementById('browse-image-btn');
         const previewWrap = document.getElementById('pasted-image-preview');
         const previewImg = document.getElementById('pasted-image-preview-img');
 
@@ -178,8 +185,22 @@
             }
         }
 
-        if (dropZone && imageInput) {
-            dropZone.addEventListener('click', () => imageInput.click());
+        if (dropZone) {
+            dropZone.addEventListener('focus', () => {
+                dropZone.style.borderColor = 'var(--bs-primary, #0d6efd)';
+                dropZone.style.backgroundColor = 'rgba(13, 110, 253, 0.05)';
+            });
+            dropZone.addEventListener('blur', () => {
+                dropZone.style.borderColor = '';
+                dropZone.style.backgroundColor = '';
+            });
+        }
+
+        if (browseBtn && imageInput) {
+            browseBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                imageInput.click();
+            });
             imageInput.addEventListener('change', () => {
                 if (imageInput.files && imageInput.files[0]) {
                     showSelectedImage(imageInput.files[0]);
