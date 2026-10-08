@@ -27,13 +27,17 @@ export default function FeaturedInventory() {
         <section className="py-8 bg-gray-50 border-t border-gray-100">
             <div className="container mx-auto px-4">
                 <h3 className="text-xl font-semibold text-gray-700 mb-6 text-center">Featured Inventory</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                {/* flex + justify-center (not a fixed grid) so a row with fewer
+                    than the max per row - e.g. a dealer with only 3 qualifying
+                    units - centers as a group instead of left-aligning with
+                    empty space trailing on the right. */}
+                <div className="flex flex-wrap justify-center gap-4">
                     {items.map(item => {
                         const badge = item.reasons[0] ? REASON_BADGES[item.reasons[0]] : null;
                         return (
                             <div
                                 key={item.id}
-                                className="bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col"
+                                className="w-[calc((100%-1rem)/2)] sm:w-[calc((100%-2rem)/3)] lg:w-[calc((100%-5rem)/6)] bg-white border border-gray-100 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow flex flex-col"
                             >
                                 <div className="relative aspect-[4/3] bg-gray-50 border-b overflow-hidden">
                                     {item.image ? (
