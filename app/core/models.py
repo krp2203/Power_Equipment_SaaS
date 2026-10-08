@@ -182,6 +182,11 @@ class Unit(db.Model):
     status = db.Column(db.String(50), default='Available') # Available, Sold, Pending
     description = db.Column(db.Text)
     is_inventory = db.Column(db.Boolean, default=False)
+    # Nullable on purpose: existing units predate this column and have no
+    # real creation date to backfill, so NULL correctly means "don't treat
+    # this as a new arrival" rather than guessing - only units created going
+    # forward get a real value.
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     __table_args__ = (
         db.Index('ix_unit_org_customer', 'organization_id', 'customer_id'),

@@ -4,8 +4,10 @@ import { useState } from 'react';
 
 interface RequestQuoteFormProps {
     // What's being asked about - sent as a single free-text line item, same
-    // shape the Parts page cart already posts to /api/v1/quote-request (no
-    // part_id, since this isn't a real PartInventory/Unit row).
+    // shape the Parts page cart already posts to /api/v1/quote-request. No
+    // part_id/unit_id is sent even when the item is a real Unit (e.g. from
+    // FeaturedInventory) - the backend only needs a label to notify the
+    // dealer with, not a live reference back to the record.
     itemLabel: string;
     itemDescription?: string | null;
     onClose: () => void;

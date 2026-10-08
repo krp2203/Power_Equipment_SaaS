@@ -103,3 +103,13 @@ export interface Advertisement {
     link_url?: string;
     media_type?: 'image' | 'video';
 }
+
+export interface InventoryHighlight {
+    id: number;
+    name: string;
+    manufacturer?: string;
+    price: number;
+    image?: string;
+    condition?: string;
+    reasons: ('closeout' | 'special_price' | 'new_arrival')[];
+}
