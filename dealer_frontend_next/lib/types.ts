@@ -15,6 +15,9 @@ export interface DealerConfig {
         hero_title?: string;
         hero_tagline?: string;
 
+        // Footer
+        footer_tagline?: string;
+
         // Contact
         contact_phone?: string;
         contact_email?: string;

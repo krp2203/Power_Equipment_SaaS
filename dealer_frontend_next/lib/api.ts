@@ -68,6 +68,9 @@ export async function getDealerConfig(): Promise<DealerConfig> {
                 hero_title: data.theme?.heroTitle,
                 hero_tagline: data.theme?.heroTagline,
 
+                // Footer
+                footer_tagline: data.theme?.footerTagline,
+
                 // Contact (API returns camelCase)
                 contact_phone: data.theme?.contactPhone,
                 contact_email: data.theme?.contactEmail,

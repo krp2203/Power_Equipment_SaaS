@@ -73,6 +73,7 @@ def organization():
         # Hero
         form.hero_title.data = theme.get('hero_title', f"Welcome to {org.name}")
         form.hero_tagline.data = theme.get('hero_tagline', "Your Premium Destination for Power Equipment, Parts, and Service.")
+        form.footer_tagline.data = theme.get('footer_tagline', "Your trusted power equipment dealer.")
 
         # Contact
         form.contact_phone.data = theme.get('contact_phone', "(555) 123-4567")
@@ -148,6 +149,7 @@ def organization():
         # Save Text Customizations
         new_theme['hero_title'] = form.hero_title.data
         new_theme['hero_tagline'] = form.hero_tagline.data
+        new_theme['footer_tagline'] = form.footer_tagline.data
         new_theme['contact_phone'] = form.contact_phone.data
         new_theme['contact_email'] = form.contact_email.data
         new_theme['contact_address'] = form.contact_address.data
