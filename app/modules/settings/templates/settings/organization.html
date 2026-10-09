@@ -174,12 +174,12 @@
                                                     </div>
 
                                                     <!-- Action Buttons -->
-                                                    <div class="btn-group btn-group-sm w-100" role="group">
+                                                    <div class="btn-group btn-group-sm w-100" role="group" id="actionBtnGroup-{{ i }}">
                                                         <button type="button" class="btn btn-outline-primary" onclick="document.getElementById('fileInput-{{ i }}').click();">
                                                             <small>Choose File</small>
                                                         </button>
                                         {% if has_logo %}
-                                                        <button type="button" class="btn btn-outline-danger" onclick="clearLogo({{ i }});">
+                                                        <button type="button" class="btn btn-outline-danger" id="clearBtn-{{ i }}" onclick="clearLogo({{ i }});">
                                                             <small>Clear</small>
                                                         </button>
                                                         {% endif %}
@@ -712,6 +712,25 @@
                         if (preview) {
                             preview.src = data.image_url;
                         }
+
+                        // The "Clear" button only exists if the page was
+                        // server-rendered knowing this slot already had a
+                        // logo - a slot saved here for the first time
+                        // (e.g. a freshly revealed "Add Another Brand"
+                        // slot) never gets one without this, since the
+                        // page never reloads after an AJAX save.
+                        if (!document.getElementById(`clearBtn-${slotNumber}`)) {
+                            const btnGroup = document.getElementById(`actionBtnGroup-${slotNumber}`);
+                            if (btnGroup) {
+                                const clearBtn = document.createElement('button');
+                                clearBtn.type = 'button';
+                                clearBtn.className = 'btn btn-outline-danger';
+                                clearBtn.id = `clearBtn-${slotNumber}`;
+                                clearBtn.innerHTML = '<small>Clear</small>';
+                                clearBtn.onclick = () => clearLogo(slotNumber);
+                                btnGroup.appendChild(clearBtn);
+                            }
+                        }
                     }
                 } else {
                     if (statusEl) {
@@ -752,11 +771,12 @@
         dropZone.innerHTML = '';
         dropZone.appendChild(newText);
 
-        // Hide clear button
-        const buttons = document.querySelectorAll(`button[onclick="clearLogo(${slotNumber})"]`);
-        buttons.forEach(btn => {
-            if (btn) btn.style.display = 'none';
-        });
+        // Hide clear button - by id rather than an onclick-attribute
+        // selector, since a dynamically-added Clear button (see
+        // saveBrandSlot) sets its handler as a JS property, not a
+        // matching HTML attribute string.
+        const clearBtn = document.getElementById(`clearBtn-${slotNumber}`);
+        if (clearBtn) clearBtn.style.display = 'none';
     }
 </script>
 {% endblock %}
