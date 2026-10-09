@@ -1,7 +1,18 @@
-import { DealerConfig } from '@/lib/types';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { DealerConfig, CatalogBrandSummary } from '@/lib/types';
 
 export default function Footer({ config }: { config: DealerConfig }) {
     const primaryColor = config.theme.primaryColor || '#2563EB';
+    const [brands, setBrands] = useState<CatalogBrandSummary[]>([]);
+
+    useEffect(() => {
+        fetch('/api/v1/manufacturer-catalog/brands')
+            .then(res => res.json())
+            .then(setBrands)
+            .catch(() => setBrands([]));
+    }, []);
 
     return (
         <footer className="bg-gray-800 text-white mt-auto">
@@ -28,7 +39,13 @@ export default function Footer({ config }: { config: DealerConfig }) {
                         <h3 className="text-lg font-semibold mb-4 text-gray-300">Quick Links</h3>
                         <ul className="space-y-2 text-gray-400">
                             <li><a href="/inventory" className="hover:text-white">New Inventory</a></li>
+                            <li><a href="/parts" className="hover:text-white">Parts</a></li>
                             <li><a href="/service" className="hover:text-white">Service Department</a></li>
+                            {brands.map(b => (
+                                <li key={b.slug}>
+                                    <a href={`/brands/${b.slug}`} className="hover:text-white">{b.name}</a>
+                                </li>
+                            ))}
                             <li><hr className="border-gray-700 my-2" /></li>
                             <li><a href="/marketing/dashboard" target="_blank" rel="noopener noreferrer" className="hover:text-white text-xs opacity-50">Dealer Portal</a></li>
                         </ul>
