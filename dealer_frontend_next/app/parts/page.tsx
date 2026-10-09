@@ -145,7 +145,7 @@ export default function PartsPage() {
     };
 
     const contactPhone = config?.theme?.contact_phone || '';
-    const phoneLink = contactPhone ? `tel:${contactPhone.replace(/\D/g, '')}` : '/contact';
+    const phoneLink = contactPhone ? `tel:${contactPhone.replace(/\D/g, '')}` : '/#contact';
     const ctaLabel = contactPhone ? `Call for Pricing: ${contactPhone}` : 'Contact Us for Pricing';
     const totalQuoteQty = quoteLines.reduce((sum, l) => sum + l.quantity, 0);
 
