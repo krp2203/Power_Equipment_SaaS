@@ -1,4 +1,4 @@
-from flask import render_template, request, flash, redirect, url_for, g, current_app
+from flask import render_template, request, flash, redirect, url_for, g, current_app, jsonify
 from flask_login import login_required, current_user
 from werkzeug.security import generate_password_hash
 from werkzeug.utils import secure_filename
@@ -225,6 +225,54 @@ def organization():
         active_tab = submitted_tab if submitted_tab in {'branding', 'content', 'integrations', 'users'} else 'branding'
 
     return render_template('settings/organization.html', form=form, add_user_form=add_user_form, edit_user_form=edit_user_form, users=users, active_tab=active_tab)
+
+
+@settings_bp.route('/settings/organization/brand-logo/<int:slot>', methods=['POST'])
+@login_required
+def save_brand_logo(slot):
+    """
+    AJAX endpoint for the per-slot "Save" button on each brand carousel
+    card - updates just that one slot's logo/URL instead of requiring the
+    whole page-wide settings form to be submitted. Can't be a nested
+    <form> (that slot's card already sits inside #settingsForm), so this
+    is a fetch() call from the template's JS instead; returns JSON rather
+    than a redirect.
+    """
+    from app.core.uploads import save_image_upload, UploadError
+
+    org = g.current_org
+    if not org or not (1 <= slot <= 16):
+        return jsonify({'success': False, 'error': 'Invalid request.'}), 400
+
+    theme = dict(org.theme_config or {})
+    brand_logos = dict(theme.get('brand_logos', {}))
+    brand_logo_urls = dict(theme.get('brand_logo_urls', {}))
+
+    logo = request.files.get('logo')
+    if logo and logo.filename:
+        try:
+            brand_logos[str(slot)] = save_image_upload(logo, 'brands', org.id)
+        except UploadError as e:
+            return jsonify({'success': False, 'error': str(e)}), 400
+
+    url_value = (request.form.get('url') or '').strip()
+    if url_value:
+        brand_logo_urls[str(slot)] = url_value
+    elif str(slot) in brand_logo_urls:
+        del brand_logo_urls[str(slot)]
+
+    theme['brand_logos'] = brand_logos
+    theme['brand_logo_urls'] = brand_logo_urls
+    org.theme_config = theme
+    flag_modified(org, 'theme_config')
+    db.session.commit()
+
+    return jsonify({
+        'success': True,
+        'image_url': brand_logos.get(str(slot)),
+        'message': f'Brand logo {slot} saved.',
+    })
+
 
 @settings_bp.route('/settings/users/add', methods=['POST'])
 @login_required

@@ -184,6 +184,10 @@
                                                         </button>
                                                         {% endif %}
                                                     </div>
+                                                    <button type="button" class="btn btn-sm btn-success w-100 mt-1" id="saveSlotBtn-{{ i }}" onclick="saveBrandSlot({{ i }});">
+                                                        <small>Save</small>
+                                                    </button>
+                                                    <small class="d-block mt-1" id="saveSlotStatus-{{ i }}"></small>
                                                 </div>
                                             </div>
                                             {% endfor %}
@@ -556,7 +560,7 @@
     let focusedBrandSlot = null;
 
     function initBrandCarouselDragDrop() {
-        for (let i = 1; i <= 8; i++) {
+        for (let i = 1; i <= 16; i++) {
             const dropZone = document.querySelector(`.dropZone-${i}`);
             const fileInput = document.getElementById(`fileInput-${i}`);
 
@@ -670,6 +674,61 @@
             };
             reader.readAsDataURL(fileInput.files[0]);
         }
+    }
+
+    function saveBrandSlot(slotNumber) {
+        const fileInput = document.getElementById(`fileInput-${slotNumber}`);
+        const urlInput = document.getElementById(`logoUrl-${slotNumber}`);
+        const saveBtn = document.getElementById(`saveSlotBtn-${slotNumber}`);
+        const statusEl = document.getElementById(`saveSlotStatus-${slotNumber}`);
+
+        const formData = new FormData();
+        if (fileInput.files && fileInput.files[0]) {
+            formData.append('logo', fileInput.files[0]);
+        }
+        formData.append('url', urlInput ? urlInput.value : '');
+
+        saveBtn.disabled = true;
+        if (statusEl) {
+            statusEl.textContent = 'Saving...';
+            statusEl.className = 'd-block mt-1 text-muted';
+        }
+
+        fetch(`/settings/organization/brand-logo/${slotNumber}`, {
+            method: 'POST',
+            body: formData,
+        })
+            .then(res => res.json().then(data => ({ ok: res.ok, data })))
+            .then(({ ok, data }) => {
+                if (ok && data.success) {
+                    if (statusEl) {
+                        statusEl.textContent = 'Saved ✓';
+                        statusEl.className = 'd-block mt-1 text-success';
+                    }
+                    // Replace the local (unsaved) preview with the real,
+                    // persisted URL now that the server has confirmed it.
+                    if (data.image_url) {
+                        const preview = document.getElementById(`preview-${slotNumber}`);
+                        if (preview) {
+                            preview.src = data.image_url;
+                        }
+                    }
+                } else {
+                    if (statusEl) {
+                        statusEl.textContent = data.error || 'Save failed.';
+                        statusEl.className = 'd-block mt-1 text-danger';
+                    }
+                }
+            })
+            .catch(() => {
+                if (statusEl) {
+                    statusEl.textContent = 'Save failed - network error.';
+                    statusEl.className = 'd-block mt-1 text-danger';
+                }
+            })
+            .finally(() => {
+                saveBtn.disabled = false;
+            });
     }
 
     function clearLogo(slotNumber) {
