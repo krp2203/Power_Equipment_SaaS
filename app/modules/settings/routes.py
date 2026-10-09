@@ -202,7 +202,29 @@ def organization():
             active_tab = 'branding'
         return redirect(url_for('settings.organization') + f'#{active_tab}')
 
-    return render_template('settings/organization.html', form=form, add_user_form=add_user_form, edit_user_form=edit_user_form, users=users)
+    active_tab = None
+    if request.method == 'POST' and form.errors:
+        # validate_on_submit() failing (e.g. an unsupported file extension
+        # on one of the brand logo uploads) previously just silently
+        # re-rendered the form with nothing saved and no explanation -
+        # looked identical to "it saved some images and not others" from
+        # the user's side. Surface exactly what failed instead.
+        messages = []
+        for field_name, errors in form.errors.items():
+            field = getattr(form, field_name, None)
+            label = field.label.text if field is not None else field_name
+            for err in errors:
+                messages.append(f"{label}: {err}")
+        flash("Couldn't save - " + "; ".join(messages), "danger")
+
+        # This path re-renders directly rather than redirecting, so the
+        # usual "echo active_tab back as a URL hash" trick doesn't apply -
+        # pass it straight to the template instead so the same tab stays
+        # open instead of resetting to Branding on a failed save too.
+        submitted_tab = request.form.get('active_tab', 'branding')
+        active_tab = submitted_tab if submitted_tab in {'branding', 'content', 'integrations', 'users'} else 'branding'
+
+    return render_template('settings/organization.html', form=form, add_user_form=add_user_form, edit_user_form=edit_user_form, users=users, active_tab=active_tab)
 
 @settings_bp.route('/settings/users/add', methods=['POST'])
 @login_required
