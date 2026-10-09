@@ -32,6 +32,18 @@ class OrganizationSettingsForm(FlaskForm):
     brand_logo_6 = FileField('Brand Logo 6', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
     brand_logo_7 = FileField('Brand Logo 7', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
     brand_logo_8 = FileField('Brand Logo 8', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    # Slots 9-16 are hidden by default in the template and revealed one at a
+    # time via "Add Another Brand" - pre-declared here (rather than a
+    # genuinely unbounded add-any-number-of-slots model) so the existing
+    # fixed-field save/validate flow in routes.py needs no restructuring.
+    brand_logo_9 = FileField('Brand Logo 9', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_10 = FileField('Brand Logo 10', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_11 = FileField('Brand Logo 11', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_12 = FileField('Brand Logo 12', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_13 = FileField('Brand Logo 13', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_14 = FileField('Brand Logo 14', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_15 = FileField('Brand Logo 15', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_16 = FileField('Brand Logo 16', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
 
     # Contact Customization
     contact_phone = StringField('Contact Phone')
