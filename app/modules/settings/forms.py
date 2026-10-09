@@ -5,7 +5,7 @@ from flask_wtf.file import FileField, FileAllowed
 
 class OrganizationSettingsForm(FlaskForm):
     primary_color = StringField('Primary Theme Color', validators=[DataRequired()], description="Hex code (e.g. #DC2626)")
-    company_logo = FileField('Company Logo', validators=[FileAllowed(['jpg', 'png'], 'Images only!')])
+    company_logo = FileField('Company Logo', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
 
     slug = StringField('SaaS Subdomain Slug', description="Unique ID for your website URL (e.g. 'dealername').")
     custom_domain = StringField('Custom Domain', description="Optional: Use your own domain (e.g. 'bobsmowers.com'). Leave blank to use subdomain only.")
@@ -24,14 +24,14 @@ class OrganizationSettingsForm(FlaskForm):
     hero_tagline = StringField('Hero Tagline', description="Sub-headline below the title")
 
     # Brands Customization
-    brand_logo_1 = FileField('Brand Logo 1', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
-    brand_logo_2 = FileField('Brand Logo 2', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
-    brand_logo_3 = FileField('Brand Logo 3', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
-    brand_logo_4 = FileField('Brand Logo 4', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
-    brand_logo_5 = FileField('Brand Logo 5', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
-    brand_logo_6 = FileField('Brand Logo 6', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
-    brand_logo_7 = FileField('Brand Logo 7', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
-    brand_logo_8 = FileField('Brand Logo 8', validators=[FileAllowed(['jpg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_1 = FileField('Brand Logo 1', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_2 = FileField('Brand Logo 2', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_3 = FileField('Brand Logo 3', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_4 = FileField('Brand Logo 4', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_5 = FileField('Brand Logo 5', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_6 = FileField('Brand Logo 6', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_7 = FileField('Brand Logo 7', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    brand_logo_8 = FileField('Brand Logo 8', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
 
     # Contact Customization
     contact_phone = StringField('Contact Phone')

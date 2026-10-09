@@ -61,7 +61,7 @@
 
     <div class="row">
         <div class="col-lg-9">
-            <form method="POST" action="" enctype="multipart/form-data" id="settingsForm">
+            <form method="POST" action="" enctype="multipart/form-data" id="settingsForm" {% if active_tab %}data-active-tab="{{ active_tab }}"{% endif %}>
                 {{ form.hidden_tag() }}
                 <input type="hidden" name="active_tab" id="active-tab-input" value="branding">
 
@@ -151,14 +151,14 @@
                                                 <div class="border rounded p-3 text-center bg-white h-100 d-flex flex-column">
                                                     <h6 class="small font-weight-bold mb-2">Slot {{ i }}</h6>
 
-                                                    <!-- Logo Preview with Drag & Drop -->
-                                                    <div class="dropZone-{{ i }} border-2 border-dashed border-primary rounded p-3 mb-2 text-center cursor-pointer" style="background-color: #f8f9ff; min-height: 80px; display: flex; align-items: center; justify-content: center; flex-grow: 1;">
+                                                    <!-- Logo Preview with Drag & Drop + Click-to-focus-then-paste -->
+                                                    <div class="dropZone-{{ i }} border-2 border-dashed border-primary rounded p-3 mb-2 text-center" tabindex="0" data-slot="{{ i }}" style="background-color: #f8f9ff; min-height: 80px; display: flex; align-items: center; justify-content: center; flex-grow: 1; outline: none; cursor: text;">
                                                         {% if g.current_org.theme_config and
                                                         g.current_org.theme_config.get('brand_logos', {}).get(i|string) %}
                                                         <img id="preview-{{ i }}" src="{{ g.current_org.theme_config['brand_logos'][i|string] }}"
-                                                            class="img-fluid" style="max-height: 60px; cursor: pointer;" title="Click to change">
+                                                            class="img-fluid" style="max-height: 60px;" title="Click here, then paste (Ctrl+V) to replace">
                                                         {% else %}
-                                                        <small class="text-muted" id="dropText-{{ i }}">Drag image here or click</small>
+                                                        <small class="text-muted" id="dropText-{{ i }}">Drag an image here, or click then paste (Ctrl+V)</small>
                                                         {% endif %}
                                                     </div>
 
@@ -488,7 +488,13 @@
             });
         }
 
-        const hash = window.location.hash;
+        // On a failed-validation re-render (no redirect happens, so there's
+        // no URL hash to read), the server passes back which tab was active
+        // via this data attribute instead - fall back to it the same way a
+        // real hash would be used.
+        const settingsFormEl = document.getElementById('settingsForm');
+        const serverActiveTab = settingsFormEl ? settingsFormEl.getAttribute('data-active-tab') : null;
+        const hash = window.location.hash || (serverActiveTab ? `#${serverActiveTab}` : '');
         if (hash) {
             const triggerEl = document.querySelector(`a[href="${hash}"]`);
             if (triggerEl) {
@@ -518,6 +524,13 @@
         // Brand Carousel Drag-and-Drop
         initBrandCarouselDragDrop();
     });
+
+    // Tracks whichever slot's drop zone was last clicked/focused, so a
+    // document-wide paste knows which of the 8 slots to put the image in.
+    // Deliberately never reset on blur - paste should still go to the last
+    // slot you clicked even if focus technically moved (e.g. to address
+    // bar) right before Ctrl+V.
+    let focusedBrandSlot = null;
 
     function initBrandCarouselDragDrop() {
         for (let i = 1; i <= 8; i++) {
@@ -555,9 +568,18 @@
                 updateBrandPreview(i);
             }, false);
 
-            // Handle click
-            dropZone.addEventListener('click', () => {
-                fileInput.click();
+            // Click now only focuses the zone (shows an "armed" highlight)
+            // so there's a safe place to click before pasting - it no
+            // longer opens the file picker itself (the explicit "Choose
+            // File" button next to it still does that).
+            dropZone.addEventListener('focus', () => {
+                focusedBrandSlot = i;
+                dropZone.style.backgroundColor = '#e7f3ff';
+                dropZone.style.borderColor = '#0066cc';
+            });
+            dropZone.addEventListener('blur', () => {
+                dropZone.style.backgroundColor = '#f8f9ff';
+                dropZone.style.borderColor = '#007bff';
             });
 
             // Handle file selection via button
@@ -565,6 +587,30 @@
                 updateBrandPreview(i);
             });
         }
+
+        document.addEventListener('paste', function (e) {
+            if (!focusedBrandSlot) return;
+            const items = (e.clipboardData || window.clipboardData || {}).items;
+            if (!items) return;
+
+            for (const item of items) {
+                if (item.type && item.type.indexOf('image') === 0) {
+                    const file = item.getAsFile();
+                    if (!file) continue;
+
+                    const fileInput = document.getElementById(`fileInput-${focusedBrandSlot}`);
+                    if (!fileInput) return;
+
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    fileInput.files = dataTransfer.files;
+                    updateBrandPreview(focusedBrandSlot);
+
+                    e.preventDefault();
+                    break;
+                }
+            }
+        });
     }
 
     function preventDefaults(e) {
