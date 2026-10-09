@@ -20,7 +20,7 @@ export default function Footer({ config }: { config: DealerConfig }) {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
                     <div>
                         <h3 className="text-xl font-bold mb-4">{config.name}</h3>
-                        <p className="text-gray-400 mb-4">Your trusted power equipment dealer.</p>
+                        <p className="text-gray-400 mb-4">{config.theme.footer_tagline || 'Your trusted power equipment dealer.'}</p>
                         {config.modules.facebook && config.facebook_page_id && (
                             <a
                                 href={`https://facebook.com/${config.facebook_page_id}`}

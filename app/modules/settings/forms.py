@@ -22,6 +22,7 @@ class OrganizationSettingsForm(FlaskForm):
     # Hero Customization
     hero_title = StringField('Hero Title', description="Main headline on the homepage")
     hero_tagline = StringField('Hero Tagline', description="Sub-headline below the title")
+    footer_tagline = StringField('Footer Tagline', description="Short line shown under your name in the site footer")
 
     # Brands Customization
     brand_logo_1 = FileField('Brand Logo 1', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
