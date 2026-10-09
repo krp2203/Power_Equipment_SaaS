@@ -121,7 +121,7 @@ def organization():
         brand_logos = new_theme.get('brand_logos', {})
         brand_logo_urls = new_theme.get('brand_logo_urls', {})
 
-        for i in range(1, 9):
+        for i in range(1, 17):  # 16 slots - see forms.py for why that cap
             field_name = f'brand_logo_{i}'
             field = getattr(form, field_name)
             if field.data:
