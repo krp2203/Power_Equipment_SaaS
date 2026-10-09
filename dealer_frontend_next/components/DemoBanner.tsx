@@ -20,7 +20,7 @@ export default function DemoBanner() {
                     </div>
                     <div className="flex gap-3">
                         <Link
-                            href="/contact"
+                            href="/#contact"
                             className="bg-white text-blue-700 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-lg whitespace-nowrap"
                         >
                             Request Demo

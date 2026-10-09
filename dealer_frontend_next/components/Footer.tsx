@@ -33,9 +33,25 @@ export default function Footer({ config }: { config: DealerConfig }) {
                             <li><a href="/marketing/dashboard" target="_blank" rel="noopener noreferrer" className="hover:text-white text-xs opacity-50">Dealer Portal</a></li>
                         </ul>
                     </div>
-                    <div>
+                    <div id="contact">
                         <h3 className="text-lg font-semibold mb-4 text-gray-300">Contact</h3>
-                        <p className="text-gray-400">{config.theme.contact_address || 'Contact us for more information'}</p>
+                        <ul className="space-y-1 text-gray-400">
+                            {config.theme.contact_phone && (
+                                <li>
+                                    <a href={`tel:${config.theme.contact_phone.replace(/\D/g, '')}`} className="hover:text-white">
+                                        {config.theme.contact_phone}
+                                    </a>
+                                </li>
+                            )}
+                            {config.theme.contact_email && (
+                                <li>
+                                    <a href={`mailto:${config.theme.contact_email}`} className="hover:text-white">
+                                        {config.theme.contact_email}
+                                    </a>
+                                </li>
+                            )}
+                            <li className="whitespace-pre-wrap">{config.theme.contact_address || 'Contact us for more information'}</li>
+                        </ul>
                     </div>
                 </div>
                 <div className="border-t border-gray-700 mt-8 pt-4 text-center text-sm text-gray-500">
