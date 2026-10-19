@@ -83,6 +83,23 @@
         </div>
     </div>
 
+    <div class="row g-2 mb-3 align-items-center">
+        <div class="col-md-5">
+            <input type="text" id="rental-search-input" class="form-control" placeholder="Search by name...">
+        </div>
+        <div class="col-md-4">
+            <select id="rental-category-filter" class="form-select">
+                <option value="">All categories</option>
+                {% for cat in categories %}
+                <option value="{{ cat }}">{{ cat }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 text-md-end">
+            <span id="rental-filter-count" class="text-muted small"></span>
+        </div>
+    </div>
+
     <div class="card shadow-sm">
         <div class="card-body p-0">
             <table class="table table-hover mb-0 align-middle">
@@ -95,9 +112,9 @@
                         <th class="text-end">Actions</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="rental-table-body">
                     {% for item in items %}
-                    <tr id="rental-row-{{ item.id }}">
+                    <tr id="rental-row-{{ item.id }}" data-name="{{ item.name|lower }}" data-category="{{ item.category or '' }}">
                         <td>
                             <form method="POST" action="{{ url_for('rental.move_item', item_id=item.id, direction='up') }}" class="d-inline">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
@@ -202,6 +219,43 @@
 </div>
 
 <script>
+// Search + category filter: everything's already rendered server-side (this
+// list is small enough that there's no pagination), so filtering just
+// shows/hides table rows client-side rather than hitting a new endpoint.
+// "Fuzzy" here means every word typed must appear somewhere in the name,
+// in any order - not typo-tolerant - same approach as the public page's
+// search for consistency.
+(function () {
+    const searchInput = document.getElementById('rental-search-input');
+    const categorySelect = document.getElementById('rental-category-filter');
+    const countLabel = document.getElementById('rental-filter-count');
+    const rows = Array.from(document.querySelectorAll('#rental-table-body tr[id^="rental-row-"]'));
+    if (!searchInput || !categorySelect) return;
+
+    function applyFilter() {
+        const tokens = searchInput.value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+        const category = categorySelect.value;
+        let visible = 0;
+
+        rows.forEach(function (row) {
+            const name = row.dataset.name || '';
+            const rowCategory = row.dataset.category || '';
+            const matchesSearch = tokens.every(function (t) { return name.includes(t); });
+            const matchesCategory = !category || rowCategory === category;
+            const show = matchesSearch && matchesCategory;
+            row.style.display = show ? '' : 'none';
+            if (show) visible++;
+        });
+
+        countLabel.textContent = (searchInput.value || category)
+            ? `Showing ${visible} of ${rows.length}`
+            : '';
+    }
+
+    searchInput.addEventListener('input', applyFilter);
+    categorySelect.addEventListener('change', applyFilter);
+})();
+
 document.querySelectorAll('.rental-active-toggle').forEach(function (toggle) {
     toggle.addEventListener('change', function () {
         const itemId = toggle.dataset.rentalId;
