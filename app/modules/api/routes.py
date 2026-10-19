@@ -217,10 +217,14 @@ def get_rentals():
         "id": r.id,
         "name": r.name,
         "image_url": r.image_url,
+        "rate_hourly": float(r.rate_hourly) if r.rate_hourly is not None else None,
         "rate_4hr": float(r.rate_4hr) if r.rate_4hr is not None else None,
         "rate_8hr": float(r.rate_8hr) if r.rate_8hr is not None else None,
         "rate_24hr": float(r.rate_24hr) if r.rate_24hr is not None else None,
         "rate_weekly": float(r.rate_weekly) if r.rate_weekly is not None else None,
+        "deposit": float(r.deposit) if r.deposit is not None else None,
+        "minimum_rental_price": float(r.minimum_rental_price) if r.minimum_rental_price is not None else None,
+        "minimum_rental_hours": r.minimum_rental_hours,
     } for r in items])
 
 def _catalog_brand_query(org_id, manufacturer=None):

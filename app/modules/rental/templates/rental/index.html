@@ -18,42 +18,62 @@
             </a>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ url_for('rental.add_item') }}" enctype="multipart/form-data" class="row g-2 align-items-end">
+            <form method="POST" action="{{ url_for('rental.add_item') }}" enctype="multipart/form-data">
                 {{ form.hidden_tag() }}
-                <div class="col-md-3">
-                    {{ form.name.label(class="form-label small") }}
-                    {{ form.name(class="form-control") }}
-                </div>
-                <div class="col-md-1">
-                    {{ form.rate_4hr.label(class="form-label small") }}
-                    {{ form.rate_4hr(class="form-control") }}
-                </div>
-                <div class="col-md-1">
-                    {{ form.rate_8hr.label(class="form-label small") }}
-                    {{ form.rate_8hr(class="form-control") }}
-                </div>
-                <div class="col-md-1">
-                    {{ form.rate_24hr.label(class="form-label small") }}
-                    {{ form.rate_24hr(class="form-control") }}
-                </div>
-                <div class="col-md-1">
-                    {{ form.rate_weekly.label(class="form-label small") }}
-                    {{ form.rate_weekly(class="form-control") }}
-                </div>
-                <div class="col-md-3">
-                    {{ form.image.label(class="form-label small") }}
-                    {{ form.image(class="d-none", id="rental-image-input-create") }}
-                    <div class="rental-paste-zone border border-2 border-dashed rounded text-center py-1 px-2 small text-muted"
-                         tabindex="0" data-rental-key="create" style="cursor: text; outline: none;">
-                        Click, then paste (Ctrl+V)
+                <div class="row g-2 align-items-end mb-2">
+                    <div class="col-md-3">
+                        {{ form.name.label(class="form-label small") }}
+                        {{ form.name(class="form-control") }}
                     </div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-1 rental-browse-btn" data-rental-key="create">
-                        Browse&hellip;
-                    </button>
-                    <div id="rental-thumb-wrap-create" class="mt-1"></div>
+                    <div class="col-md-1">
+                        {{ form.rate_hourly.label(class="form-label small") }}
+                        {{ form.rate_hourly(class="form-control") }}
+                    </div>
+                    <div class="col-md-1">
+                        {{ form.rate_4hr.label(class="form-label small") }}
+                        {{ form.rate_4hr(class="form-control") }}
+                    </div>
+                    <div class="col-md-1">
+                        {{ form.rate_8hr.label(class="form-label small") }}
+                        {{ form.rate_8hr(class="form-control") }}
+                    </div>
+                    <div class="col-md-1">
+                        {{ form.rate_24hr.label(class="form-label small") }}
+                        {{ form.rate_24hr(class="form-control") }}
+                    </div>
+                    <div class="col-md-1">
+                        {{ form.rate_weekly.label(class="form-label small") }}
+                        {{ form.rate_weekly(class="form-control") }}
+                    </div>
+                    <div class="col-md-1">
+                        {{ form.deposit.label(class="form-label small") }}
+                        {{ form.deposit(class="form-control") }}
+                    </div>
+                    <div class="col-md-1">
+                        {{ form.minimum_rental_price.label(class="form-label small") }}
+                        {{ form.minimum_rental_price(class="form-control") }}
+                    </div>
+                    <div class="col-md-1">
+                        {{ form.minimum_rental_hours.label(class="form-label small") }}
+                        {{ form.minimum_rental_hours(class="form-control") }}
+                    </div>
                 </div>
-                <div class="col-md-2">
-                    {{ form.submit(class="btn btn-primary w-100") }}
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-10">
+                        {{ form.image.label(class="form-label small") }}
+                        {{ form.image(class="d-none", id="rental-image-input-create") }}
+                        <div class="rental-paste-zone border border-2 border-dashed rounded text-center py-1 px-2 small text-muted d-inline-block"
+                             tabindex="0" data-rental-key="create" style="cursor: text; outline: none; width: 300px;">
+                            Click, then paste (Ctrl+V)
+                        </div>
+                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1 rental-browse-btn" data-rental-key="create">
+                            Browse&hellip;
+                        </button>
+                        <div id="rental-thumb-wrap-create" class="mt-1"></div>
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.submit(class="btn btn-primary w-100") }}
+                    </div>
                 </div>
             </form>
         </div>
@@ -97,41 +117,57 @@
                         </td>
                         <td class="p-2">
                             <form method="POST" action="{{ url_for('rental.edit_item', item_id=item.id) }}"
-                                enctype="multipart/form-data" class="row g-2 align-items-center">
+                                enctype="multipart/form-data">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                                <div class="col-md-3">
-                                    <input type="text" name="name" value="{{ item.name }}" class="form-control form-control-sm">
-                                </div>
-                                <div class="col-md-1">
-                                    <input type="number" step="0.01" name="rate_4hr" value="{{ item.rate_4hr if item.rate_4hr is not none else '' }}" placeholder="4hr" class="form-control form-control-sm" title="4 Hour Rate">
-                                </div>
-                                <div class="col-md-1">
-                                    <input type="number" step="0.01" name="rate_8hr" value="{{ item.rate_8hr if item.rate_8hr is not none else '' }}" placeholder="8hr" class="form-control form-control-sm" title="8 Hour Rate">
-                                </div>
-                                <div class="col-md-1">
-                                    <input type="number" step="0.01" name="rate_24hr" value="{{ item.rate_24hr if item.rate_24hr is not none else '' }}" placeholder="24hr" class="form-control form-control-sm" title="24 Hour Rate">
-                                </div>
-                                <div class="col-md-1">
-                                    <input type="number" step="0.01" name="rate_weekly" value="{{ item.rate_weekly if item.rate_weekly is not none else '' }}" placeholder="week" class="form-control form-control-sm" title="Weekly Rate">
-                                </div>
-                                <div class="col-md-3">
-                                    <input type="file" name="image" accept="image/*" class="d-none" id="rental-image-input-{{ item.id }}">
-                                    <div class="rental-paste-zone border border-2 border-dashed rounded text-center py-1 px-2 small text-muted"
-                                         tabindex="0" data-rental-key="{{ item.id }}" style="cursor: text; outline: none;">
-                                        Click, then paste (Ctrl+V)
+                                <div class="row g-2 align-items-center mb-2">
+                                    <div class="col-md-3">
+                                        <input type="text" name="name" value="{{ item.name }}" class="form-control form-control-sm">
                                     </div>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-1 rental-browse-btn" data-rental-key="{{ item.id }}">
-                                        Browse&hellip;
-                                    </button>
-                                    {% if item.image_url %}
-                                    <div class="form-check mt-1">
-                                        <input type="checkbox" name="remove_image" class="form-check-input" id="remove-image-{{ item.id }}">
-                                        <label class="form-check-label small" for="remove-image-{{ item.id }}">Remove image</label>
+                                    <div class="col-md-1">
+                                        <input type="number" step="0.01" name="rate_hourly" value="{{ item.rate_hourly if item.rate_hourly is not none else '' }}" placeholder="hr" class="form-control form-control-sm" title="Hourly Rate">
                                     </div>
-                                    {% endif %}
+                                    <div class="col-md-1">
+                                        <input type="number" step="0.01" name="rate_4hr" value="{{ item.rate_4hr if item.rate_4hr is not none else '' }}" placeholder="4hr" class="form-control form-control-sm" title="4 Hour Rate">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <input type="number" step="0.01" name="rate_8hr" value="{{ item.rate_8hr if item.rate_8hr is not none else '' }}" placeholder="8hr" class="form-control form-control-sm" title="8 Hour Rate">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <input type="number" step="0.01" name="rate_24hr" value="{{ item.rate_24hr if item.rate_24hr is not none else '' }}" placeholder="24hr" class="form-control form-control-sm" title="24 Hour Rate">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <input type="number" step="0.01" name="rate_weekly" value="{{ item.rate_weekly if item.rate_weekly is not none else '' }}" placeholder="week" class="form-control form-control-sm" title="Weekly Rate">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <input type="number" step="0.01" name="deposit" value="{{ item.deposit if item.deposit is not none else '' }}" placeholder="deposit" class="form-control form-control-sm" title="Deposit">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <input type="number" step="0.01" name="minimum_rental_price" value="{{ item.minimum_rental_price if item.minimum_rental_price is not none else '' }}" placeholder="min $" class="form-control form-control-sm" title="Minimum Rental Price">
+                                    </div>
+                                    <div class="col-md-1">
+                                        <input type="number" step="1" name="minimum_rental_hours" value="{{ item.minimum_rental_hours if item.minimum_rental_hours is not none else '' }}" placeholder="min hrs" class="form-control form-control-sm" title="Minimum Rental Hours">
+                                    </div>
                                 </div>
-                                <div class="col-md-2">
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Save</button>
+                                <div class="row g-2 align-items-center">
+                                    <div class="col-md-10">
+                                        <input type="file" name="image" accept="image/*" class="d-none" id="rental-image-input-{{ item.id }}">
+                                        <div class="rental-paste-zone border border-2 border-dashed rounded text-center py-1 px-2 small text-muted d-inline-block"
+                                             tabindex="0" data-rental-key="{{ item.id }}" style="cursor: text; outline: none; width: 220px;">
+                                            Click, then paste (Ctrl+V)
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary mt-1 rental-browse-btn" data-rental-key="{{ item.id }}">
+                                            Browse&hellip;
+                                        </button>
+                                        {% if item.image_url %}
+                                        <div class="form-check d-inline-block ms-2">
+                                            <input type="checkbox" name="remove_image" class="form-check-input" id="remove-image-{{ item.id }}">
+                                            <label class="form-check-label small" for="remove-image-{{ item.id }}">Remove image</label>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-2">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Save</button>
+                                    </div>
                                 </div>
                             </form>
                         </td>

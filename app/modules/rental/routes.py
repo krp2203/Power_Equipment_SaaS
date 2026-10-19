@@ -47,10 +47,14 @@ def add_item():
         item = RentalItem(
             organization_id=org.id,
             name=form.name.data,
+            rate_hourly=form.rate_hourly.data,
             rate_4hr=form.rate_4hr.data,
             rate_8hr=form.rate_8hr.data,
             rate_24hr=form.rate_24hr.data,
             rate_weekly=form.rate_weekly.data,
+            deposit=form.deposit.data,
+            minimum_rental_price=form.minimum_rental_price.data,
+            minimum_rental_hours=form.minimum_rental_hours.data,
             sort_order=max_sort + 1,
         )
         if form.image.data:
@@ -77,10 +81,14 @@ def edit_item(item_id):
 
     if form.validate_on_submit():
         item.name = form.name.data
+        item.rate_hourly = form.rate_hourly.data
         item.rate_4hr = form.rate_4hr.data
         item.rate_8hr = form.rate_8hr.data
         item.rate_24hr = form.rate_24hr.data
         item.rate_weekly = form.rate_weekly.data
+        item.deposit = form.deposit.data
+        item.minimum_rental_price = form.minimum_rental_price.data
+        item.minimum_rental_hours = form.minimum_rental_hours.data
         if form.image.data:
             try:
                 item.image_url = save_image_upload(form.image.data, 'rentals', org.id)
@@ -244,10 +252,14 @@ def import_confirm():
         db.session.add(RentalItem(
             organization_id=org.id,
             name=row['name'],
+            rate_hourly=row['rate_hourly'],
             rate_4hr=row['rate_4hr'],
             rate_8hr=row['rate_8hr'],
             rate_24hr=row['rate_24hr'],
             rate_weekly=row['rate_weekly'],
+            deposit=row['deposit'],
+            minimum_rental_price=row['minimum_rental_price'],
+            minimum_rental_hours=row['minimum_rental_hours'],
             sort_order=max_sort,
             is_active=True,
         ))

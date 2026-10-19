@@ -123,11 +123,23 @@ export default function RentalCatalog({ initialConfig }: RentalCatalogProps) {
                             <div>
                                 <h3 className="text-lg font-semibold">{item.name}</h3>
                                 <div className="text-gray-600 mt-1 text-sm">
+                                    {formatRate('Hourly', item.rate_hourly)}
                                     {formatRate('4 Hr', item.rate_4hr)}
                                     {formatRate('8 Hr', item.rate_8hr)}
                                     {formatRate('24 Hr', item.rate_24hr)}
                                     {formatRate('Weekly', item.rate_weekly)}
                                 </div>
+                                {item.minimum_rental_price !== null && (
+                                    <div className="text-gray-500 text-xs mt-1">
+                                        Minimum: ${item.minimum_rental_price.toFixed(2)}
+                                        {item.minimum_rental_hours !== null && ` / ${item.minimum_rental_hours} hr${item.minimum_rental_hours === 1 ? '' : 's'}`}
+                                    </div>
+                                )}
+                                {item.deposit !== null && (
+                                    <div className="text-gray-500 text-xs mt-1">
+                                        Deposit required: ${item.deposit.toFixed(2)}
+                                    </div>
+                                )}
                             </div>
                         </div>
                         <button

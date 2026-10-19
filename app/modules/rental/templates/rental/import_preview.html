@@ -56,20 +56,26 @@
                     <thead class="bg-light">
                         <tr>
                             <th>Name</th>
+                            <th>Hourly</th>
                             <th>4 Hour</th>
                             <th>8 Hour</th>
                             <th>24 Hour</th>
                             <th>Weekly</th>
+                            <th>Deposit</th>
+                            <th>Minimum</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for row in preview_rows %}
                         <tr>
                             <td>{{ row.name }}</td>
+                            <td>{{ '$%.2f'|format(row.rate_hourly) if row.rate_hourly is not none else '' }}</td>
                             <td>{{ '$%.2f'|format(row.rate_4hr) if row.rate_4hr is not none else '' }}</td>
                             <td>{{ '$%.2f'|format(row.rate_8hr) if row.rate_8hr is not none else '' }}</td>
                             <td>{{ '$%.2f'|format(row.rate_24hr) if row.rate_24hr is not none else '' }}</td>
                             <td>{{ '$%.2f'|format(row.rate_weekly) if row.rate_weekly is not none else '' }}</td>
+                            <td>{{ '$%.2f'|format(row.deposit) if row.deposit is not none else '' }}</td>
+                            <td>{% if row.minimum_rental_price is not none %}${{ '%.2f'|format(row.minimum_rental_price) }}{% if row.minimum_rental_hours is not none %} / {{ row.minimum_rental_hours }}hr{% endif %}{% endif %}</td>
                         </tr>
                         {% endfor %}
                     </tbody>
