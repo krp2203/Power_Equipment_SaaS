@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+
+{% block title %}Service Manager{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1><i class="bi bi-tools me-2"></i>Service Manager</h1>
+    <p class="text-muted">
+        Manage the services you offer. Active services with pricing show up on your public
+        <strong>/service</strong> page.
+    </p>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Create New Service</span>
+            <form method="POST" action="{{ url_for('settings.seed_services') }}" class="mb-0">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button type="submit" class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-magic me-1"></i>Add Pre-Loaded Services
+                </button>
+            </form>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('settings.add_service') }}" class="row g-2 align-items-end">
+                {{ form.hidden_tag() }}
+                <div class="col-md-4">
+                    {{ form.name.label(class="form-label small") }}
+                    {{ form.name(class="form-control") }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.price.label(class="form-label small") }}
+                    {{ form.price(class="form-control") }}
+                </div>
+                <div class="col-md-3 form-check mt-4">
+                    {{ form.allow_web_scheduling(class="form-check-input") }}
+                    {{ form.allow_web_scheduling.label(class="form-check-label small") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.submit(class="btn btn-primary w-100") }}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light">
+                    <tr>
+                        <th style="width: 90px;"></th>
+                        <th>Name</th>
+                        <th>Price</th>
+                        <th>Web Scheduling</th>
+                        <th>Active</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for svc in services %}
+                    <tr id="service-row-{{ svc.id }}">
+                        <td>
+                            <form method="POST" action="{{ url_for('settings.move_service', service_id=svc.id, direction='up') }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move up"><i class="bi bi-arrow-up"></i></button>
+                            </form>
+                            <form method="POST" action="{{ url_for('settings.move_service', service_id=svc.id, direction='down') }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move down"><i class="bi bi-arrow-down"></i></button>
+                            </form>
+                        </td>
+                        <td colspan="3" class="p-2">
+                            <form method="POST" action="{{ url_for('settings.edit_service', service_id=svc.id) }}"
+                                class="row g-2 align-items-center">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <div class="col-md-5">
+                                    <input type="text" name="name" value="{{ svc.name }}" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="number" step="0.01" name="price" value="{{ svc.price if svc.price is not none else '' }}" placeholder="no price shown" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3 form-check">
+                                    <input type="checkbox" name="allow_web_scheduling" class="form-check-input" {% if svc.allow_web_scheduling %}checked{% endif %}>
+                                    <label class="form-check-label small">Allow</label>
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Save</button>
+                                </div>
+                            </form>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input type="checkbox" class="form-check-input service-active-toggle"
+                                       data-service-id="{{ svc.id }}" {% if svc.is_active %}checked{% endif %}>
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <form method="POST" action="{{ url_for('settings.delete_service', service_id=svc.id) }}" class="d-inline"
+                                onsubmit="return confirm('Delete this service?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No services yet &mdash; add one above or click "Add Pre-Loaded Services".</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelectorAll('.service-active-toggle').forEach(function (toggle) {
+    toggle.addEventListener('change', function () {
+        const serviceId = toggle.dataset.serviceId;
+        fetch(`/settings/services/${serviceId}/toggle-active`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token() }}'},
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                toggle.checked = !toggle.checked;
+            }
+        })
+        .catch(() => { toggle.checked = !toggle.checked; });
+    });
+});
+</script>
+{% endblock %}

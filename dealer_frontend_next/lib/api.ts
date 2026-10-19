@@ -60,6 +60,7 @@ export async function getDealerConfig(): Promise<DealerConfig> {
                 facebook: data.integrations?.facebook?.enabled || false
             },
             facebook_page_id: data.integrations?.facebook?.page_id,
+            hours: data.hours || null,
             theme: {
                 primaryColor: data.theme?.primaryColor || data.theme?.primary_color || '#3B82F6',
                 logoUrl: data.theme?.logoUrl,

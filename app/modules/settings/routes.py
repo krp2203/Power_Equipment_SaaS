@@ -6,7 +6,7 @@ import os
 from app.core.extensions import db
 from app.core.models import User
 from . import settings_bp
-from .forms import OrganizationSettingsForm, AddUserForm, EditUserForm, MarkupTierForm
+from .forms import OrganizationSettingsForm, AddUserForm, EditUserForm, MarkupTierForm, ServiceForm
 from itsdangerous import URLSafeSerializer
 from app.core.multitenancy import global_tenant_bypass
 from sqlalchemy.orm.attributes import flag_modified
@@ -835,3 +835,283 @@ def delete_invoice_payment_option(opt_id):
     db.session.commit()
     flash("Payment option removed.", "success")
     return redirect(url_for('settings.invoice_payment_options'))
+
+
+# ====== SERVICE MANAGER ======
+
+PRELOADED_SERVICES = [
+    "Chainsaw Service",
+    "Generator Service",
+    "Leaf Blower Service",
+    "Power Washer Service",
+    "Push/Walk-Behind Mower Service",
+    "Riding Mower/Zero-Turn Service",
+    "Snowthrower Service",
+    "Trimmer/Edger Service",
+    "Tractor Service",
+    "UTV/ATV Service",
+    "Tiller/Cultivator Service",
+]
+
+
+@settings_bp.route('/settings/services', methods=['GET'])
+@login_required
+def services():
+    from app.core.models import DealerService
+    org = g.current_org
+    if not org:
+        flash("No organization context found.", "danger")
+        return redirect(url_for('main.index'))
+
+    items = (DealerService.query.filter_by(organization_id=org.id)
+             .order_by(DealerService.sort_order, DealerService.id).all())
+    form = ServiceForm()
+    return render_template('settings/services.html', services=items, form=form)
+
+
+@settings_bp.route('/settings/services/add', methods=['POST'])
+@login_required
+def add_service():
+    from app.core.models import DealerService
+    from sqlalchemy import func as sa_func
+    org = g.current_org
+    form = ServiceForm()
+
+    if form.validate_on_submit():
+        max_sort = db.session.query(sa_func.max(DealerService.sort_order)).filter_by(
+            organization_id=org.id).scalar() or 0
+        svc = DealerService(
+            organization_id=org.id,
+            name=form.name.data,
+            price=form.price.data,
+            allow_web_scheduling=form.allow_web_scheduling.data,
+            sort_order=max_sort + 1,
+        )
+        db.session.add(svc)
+        db.session.commit()
+        flash("Service added.", "success")
+    else:
+        _flash_form_errors(form)
+
+    return redirect(url_for('settings.services'))
+
+
+@settings_bp.route('/settings/services/<int:service_id>/edit', methods=['POST'])
+@login_required
+def edit_service(service_id):
+    from app.core.models import DealerService
+    org = g.current_org
+    svc = DealerService.query.filter_by(id=service_id, organization_id=org.id).first_or_404()
+    form = ServiceForm()
+
+    if form.validate_on_submit():
+        svc.name = form.name.data
+        svc.price = form.price.data
+        svc.allow_web_scheduling = form.allow_web_scheduling.data
+        db.session.commit()
+        flash("Service updated.", "success")
+    else:
+        _flash_form_errors(form)
+
+    return redirect(url_for('settings.services'))
+
+
+@settings_bp.route('/settings/services/<int:service_id>/delete', methods=['POST'])
+@login_required
+def delete_service(service_id):
+    from app.core.models import DealerService
+    org = g.current_org
+    svc = DealerService.query.filter_by(id=service_id, organization_id=org.id).first_or_404()
+    db.session.delete(svc)
+    db.session.commit()
+    flash("Service removed.", "success")
+    return redirect(url_for('settings.services'))
+
+
+@settings_bp.route('/settings/services/<int:service_id>/toggle-active', methods=['POST'])
+@login_required
+def toggle_service_active(service_id):
+    """AJAX: flip a single service's active flag from the Service Manager list."""
+    from app.core.models import DealerService
+    svc = DealerService.query.filter_by(id=service_id, organization_id=g.current_org.id).first()
+    if not svc:
+        return jsonify({'error': 'Service not found'}), 404
+    svc.is_active = not svc.is_active
+    db.session.commit()
+    return jsonify({'id': svc.id, 'is_active': svc.is_active})
+
+
+@settings_bp.route('/settings/services/<int:service_id>/move/<direction>', methods=['POST'])
+@login_required
+def move_service(service_id, direction):
+    from app.core.models import DealerService
+    org = g.current_org
+    svc = DealerService.query.filter_by(id=service_id, organization_id=org.id).first_or_404()
+
+    items = (DealerService.query.filter_by(organization_id=org.id)
+             .order_by(DealerService.sort_order, DealerService.id).all())
+    idx = next((i for i, s in enumerate(items) if s.id == svc.id), None)
+    if idx is None:
+        return redirect(url_for('settings.services'))
+
+    swap_idx = idx - 1 if direction == 'up' else idx + 1 if direction == 'down' else None
+    if swap_idx is not None and 0 <= swap_idx < len(items):
+        other = items[swap_idx]
+        svc.sort_order, other.sort_order = other.sort_order, svc.sort_order
+        db.session.commit()
+
+    return redirect(url_for('settings.services'))
+
+
+@settings_bp.route('/settings/services/seed', methods=['POST'])
+@login_required
+def seed_services():
+    from app.core.models import DealerService
+    from sqlalchemy import func as sa_func
+    org = g.current_org
+
+    existing_names = {
+        s.name.strip().lower()
+        for s in DealerService.query.filter_by(organization_id=org.id).all()
+    }
+    max_sort = db.session.query(sa_func.max(DealerService.sort_order)).filter_by(
+        organization_id=org.id).scalar() or 0
+
+    added = 0
+    for name in PRELOADED_SERVICES:
+        if name.strip().lower() in existing_names:
+            continue
+        max_sort += 1
+        db.session.add(DealerService(
+            organization_id=org.id, name=name, sort_order=max_sort,
+            is_active=True, allow_web_scheduling=False,
+        ))
+        added += 1
+
+    if added:
+        db.session.commit()
+        flash(f"Added {added} pre-loaded service(s).", "success")
+    else:
+        flash("All pre-loaded services are already in your list.", "info")
+
+    return redirect(url_for('settings.services'))
+
+
+# ====== HOURS OF OPERATION ======
+
+_DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun']
+_DAY_LABELS = {
+    'mon': 'Monday', 'tue': 'Tuesday', 'wed': 'Wednesday', 'thu': 'Thursday',
+    'fri': 'Friday', 'sat': 'Saturday', 'sun': 'Sunday',
+}
+
+
+def _build_schedule_from_form(form):
+    schedule = {}
+    for day in _DAYS:
+        closed = bool(form.get(f'day_{day}_closed'))
+        schedule[day] = {
+            'closed': closed,
+            'open': None if closed else (form.get(f'day_{day}_open', '').strip() or None),
+            'close': None if closed else (form.get(f'day_{day}_close', '').strip() or None),
+        }
+    return schedule
+
+
+@settings_bp.route('/settings/hours', methods=['GET'])
+@login_required
+def hours_groups():
+    from app.core.models import HoursGroup
+    org = g.current_org
+    if not org:
+        flash("No organization context found.", "danger")
+        return redirect(url_for('main.index'))
+
+    groups = (HoursGroup.query.filter_by(organization_id=org.id)
+              .order_by(HoursGroup.sort_order, HoursGroup.id).all())
+    return render_template('settings/hours_groups.html', groups=groups, days=_DAYS, day_labels=_DAY_LABELS)
+
+
+@settings_bp.route('/settings/hours/add', methods=['GET', 'POST'])
+@login_required
+def add_hours_group():
+    from app.core.models import HoursGroup
+    from sqlalchemy import func as sa_func
+    org = g.current_org
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash("Give this hours group a name.", "danger")
+            return redirect(url_for('settings.add_hours_group'))
+
+        is_first = db.session.query(HoursGroup.id).filter_by(organization_id=org.id).first() is None
+        max_sort = db.session.query(sa_func.max(HoursGroup.sort_order)).filter_by(
+            organization_id=org.id).scalar() or 0
+
+        group = HoursGroup(
+            organization_id=org.id,
+            name=name,
+            schedule=_build_schedule_from_form(request.form),
+            is_active=is_first,
+            sort_order=max_sort + 1,
+        )
+        db.session.add(group)
+        db.session.commit()
+        flash("Hours group added." + (" Set as active since it's your first group." if is_first else ""), "success")
+        return redirect(url_for('settings.hours_groups'))
+
+    return render_template('settings/hours_group_form.html', group=None, days=_DAYS, day_labels=_DAY_LABELS)
+
+
+@settings_bp.route('/settings/hours/<int:group_id>/edit', methods=['GET', 'POST'])
+@login_required
+def edit_hours_group(group_id):
+    from app.core.models import HoursGroup
+    org = g.current_org
+    group = HoursGroup.query.filter_by(id=group_id, organization_id=org.id).first_or_404()
+
+    if request.method == 'POST':
+        name = request.form.get('name', '').strip()
+        if not name:
+            flash("Give this hours group a name.", "danger")
+            return redirect(url_for('settings.edit_hours_group', group_id=group.id))
+
+        group.name = name
+        group.schedule = _build_schedule_from_form(request.form)
+        db.session.commit()
+        flash("Hours group updated.", "success")
+        return redirect(url_for('settings.hours_groups'))
+
+    return render_template('settings/hours_group_form.html', group=group, days=_DAYS, day_labels=_DAY_LABELS)
+
+
+@settings_bp.route('/settings/hours/<int:group_id>/delete', methods=['POST'])
+@login_required
+def delete_hours_group(group_id):
+    from app.core.models import HoursGroup
+    org = g.current_org
+    group = HoursGroup.query.filter_by(id=group_id, organization_id=org.id).first_or_404()
+
+    if group.is_active:
+        flash("Set another group active before deleting this one.", "danger")
+        return redirect(url_for('settings.hours_groups'))
+
+    db.session.delete(group)
+    db.session.commit()
+    flash("Hours group removed.", "success")
+    return redirect(url_for('settings.hours_groups'))
+
+
+@settings_bp.route('/settings/hours/<int:group_id>/set-active', methods=['POST'])
+@login_required
+def set_active_hours_group(group_id):
+    from app.core.models import HoursGroup
+    org = g.current_org
+    group = HoursGroup.query.filter_by(id=group_id, organization_id=org.id).first_or_404()
+
+    HoursGroup.query.filter_by(organization_id=org.id).update({HoursGroup.is_active: False})
+    group.is_active = True
+    db.session.commit()
+    flash(f'"{group.name}" is now your active hours.', "success")
+    return redirect(url_for('settings.hours_groups'))
