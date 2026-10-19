@@ -364,6 +364,39 @@ def delete_user(user_id):
     flash(f"User {user.username} has been removed.", "success")
     return redirect(url_for('settings.organization') + "#users")
 
+@settings_bp.route('/settings/users/<int:user_id>/send-password-reset', methods=['POST'])
+@login_required
+def send_user_password_reset(user_id):
+    """Dealer-admin equivalent of the Super Admin panel's org-1-only temp
+    password tool - scoped to the admin's own organization. Rather than
+    generating a temp password the admin has to relay to the user, this
+    emails the user a self-service reset link (same token mechanism as
+    auth.reset_password_token), since a dealer admin typically isn't in
+    direct contact with their staff the way the SaaS operator is."""
+    from itsdangerous import URLSafeTimedSerializer
+    org = g.current_org
+    user = User.query.get_or_404(user_id)
+
+    if user.organization_id != org.id:
+        flash("Unauthorized.", "danger")
+        return redirect(url_for('settings.organization'))
+
+    if not user.email:
+        flash(f"{user.username} doesn't have an email address on file - add one first.", "danger")
+        return redirect(url_for('settings.organization') + "#users")
+
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='password-reset')
+    token = s.dumps({'user_id': user.id})
+    reset_url = url_for('auth.reset_password_token', token=token, _external=True)
+
+    from app.core.email import send_password_reset_email
+    if send_password_reset_email(user, reset_url, org_name=org.name):
+        flash(f"Password reset email sent to {user.email}.", "success")
+    else:
+        flash("Couldn't send the reset email - check mail settings and try again.", "danger")
+
+    return redirect(url_for('settings.organization') + "#users")
+
 @settings_bp.route('/settings/facebook/connect')
 @login_required
 def facebook_connect():
