@@ -508,10 +508,16 @@ class DealerService(db.Model):
 
 class HoursGroup(db.Model):
     """A dealer-named weekly hours schedule (e.g. "Regular Hours", "Winter
-    Hours"). At most one row per org has is_active=True - that's the one
-    shown on the public site; switching it is just a flag flip, no re-entry
-    of times. Single JSON schedule column rather than per-day rows since the
-    only query need is "the active group for this org", not per-day lookups."""
+    Hours"). is_active marks the org's one manual/default group (enforced
+    at most one per org by the partial unique index below) - the fallback
+    shown when no group's recurring date range matches today. A group can
+    additionally carry a recurring annual month/day range (auto_start_*/
+    auto_end_*, e.g. Nov 1 - Mar 1 for seasonal hours); HoursGroup.get_effective()
+    resolves which group should actually be shown right now, checked at
+    read-time rather than via a scheduled job, so it's always correct with
+    no cron/beat task to keep running. Single JSON schedule column rather
+    than per-day rows since the only query need is "the group(s) for this
+    org", not per-day lookups."""
     id = db.Column(db.Integer, primary_key=True)
     organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
 
@@ -522,11 +528,56 @@ class HoursGroup(db.Model):
     sort_order = db.Column(db.Integer, nullable=False, default=0, server_default='0')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+    # Recurring annual date range (month 1-12, day 1-31; no year - repeats
+    # every year). All four set together, or all four NULL for "no auto
+    # range" (a pure manual/default group).
+    auto_start_month = db.Column(db.Integer, nullable=True)
+    auto_start_day = db.Column(db.Integer, nullable=True)
+    auto_end_month = db.Column(db.Integer, nullable=True)
+    auto_end_day = db.Column(db.Integer, nullable=True)
+
     __table_args__ = (
         db.Index('ix_hours_group_org', 'organization_id'),
         db.Index('uq_hours_group_one_active_per_org', 'organization_id', unique=True,
                  postgresql_where=text('is_active')),
     )
+
+    def has_auto_range(self):
+        return self.auto_start_month is not None
+
+    @staticmethod
+    def _month_day_in_range(month, day, start_month, start_day, end_month, end_day):
+        target = (month, day)
+        start = (start_month, start_day)
+        end = (end_month, end_day)
+        if start <= end:
+            return start <= target <= end
+        # Range wraps the year boundary, e.g. Nov 1 - Mar 1.
+        return target >= start or target <= end
+
+    def matches_today(self, today=None):
+        if not self.has_auto_range():
+            return False
+        today = today or datetime.utcnow().date()
+        return HoursGroup._month_day_in_range(
+            today.month, today.day,
+            self.auto_start_month, self.auto_start_day,
+            self.auto_end_month, self.auto_end_day,
+        )
+
+    @staticmethod
+    def get_effective(organization_id, today=None):
+        """The group that should actually be shown right now: the first
+        (by sort_order) group whose recurring date range contains today, or
+        else the org's manual/default (is_active) group."""
+        today = today or datetime.utcnow().date()
+        candidates = (HoursGroup.query.filter_by(organization_id=organization_id)
+                      .filter(HoursGroup.auto_start_month.isnot(None))
+                      .order_by(HoursGroup.sort_order, HoursGroup.id).all())
+        for group in candidates:
+            if group.matches_today(today):
+                return group
+        return HoursGroup.query.filter_by(organization_id=organization_id, is_active=True).first()
 
 
 class FacebookPost(db.Model):
