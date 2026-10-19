@@ -187,6 +187,11 @@ class Unit(db.Model):
     # this as a new arrival" rather than guessing - only units created going
     # forward get a real value.
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    # Same nullable-no-backfill reasoning as created_at. Both default= and
+    # onupdate= (not onupdate= alone) so a brand-new unit gets a timestamp on
+    # INSERT too, not just its first later edit - matches the updated_at
+    # convention already used elsewhere in this file (PartInventory, etc).
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     __table_args__ = (
         db.Index('ix_unit_org_customer', 'organization_id', 'customer_id'),
