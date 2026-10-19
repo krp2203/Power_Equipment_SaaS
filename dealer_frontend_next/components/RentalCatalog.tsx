@@ -100,57 +100,85 @@ export default function RentalCatalog({ initialConfig }: RentalCatalogProps) {
         );
     }
 
+    // Group by category, preserving the order categories first appear in
+    // (which follows sort_order from the API) rather than alphabetizing -
+    // that matches how a dealer ordered their own price sheet. Items with
+    // no category are grouped last under "Other Equipment".
+    const OTHER = 'Other Equipment';
+    const groups: Array<[string, DealerRentalItem[]]> = [];
+    const groupIndex: Record<string, number> = {};
+    for (const item of items) {
+        const key = item.category || OTHER;
+        if (!(key in groupIndex)) {
+            groupIndex[key] = groups.length;
+            groups.push([key, []]);
+        }
+        groups[groupIndex[key]][1].push(item);
+    }
+    if (OTHER in groupIndex && groups.length > 1) {
+        const idx = groupIndex[OTHER];
+        const [other] = groups.splice(idx, 1);
+        groups.push(other);
+    }
+
     return (
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-5xl mx-auto">
             <h2 className="text-2xl font-bold mb-2 text-center">Equipment Rentals</h2>
             <p className="text-gray-600 mb-6 text-center">Browse our rental equipment and request a time that works for you</p>
-            <div className="grid gap-4 sm:grid-cols-2">
-                {items.map((item) => (
-                    <div key={item.id} className="bg-white p-5 rounded shadow border flex flex-col justify-between">
-                        <div className="flex items-start gap-4">
-                            {item.image_url ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img
-                                    src={item.image_url}
-                                    alt={item.name}
-                                    className="w-14 h-14 rounded object-cover border flex-shrink-0"
-                                />
-                            ) : (
-                                <div className="w-14 h-14 rounded border bg-gray-50 flex items-center justify-center text-2xl flex-shrink-0">
-                                    {genericEquipmentIcon(item.name)}
-                                </div>
-                            )}
-                            <div>
-                                <h3 className="text-lg font-semibold">{item.name}</h3>
-                                <div className="text-gray-600 mt-1 text-sm">
-                                    {formatRate('Hourly', item.rate_hourly)}
-                                    {formatRate('4 Hr', item.rate_4hr)}
-                                    {formatRate('8 Hr', item.rate_8hr)}
-                                    {formatRate('24 Hr', item.rate_24hr)}
-                                    {formatRate('Weekly', item.rate_weekly)}
-                                </div>
-                                {item.minimum_rental_price !== null && (
-                                    <div className="text-gray-500 text-xs mt-1">
-                                        Minimum: ${item.minimum_rental_price.toFixed(2)}
-                                        {item.minimum_rental_hours !== null && ` / ${item.minimum_rental_hours} hr${item.minimum_rental_hours === 1 ? '' : 's'}`}
+            {groups.map(([category, categoryItems]) => (
+                <div key={category} className="mb-8">
+                    {groups.length > 1 && (
+                        <h3 className="text-xl font-bold mb-3 border-b pb-2">{category}</h3>
+                    )}
+                    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {categoryItems.map((item) => (
+                            <div key={item.id} className="bg-white p-5 rounded shadow border flex flex-col justify-between">
+                                <div className="flex items-start gap-4">
+                                    {item.image_url ? (
+                                        // eslint-disable-next-line @next/next/no-img-element
+                                        <img
+                                            src={item.image_url}
+                                            alt={item.name}
+                                            className="w-14 h-14 rounded object-cover border flex-shrink-0"
+                                        />
+                                    ) : (
+                                        <div className="w-14 h-14 rounded border bg-gray-50 flex items-center justify-center text-2xl flex-shrink-0">
+                                            {genericEquipmentIcon(item.name)}
+                                        </div>
+                                    )}
+                                    <div>
+                                        <h3 className="text-lg font-semibold">{item.name}</h3>
+                                        <div className="text-gray-600 mt-1 text-sm">
+                                            {formatRate('Hourly', item.rate_hourly)}
+                                            {formatRate('4 Hr', item.rate_4hr)}
+                                            {formatRate('8 Hr', item.rate_8hr)}
+                                            {formatRate('24 Hr', item.rate_24hr)}
+                                            {formatRate('Weekly', item.rate_weekly)}
+                                        </div>
+                                        {item.minimum_rental_price !== null && (
+                                            <div className="text-gray-500 text-xs mt-1">
+                                                Minimum: ${item.minimum_rental_price.toFixed(2)}
+                                                {item.minimum_rental_hours !== null && ` / ${item.minimum_rental_hours} hr${item.minimum_rental_hours === 1 ? '' : 's'}`}
+                                            </div>
+                                        )}
+                                        {item.deposit !== null && (
+                                            <div className="text-gray-500 text-xs mt-1">
+                                                Deposit required: ${item.deposit.toFixed(2)}
+                                            </div>
+                                        )}
                                     </div>
-                                )}
-                                {item.deposit !== null && (
-                                    <div className="text-gray-500 text-xs mt-1">
-                                        Deposit required: ${item.deposit.toFixed(2)}
-                                    </div>
-                                )}
+                                </div>
+                                <button
+                                    onClick={() => setRequestItem(item)}
+                                    className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-center transition-transform active:scale-[0.98]"
+                                >
+                                    Request to Rent
+                                </button>
                             </div>
-                        </div>
-                        <button
-                            onClick={() => setRequestItem(item)}
-                            className="mt-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg text-center transition-transform active:scale-[0.98]"
-                        >
-                            Request to Rent
-                        </button>
+                        ))}
                     </div>
-                ))}
-            </div>
+                </div>
+            ))}
             {requestModal}
         </div>
     );

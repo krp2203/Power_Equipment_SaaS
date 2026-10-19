@@ -21,9 +21,13 @@
             <form method="POST" action="{{ url_for('rental.add_item') }}" enctype="multipart/form-data">
                 {{ form.hidden_tag() }}
                 <div class="row g-2 align-items-end mb-2">
-                    <div class="col-md-3">
+                    <div class="col-md-2">
                         {{ form.name.label(class="form-label small") }}
                         {{ form.name(class="form-control") }}
+                    </div>
+                    <div class="col-md-2">
+                        {{ form.category.label(class="form-label small") }}
+                        {{ form.category(class="form-control") }}
                     </div>
                     <div class="col-md-1">
                         {{ form.rate_hourly.label(class="form-label small") }}
@@ -86,7 +90,7 @@
                     <tr>
                         <th style="width: 90px;"></th>
                         <th style="width: 70px;">Image</th>
-                        <th>Name / Rates</th>
+                        <th>Name / Category / Rates</th>
                         <th>Active</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -120,8 +124,11 @@
                                 enctype="multipart/form-data">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                                 <div class="row g-2 align-items-center mb-2">
-                                    <div class="col-md-3">
+                                    <div class="col-md-2">
                                         <input type="text" name="name" value="{{ item.name }}" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-md-2">
+                                        <input type="text" name="category" value="{{ item.category or '' }}" placeholder="Category" class="form-control form-control-sm">
                                     </div>
                                     <div class="col-md-1">
                                         <input type="number" step="0.01" name="rate_hourly" value="{{ item.rate_hourly if item.rate_hourly is not none else '' }}" placeholder="hr" class="form-control form-control-sm" title="Hourly Rate">

@@ -216,6 +216,7 @@ def get_rentals():
     return jsonify([{
         "id": r.id,
         "name": r.name,
+        "category": r.category,
         "image_url": r.image_url,
         "rate_hourly": float(r.rate_hourly) if r.rate_hourly is not None else None,
         "rate_4hr": float(r.rate_4hr) if r.rate_4hr is not None else None,

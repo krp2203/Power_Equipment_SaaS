@@ -518,6 +518,10 @@ class RentalItem(db.Model):
     organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
 
     name = db.Column(db.String(150), nullable=False)
+    # Free text, not a fixed enum - dealer price sheets organize equipment
+    # into whatever categories make sense for their business. NULL/blank
+    # items are grouped as "Other" on the public page.
+    category = db.Column(db.String(100), nullable=True)
     rate_hourly = db.Column(db.Numeric(10, 2), nullable=True)
     rate_4hr = db.Column(db.Numeric(10, 2), nullable=True)
     rate_8hr = db.Column(db.Numeric(10, 2), nullable=True)

@@ -20,6 +20,7 @@ export interface DealerServiceItem {
 export interface DealerRentalItem {
     id: number;
     name: string;
+    category: string | null;
     image_url: string | null;
     rate_hourly: number | null;
     rate_4hr: number | null;
