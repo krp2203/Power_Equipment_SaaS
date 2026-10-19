@@ -231,18 +231,31 @@ def reset_user_password(user_id):
          return redirect(url_for('main.index'))
 
     user = User.query.get_or_404(user_id)
-    
-    # Generate temporary password
-    import secrets
-    import string
-    alphabet = string.ascii_letters + string.digits
-    temp_pass = ''.join(secrets.choice(alphabet) for _ in range(12))
-    
-    user.password = generate_password_hash(temp_pass)
-    user.password_reset_required = True
-    db.session.commit()
-    
-    flash(f"Password reset for {user.username}. NEW TEMP PASS: {temp_pass}", "success")
+
+    # Same email-link mechanism as the dealer-admin reset
+    # (settings.send_user_password_reset) rather than generating a temp
+    # password to relay by hand - that meant the SaaS admin had to email or
+    # message the plaintext temp password to the site admin themselves,
+    # which is exactly the insecure channel this flow replaces. The user's
+    # existing password stays valid until they actually click the link and
+    # set a new one (consistent with the dealer-admin flow), rather than
+    # being invalidated immediately.
+    if not user.email:
+        flash(f"{user.username} doesn't have an email address on file - can't send a reset link.", "danger")
+        return redirect(url_for('marketing.dashboard'))
+
+    from itsdangerous import URLSafeTimedSerializer
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='password-reset')
+    token = s.dumps({'user_id': user.id})
+    reset_url = url_for('auth.reset_password_token', token=token, _external=True)
+
+    from app.core.email import send_password_reset_email
+    org_name = user.organization.name if user.organization else None
+    if send_password_reset_email(user, reset_url, org_name=org_name):
+        flash(f"Password reset email sent to {user.username} ({user.email}).", "success")
+    else:
+        flash("Couldn't send the reset email - check mail settings and try again.", "danger")
+
     return redirect(url_for('marketing.dashboard'))
 
 @super_admin_bp.route('/tenants/<int:org_id>/update-modules', methods=['POST'])
