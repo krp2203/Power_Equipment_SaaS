@@ -21,10 +21,14 @@ export interface DealerRentalItem {
     id: number;
     name: string;
     image_url: string | null;
+    rate_hourly: number | null;
     rate_4hr: number | null;
     rate_8hr: number | null;
     rate_24hr: number | null;
     rate_weekly: number | null;
+    deposit: number | null;
+    minimum_rental_price: number | null;
+    minimum_rental_hours: number | null;
 }
 
 export interface DealerConfig {

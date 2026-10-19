@@ -518,10 +518,19 @@ class RentalItem(db.Model):
     organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
 
     name = db.Column(db.String(150), nullable=False)
+    rate_hourly = db.Column(db.Numeric(10, 2), nullable=True)
     rate_4hr = db.Column(db.Numeric(10, 2), nullable=True)
     rate_8hr = db.Column(db.Numeric(10, 2), nullable=True)
     rate_24hr = db.Column(db.Numeric(10, 2), nullable=True)
     rate_weekly = db.Column(db.Numeric(10, 2), nullable=True)
+    deposit = db.Column(db.Numeric(10, 2), nullable=True)
+    # Some dealers charge a flat minimum rather than a strict multiple of
+    # rate_hourly (e.g. "$48 for a 2 hour minimum" even if the hourly rate
+    # alone would work out differently over 2 hours) - stored as its own
+    # price+hours pair rather than derived, to match real dealer price
+    # sheets exactly.
+    minimum_rental_price = db.Column(db.Numeric(10, 2), nullable=True)
+    minimum_rental_hours = db.Column(db.Integer, nullable=True)
     # NULL = no uploaded image - falls back to a generic icon matched by
     # keyword against the item name (see dealer_frontend_next/lib/equipmentIcons.ts).
     image_url = db.Column(db.String(255), nullable=True)
