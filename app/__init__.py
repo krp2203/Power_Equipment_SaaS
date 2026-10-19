@@ -202,6 +202,9 @@ def create_app(config_name=None):
     from app.modules.pos import pos_bp
     app.register_blueprint(pos_bp, url_prefix='/admin/pos')
 
+    from app.modules.rental import rental_bp
+    app.register_blueprint(rental_bp, url_prefix='/admin/rental')
+
     from app.modules.purchasing import purchasing_bp
     app.register_blueprint(purchasing_bp, url_prefix='/admin/purchasing')
 

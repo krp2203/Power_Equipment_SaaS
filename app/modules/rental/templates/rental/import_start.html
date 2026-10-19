@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Import Rental Items{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1><i class="bi bi-file-earmark-spreadsheet me-2"></i>Import Rental Items from Excel</h1>
+    <p class="text-muted">
+        Upload a spreadsheet with your rental items and rates. Not sure of the format?
+        <a href="{{ url_for('rental.import_sample') }}">Download the sample template</a>.
+    </p>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('rental.import_upload') }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <input type="file" name="rental_file" id="rental-file-input" accept=".xlsx,.xls" class="d-none">
+
+                <div id="rental-drop-zone" tabindex="0"
+                     class="border border-2 border-dashed rounded-3 text-center py-5 px-3 mb-3"
+                     style="cursor: pointer; outline: none; background-color: #f8f9ff; border-color: #007bff;">
+                    <i class="bi bi-cloud-arrow-up fs-1 text-muted d-block mb-2"></i>
+                    <span id="rental-drop-zone-text" class="text-muted d-block mb-2">
+                        Drag and drop a .xlsx file here
+                    </span>
+                    <button type="button" id="rental-browse-file-btn" class="btn btn-sm btn-outline-secondary">
+                        Or browse for a file&hellip;
+                    </button>
+                </div>
+
+                <button type="submit" class="btn btn-primary">Preview Import</button>
+                <a href="{{ url_for('rental.index') }}" class="btn btn-outline-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    const fileInput = document.getElementById('rental-file-input');
+    const dropZone = document.getElementById('rental-drop-zone');
+    const dropZoneText = document.getElementById('rental-drop-zone-text');
+    const browseBtn = document.getElementById('rental-browse-file-btn');
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    function showSelectedFile(file) {
+        if (dropZoneText) dropZoneText.textContent = `Selected: ${file.name}`;
+    }
+
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.style.backgroundColor = '#e7f3ff';
+            dropZone.style.borderColor = '#0066cc';
+        }, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        dropZone.addEventListener(eventName, () => {
+            dropZone.style.backgroundColor = '#f8f9ff';
+            dropZone.style.borderColor = '#007bff';
+        }, false);
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files && files[0]) {
+            fileInput.files = files;
+            showSelectedFile(files[0]);
+        }
+    }, false);
+
+    if (browseBtn && fileInput) {
+        browseBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            fileInput.click();
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files && fileInput.files[0]) {
+                showSelectedFile(fileInput.files[0]);
+            }
+        });
+    }
+})();
+</script>
+{% endblock %}

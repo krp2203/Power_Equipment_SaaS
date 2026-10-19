@@ -2,40 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { DealerConfig, DealerServiceItem } from '@/lib/types';
+import { genericEquipmentIcon } from '@/lib/equipmentIcons';
 
 interface ServiceSchedulerProps {
     initialConfig?: DealerConfig;
-}
-
-// Generic clipart for services that don't have a dealer-uploaded image -
-// matched by keyword against the service name so the preloaded starter
-// catalog (and most custom names) get a sensible icon for free.
-const ICON_KEYWORDS: Array<[string, string]> = [
-    ['chainsaw', '🪚'],
-    ['generator', '🔌'],
-    ['leaf blower', '🍃'],
-    ['power washer', '🚿'],
-    ['pressure washer', '🚿'],
-    ['snowthrower', '❄️'],
-    ['snow blower', '❄️'],
-    ['trimmer', '✂️'],
-    ['edger', '✂️'],
-    ['tiller', '🌱'],
-    ['cultivator', '🌱'],
-    ['tractor', '🚜'],
-    ['zero-turn', '🚜'],
-    ['riding mower', '🚜'],
-    ['mower', '🌿'],
-    ['utv', '🛻'],
-    ['atv', '🛻'],
-];
-
-function genericServiceIcon(name: string): string {
-    const lower = name.toLowerCase();
-    for (const [keyword, icon] of ICON_KEYWORDS) {
-        if (lower.includes(keyword)) return icon;
-    }
-    return '🛠️';
 }
 
 export default function ServiceScheduler({ initialConfig }: ServiceSchedulerProps) {
@@ -119,7 +89,7 @@ export default function ServiceScheduler({ initialConfig }: ServiceSchedulerProp
                                 />
                             ) : (
                                 <div className="w-14 h-14 rounded border bg-gray-50 flex items-center justify-center text-2xl flex-shrink-0">
-                                    {genericServiceIcon(svc.name)}
+                                    {genericEquipmentIcon(svc.name)}
                                 </div>
                             )}
                             <div>

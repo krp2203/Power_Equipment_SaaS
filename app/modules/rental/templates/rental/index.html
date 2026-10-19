@@ -1,0 +1,257 @@
+{% extends "base.html" %}
+
+{% block title %}Rental Manager{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1><i class="bi bi-box-seam me-2"></i>Rental Manager</h1>
+    <p class="text-muted">
+        Manage the equipment you rent out. Active items show up on your public
+        <strong>/rentals</strong> page. Leave any rate blank to hide that tier.
+    </p>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Add Rental Item</span>
+            <a href="{{ url_for('rental.import_start') }}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-file-earmark-spreadsheet me-1"></i>Import from Excel
+            </a>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('rental.add_item') }}" enctype="multipart/form-data" class="row g-2 align-items-end">
+                {{ form.hidden_tag() }}
+                <div class="col-md-3">
+                    {{ form.name.label(class="form-label small") }}
+                    {{ form.name(class="form-control") }}
+                </div>
+                <div class="col-md-1">
+                    {{ form.rate_4hr.label(class="form-label small") }}
+                    {{ form.rate_4hr(class="form-control") }}
+                </div>
+                <div class="col-md-1">
+                    {{ form.rate_8hr.label(class="form-label small") }}
+                    {{ form.rate_8hr(class="form-control") }}
+                </div>
+                <div class="col-md-1">
+                    {{ form.rate_24hr.label(class="form-label small") }}
+                    {{ form.rate_24hr(class="form-control") }}
+                </div>
+                <div class="col-md-1">
+                    {{ form.rate_weekly.label(class="form-label small") }}
+                    {{ form.rate_weekly(class="form-control") }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.image.label(class="form-label small") }}
+                    {{ form.image(class="d-none", id="rental-image-input-create") }}
+                    <div class="rental-paste-zone border border-2 border-dashed rounded text-center py-1 px-2 small text-muted"
+                         tabindex="0" data-rental-key="create" style="cursor: text; outline: none;">
+                        Click, then paste (Ctrl+V)
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-1 rental-browse-btn" data-rental-key="create">
+                        Browse&hellip;
+                    </button>
+                    <div id="rental-thumb-wrap-create" class="mt-1"></div>
+                </div>
+                <div class="col-md-2">
+                    {{ form.submit(class="btn btn-primary w-100") }}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light">
+                    <tr>
+                        <th style="width: 90px;"></th>
+                        <th style="width: 70px;">Image</th>
+                        <th>Name / Rates</th>
+                        <th>Active</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in items %}
+                    <tr id="rental-row-{{ item.id }}">
+                        <td>
+                            <form method="POST" action="{{ url_for('rental.move_item', item_id=item.id, direction='up') }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move up"><i class="bi bi-arrow-up"></i></button>
+                            </form>
+                            <form method="POST" action="{{ url_for('rental.move_item', item_id=item.id, direction='down') }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move down"><i class="bi bi-arrow-down"></i></button>
+                            </form>
+                        </td>
+                        <td>
+                            <div id="rental-thumb-wrap-{{ item.id }}">
+                                {% if item.image_url %}
+                                <img src="{{ item.image_url }}" alt="" class="rounded border" style="width: 48px; height: 48px; object-fit: cover;">
+                                {% else %}
+                                <div class="rounded border d-flex align-items-center justify-content-center text-muted bg-light" style="width: 48px; height: 48px;">
+                                    <i class="bi bi-image"></i>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="p-2">
+                            <form method="POST" action="{{ url_for('rental.edit_item', item_id=item.id) }}"
+                                enctype="multipart/form-data" class="row g-2 align-items-center">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <div class="col-md-3">
+                                    <input type="text" name="name" value="{{ item.name }}" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-1">
+                                    <input type="number" step="0.01" name="rate_4hr" value="{{ item.rate_4hr if item.rate_4hr is not none else '' }}" placeholder="4hr" class="form-control form-control-sm" title="4 Hour Rate">
+                                </div>
+                                <div class="col-md-1">
+                                    <input type="number" step="0.01" name="rate_8hr" value="{{ item.rate_8hr if item.rate_8hr is not none else '' }}" placeholder="8hr" class="form-control form-control-sm" title="8 Hour Rate">
+                                </div>
+                                <div class="col-md-1">
+                                    <input type="number" step="0.01" name="rate_24hr" value="{{ item.rate_24hr if item.rate_24hr is not none else '' }}" placeholder="24hr" class="form-control form-control-sm" title="24 Hour Rate">
+                                </div>
+                                <div class="col-md-1">
+                                    <input type="number" step="0.01" name="rate_weekly" value="{{ item.rate_weekly if item.rate_weekly is not none else '' }}" placeholder="week" class="form-control form-control-sm" title="Weekly Rate">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="file" name="image" accept="image/*" class="d-none" id="rental-image-input-{{ item.id }}">
+                                    <div class="rental-paste-zone border border-2 border-dashed rounded text-center py-1 px-2 small text-muted"
+                                         tabindex="0" data-rental-key="{{ item.id }}" style="cursor: text; outline: none;">
+                                        Click, then paste (Ctrl+V)
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-1 rental-browse-btn" data-rental-key="{{ item.id }}">
+                                        Browse&hellip;
+                                    </button>
+                                    {% if item.image_url %}
+                                    <div class="form-check mt-1">
+                                        <input type="checkbox" name="remove_image" class="form-check-input" id="remove-image-{{ item.id }}">
+                                        <label class="form-check-label small" for="remove-image-{{ item.id }}">Remove image</label>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Save</button>
+                                </div>
+                            </form>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input type="checkbox" class="form-check-input rental-active-toggle"
+                                       data-rental-id="{{ item.id }}" {% if item.is_active %}checked{% endif %}>
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <form method="POST" action="{{ url_for('rental.delete_item', item_id=item.id) }}" class="d-inline"
+                                onsubmit="return confirm('Delete this rental item?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="5" class="text-center text-muted py-4">No rental items yet &mdash; add one above or import from Excel.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.querySelectorAll('.rental-active-toggle').forEach(function (toggle) {
+    toggle.addEventListener('change', function () {
+        const itemId = toggle.dataset.rentalId;
+        fetch(`/admin/rental/${itemId}/toggle-active`, {
+            method: 'POST',
+            headers: {'X-CSRFToken': '{{ csrf_token() }}'},
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.error) {
+                toggle.checked = !toggle.checked;
+            }
+        })
+        .catch(() => { toggle.checked = !toggle.checked; });
+    });
+});
+
+// Paste-to-upload for rental item images, same pattern used for Service
+// Manager, Inventory Unit images and Brand Carousel logos elsewhere: the
+// real <input type="file"> is hidden (clicking it always pops the OS file
+// picker immediately), so a separate focusable zone is the only thing a
+// click/paste targets, and the explicit "Browse..." button is the only
+// thing that opens the picker. A shared "last-focused zone" variable
+// routes one document-wide paste listener to whichever rental item (or
+// the "Add Rental Item" form) was last clicked - deliberately never
+// cleared on blur, so paste still works even if focus moved away (e.g.
+// to the address bar) right before Ctrl+V.
+let focusedRentalImageKey = null;
+
+function rentalImageInput(key) {
+    return document.getElementById(`rental-image-input-${key}`);
+}
+
+function updateRentalThumb(key, file) {
+    const wrap = document.getElementById(`rental-thumb-wrap-${key}`);
+    if (!wrap) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        wrap.innerHTML = `<img src="${e.target.result}" alt="" class="rounded border" style="width: 48px; height: 48px; object-fit: cover;">`;
+    };
+    reader.readAsDataURL(file);
+}
+
+document.querySelectorAll('.rental-paste-zone').forEach(function (zone) {
+    zone.addEventListener('focus', () => {
+        focusedRentalImageKey = zone.dataset.rentalKey;
+        zone.style.borderColor = 'var(--bs-primary, #0d6efd)';
+        zone.style.backgroundColor = 'rgba(13, 110, 253, 0.05)';
+    });
+    zone.addEventListener('blur', () => {
+        zone.style.borderColor = '';
+        zone.style.backgroundColor = '';
+    });
+});
+
+document.querySelectorAll('.rental-browse-btn').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const input = rentalImageInput(btn.dataset.rentalKey);
+        if (input) input.click();
+    });
+});
+
+document.querySelectorAll('input[id^="rental-image-input-"]').forEach(function (input) {
+    input.addEventListener('change', function () {
+        const key = input.id.replace('rental-image-input-', '');
+        if (input.files && input.files[0]) {
+            updateRentalThumb(key, input.files[0]);
+        }
+    });
+});
+
+document.addEventListener('paste', function (e) {
+    if (!focusedRentalImageKey) return;
+    const input = rentalImageInput(focusedRentalImageKey);
+    if (!input) return;
+    const items = (e.clipboardData || window.clipboardData || {}).items;
+    if (!items) return;
+
+    for (const item of items) {
+        if (item.type && item.type.indexOf('image') === 0) {
+            const file = item.getAsFile();
+            if (!file) continue;
+
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            input.files = dataTransfer.files;
+            updateRentalThumb(focusedRentalImageKey, file);
+
+            e.preventDefault();
+            break;
+        }
+    }
+});
+</script>
+{% endblock %}

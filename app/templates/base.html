@@ -179,6 +179,14 @@
                         </ul>
                     </li>
                     {% endif %}
+                    {% if g.current_org and g.current_org.id != 1 and g.current_org.modules and g.current_org.modules.get('rental') %}
+                    <li class="nav-item">
+                        <a class="nav-link {% if 'rental' in request.endpoint %}active{% endif %}"
+                            href="{{ url_for('rental.index') }}">
+                            <i class="bi bi-box-seam me-2"></i>Rentals
+                        </a>
+                    </li>
+                    {% endif %}
                     {% if g.current_org and g.current_org.modules and g.current_org.modules.get('marketing') %}
                     <li class="nav-item">
                         <a class="nav-link {% if 'marketing' in request.endpoint %}active{% endif %}"

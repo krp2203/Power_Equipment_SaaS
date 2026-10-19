@@ -301,20 +301,19 @@ This is an automated email. Please do not reply directly to this message.
 
 def send_quote_request_email(org, quote_request, recipient_email):
     """
-    Emails a dealer a customer's "request a quote" submission - either a
-    list of part numbers + quantities from the public Parts page, or a
-    single equipment model from a manufacturer catalog/brand page. Wording
-    (subject, heading, column labels, footer) adapts to which, since parts
-    and equipment sales are separate departments at some dealers.
+    Emails a dealer a customer's "request a quote" submission - a list of
+    part numbers + quantities from the public Parts page, a single
+    equipment model from a manufacturer catalog/brand page, or a rental
+    inquiry from the public Rentals page. Wording (subject, heading, column
+    labels, footer) adapts to which, since parts, equipment, and rentals
+    are separate departments at some dealers.
     """
-    is_equipment = quote_request.request_type == 'equipment'
-    noun = 'Equipment' if is_equipment else 'Parts'
-    item_col_label = 'Model' if is_equipment else 'Part #'
-    source_line = (
-        f"Submitted via {org.name}'s manufacturer catalog page."
-        if is_equipment else
-        f"Submitted via {org.name}'s Parts page."
-    )
+    noun = {'equipment': 'Equipment', 'rental': 'Rental'}.get(quote_request.request_type, 'Parts')
+    item_col_label = {'equipment': 'Model', 'rental': 'Item'}.get(quote_request.request_type, 'Part #')
+    source_line = {
+        'equipment': f"Submitted via {org.name}'s manufacturer catalog page.",
+        'rental': f"Submitted via {org.name}'s Rentals page.",
+    }.get(quote_request.request_type, f"Submitted via {org.name}'s Parts page.")
 
     try:
         rows_html = "".join(

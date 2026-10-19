@@ -506,6 +506,35 @@ class DealerService(db.Model):
     )
 
 
+class RentalItem(db.Model):
+    """A dealer-configurable rental equipment listing shown on the public
+    /rentals page (e.g. "Mini Excavator"). This is a pricing catalog only -
+    no availability/booking calendar; the public CTA is always a Request to
+    Rent form (a QuoteRequest with request_type='rental'), never a live
+    calendar. All four rate columns are independently nullable - a dealer
+    may only want to show daily/weekly rates for a large excavator and
+    skip the hourly tiers entirely."""
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+
+    name = db.Column(db.String(150), nullable=False)
+    rate_4hr = db.Column(db.Numeric(10, 2), nullable=True)
+    rate_8hr = db.Column(db.Numeric(10, 2), nullable=True)
+    rate_24hr = db.Column(db.Numeric(10, 2), nullable=True)
+    rate_weekly = db.Column(db.Numeric(10, 2), nullable=True)
+    # NULL = no uploaded image - falls back to a generic icon matched by
+    # keyword against the item name (see dealer_frontend_next/lib/equipmentIcons.ts).
+    image_url = db.Column(db.String(255), nullable=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    sort_order = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.Index('ix_rental_item_org', 'organization_id'),
+        db.Index('ix_rental_item_org_active', 'organization_id', 'is_active'),
+    )
+
+
 class HoursGroup(db.Model):
     """A dealer-named weekly hours schedule (e.g. "Regular Hours", "Winter
     Hours"). is_active marks the org's one manual/default group (enforced
