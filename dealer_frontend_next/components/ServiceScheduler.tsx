@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { DealerConfig, DealerServiceItem } from '@/lib/types';
-import { genericEquipmentIcon } from '@/lib/equipmentIcons';
 
 interface ServiceSchedulerProps {
     initialConfig?: DealerConfig;
@@ -80,17 +79,13 @@ export default function ServiceScheduler({ initialConfig }: ServiceSchedulerProp
                 {services.map((svc) => (
                     <div key={svc.id} className="bg-white p-5 rounded shadow border flex flex-col justify-between">
                         <div className="flex items-start gap-4">
-                            {svc.image_url ? (
+                            {svc.image_url && (
                                 // eslint-disable-next-line @next/next/no-img-element
                                 <img
                                     src={svc.image_url}
                                     alt={svc.name}
                                     className="w-14 h-14 rounded object-cover border flex-shrink-0"
                                 />
-                            ) : (
-                                <div className="w-14 h-14 rounded border bg-gray-50 flex items-center justify-center text-2xl flex-shrink-0">
-                                    {genericEquipmentIcon(svc.name)}
-                                </div>
                             )}
                             <div>
                                 <h3 className="text-lg font-semibold">{svc.name}</h3>

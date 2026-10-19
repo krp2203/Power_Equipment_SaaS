@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { DealerConfig, DealerRentalItem } from '@/lib/types';
-import { genericEquipmentIcon } from '@/lib/equipmentIcons';
 import RequestQuoteForm from './RequestQuoteForm';
 
 interface RentalCatalogProps {
@@ -134,17 +133,13 @@ export default function RentalCatalog({ initialConfig }: RentalCatalogProps) {
                         {categoryItems.map((item) => (
                             <div key={item.id} className="bg-white p-5 rounded shadow border flex flex-col justify-between">
                                 <div className="flex items-start gap-4">
-                                    {item.image_url ? (
+                                    {item.image_url && (
                                         // eslint-disable-next-line @next/next/no-img-element
                                         <img
                                             src={item.image_url}
                                             alt={item.name}
                                             className="w-14 h-14 rounded object-cover border flex-shrink-0"
                                         />
-                                    ) : (
-                                        <div className="w-14 h-14 rounded border bg-gray-50 flex items-center justify-center text-2xl flex-shrink-0">
-                                            {genericEquipmentIcon(item.name)}
-                                        </div>
                                     )}
                                     <div>
                                         <h3 className="text-lg font-semibold">{item.name}</h3>
