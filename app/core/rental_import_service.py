@@ -15,14 +15,27 @@ from decimal import Decimal, InvalidOperation
 HEADER_ALIASES = {
     'name': ['name', 'item', 'item name', 'equipment', 'equipment name'],
     'category': ['category', 'section', 'group', 'type'],
-    'rate_hourly': ['hourly rate', 'hour rate', 'hr rate', 'per hour', 'per hour rate'],
-    'rate_4hr': ['4 hour rate', '4hr rate', '4 hr rate', '4hour rate', '4-hour rate'],
-    'rate_8hr': ['8 hour rate', '8hr rate', '8 hr rate', '8hour rate', '8-hour rate'],
-    'rate_24hr': ['24 hour rate', '24hr rate', '24 hr rate', '24hour rate', '24-hour rate', 'daily rate', 'day rate'],
-    'rate_weekly': ['weekly rate', 'week rate', 'wk rate'],
+    # Bare forms ('hourly', '4 hour', etc., with no "Rate" suffix) are
+    # listed alongside the "...Rate" forms since real dealer sheets often
+    # omit the word "Rate" entirely (column just says "Hourly", "4 Hour").
+    # 'hourly' (not bare 'hour') and the digit-prefixed bare forms are
+    # chosen specifically so they can't collide with each other - see
+    # _build_column_map's longest-match-wins resolution for how "24 Hour"
+    # vs "4 Hour" is still disambiguated correctly either way.
+    'rate_hourly': ['hourly rate', 'hour rate', 'hr rate', 'per hour', 'per hour rate', 'hourly'],
+    'rate_4hr': ['4 hour rate', '4hr rate', '4 hr rate', '4hour rate', '4-hour rate', '4 hour', '4hr', '4 hr'],
+    'rate_8hr': ['8 hour rate', '8hr rate', '8 hr rate', '8hour rate', '8-hour rate', '8 hour', '8hr', '8 hr'],
+    'rate_24hr': ['24 hour rate', '24hr rate', '24 hr rate', '24hour rate', '24-hour rate', 'daily rate', 'day rate',
+                  '24 hour', '24hr', '24 hr', 'daily'],
+    'rate_weekly': ['weekly rate', 'week rate', 'wk rate', 'weekly'],
     'deposit': ['deposit', 'deposit cost', 'deposit amount'],
     'minimum_rental_price': ['minimum rental price', 'minimum rental', 'minimum price', 'min rental price', 'min price'],
-    'minimum_rental_hours': ['minimum rental hours', 'minimum hours', 'min rental hours', 'min hours'],
+    # Bare 'minimum' included for sheets with just a "Minimum" column
+    # holding a duration like "2 Hours" (text, not a plain number - see the
+    # dedicated parsing below) rather than a separate price+hours pair.
+    # Deliberately not 'min' alone - too short, risks matching inside an
+    # unrelated word (e.g. "Admin").
+    'minimum_rental_hours': ['minimum rental hours', 'minimum hours', 'min rental hours', 'min hours', 'minimum'],
 }
 
 MONEY_FIELDS = ('rate_hourly', 'rate_4hr', 'rate_8hr', 'rate_24hr', 'rate_weekly', 'deposit', 'minimum_rental_price')
@@ -42,6 +55,10 @@ SAMPLE_ROWS = [
 # as e.g. "Lawn and Garden Cont." - strip that suffix so it doesn't create
 # a separate, duplicate category from the real one.
 _CONT_SUFFIX_RE = re.compile(r'\s+cont(?:inued)?\.?\s*$', re.IGNORECASE)
+
+# Pulls the leading number out of a minimum-hours cell that spells out the
+# unit, e.g. "2 Hours" or "1 Hour", not just a bare "2".
+_LEADING_NUMBER_RE = re.compile(r'(\d+(?:\.\d+)?)')
 
 
 def _normalize_category(raw):
@@ -142,11 +159,14 @@ def parse_rental_file(file_path):
         if not raw_hours:
             parsed['minimum_rental_hours'] = None
         else:
-            try:
-                parsed['minimum_rental_hours'] = int(float(raw_hours))
-            except ValueError:
+            # Tolerates both a bare number ("2") and a dealer writing the
+            # unit out ("2 Hours", "1 Hour") - pulls the leading number
+            # either way rather than requiring an exact numeric cell.
+            m = _LEADING_NUMBER_RE.search(raw_hours)
+            if not m:
                 errors.append({'row_num': row_num, 'error': f"'minimum rental hours' value '{raw_hours}' isn't a whole number"})
                 continue
+            parsed['minimum_rental_hours'] = int(float(m.group(1)))
 
         rows.append(parsed)
 
