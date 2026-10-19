@@ -1021,6 +1021,13 @@ _DAY_LABELS = {
 }
 
 
+_MONTH_NAMES = [
+    (1, 'January'), (2, 'February'), (3, 'March'), (4, 'April'),
+    (5, 'May'), (6, 'June'), (7, 'July'), (8, 'August'),
+    (9, 'September'), (10, 'October'), (11, 'November'), (12, 'December'),
+]
+
+
 def _build_schedule_from_form(form):
     schedule = {}
     for day in _DAYS:
@@ -1031,6 +1038,28 @@ def _build_schedule_from_form(form):
             'close': None if closed else (form.get(f'day_{day}_close', '').strip() or None),
         }
     return schedule
+
+
+def _parse_auto_range_from_form(form):
+    """Returns (start_month, start_day, end_month, end_day, error) - all four
+    None (no error) if the "automatically switch" checkbox is off."""
+    if not form.get('use_auto_range'):
+        return None, None, None, None, None
+    try:
+        start_month = int(form.get('auto_start_month'))
+        start_day = int(form.get('auto_start_day'))
+        end_month = int(form.get('auto_end_month'))
+        end_day = int(form.get('auto_end_day'))
+    except (TypeError, ValueError):
+        return None, None, None, None, "Choose a start and end month/day for the automatic date range."
+    import calendar
+    if not (1 <= start_month <= 12 and 1 <= end_month <= 12):
+        return None, None, None, None, "Invalid month in the automatic date range."
+    if not (1 <= start_day <= calendar.monthrange(2023, start_month)[1]):
+        return None, None, None, None, "Invalid start day for that month."
+    if not (1 <= end_day <= calendar.monthrange(2023, end_month)[1]):
+        return None, None, None, None, "Invalid end day for that month."
+    return start_month, start_day, end_month, end_day, None
 
 
 @settings_bp.route('/settings/hours', methods=['GET'])
@@ -1044,7 +1073,10 @@ def hours_groups():
 
     groups = (HoursGroup.query.filter_by(organization_id=org.id)
               .order_by(HoursGroup.sort_order, HoursGroup.id).all())
-    return render_template('settings/hours_groups.html', groups=groups, days=_DAYS, day_labels=_DAY_LABELS)
+    effective = HoursGroup.get_effective(org.id)
+    month_names = dict(_MONTH_NAMES)
+    return render_template('settings/hours_groups.html', groups=groups, days=_DAYS, day_labels=_DAY_LABELS,
+                            effective=effective, month_names=month_names)
 
 
 @settings_bp.route('/settings/hours/add', methods=['GET', 'POST'])
@@ -1060,6 +1092,11 @@ def add_hours_group():
             flash("Give this hours group a name.", "danger")
             return redirect(url_for('settings.add_hours_group'))
 
+        start_month, start_day, end_month, end_day, err = _parse_auto_range_from_form(request.form)
+        if err:
+            flash(err, "danger")
+            return redirect(url_for('settings.add_hours_group'))
+
         is_first = db.session.query(HoursGroup.id).filter_by(organization_id=org.id).first() is None
         max_sort = db.session.query(sa_func.max(HoursGroup.sort_order)).filter_by(
             organization_id=org.id).scalar() or 0
@@ -1070,13 +1107,16 @@ def add_hours_group():
             schedule=_build_schedule_from_form(request.form),
             is_active=is_first,
             sort_order=max_sort + 1,
+            auto_start_month=start_month, auto_start_day=start_day,
+            auto_end_month=end_month, auto_end_day=end_day,
         )
         db.session.add(group)
         db.session.commit()
         flash("Hours group added." + (" Set as active since it's your first group." if is_first else ""), "success")
         return redirect(url_for('settings.hours_groups'))
 
-    return render_template('settings/hours_group_form.html', group=None, days=_DAYS, day_labels=_DAY_LABELS)
+    return render_template('settings/hours_group_form.html', group=None, days=_DAYS, day_labels=_DAY_LABELS,
+                            month_names=_MONTH_NAMES)
 
 
 @settings_bp.route('/settings/hours/<int:group_id>/edit', methods=['GET', 'POST'])
@@ -1092,13 +1132,21 @@ def edit_hours_group(group_id):
             flash("Give this hours group a name.", "danger")
             return redirect(url_for('settings.edit_hours_group', group_id=group.id))
 
+        start_month, start_day, end_month, end_day, err = _parse_auto_range_from_form(request.form)
+        if err:
+            flash(err, "danger")
+            return redirect(url_for('settings.edit_hours_group', group_id=group.id))
+
         group.name = name
         group.schedule = _build_schedule_from_form(request.form)
+        group.auto_start_month, group.auto_start_day = start_month, start_day
+        group.auto_end_month, group.auto_end_day = end_month, end_day
         db.session.commit()
         flash("Hours group updated.", "success")
         return redirect(url_for('settings.hours_groups'))
 
-    return render_template('settings/hours_group_form.html', group=group, days=_DAYS, day_labels=_DAY_LABELS)
+    return render_template('settings/hours_group_form.html', group=group, days=_DAYS, day_labels=_DAY_LABELS,
+                            month_names=_MONTH_NAMES)
 
 
 @settings_bp.route('/settings/hours/<int:group_id>/delete', methods=['POST'])

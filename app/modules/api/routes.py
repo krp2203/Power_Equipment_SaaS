@@ -170,7 +170,7 @@ def get_site_info():
     # Active hours group, if any - a separate table, so not part of the
     # generic theme_config camelCase conversion above.
     from app.core.models import HoursGroup
-    active_hours = HoursGroup.query.filter_by(organization_id=org.id, is_active=True).first()
+    active_hours = HoursGroup.get_effective(org.id)
     response["hours"] = {
         "group_name": active_hours.name,
         "schedule": active_hours.schedule,
