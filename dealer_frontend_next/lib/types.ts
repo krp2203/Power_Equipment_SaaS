@@ -13,6 +13,7 @@ export interface DealerServiceItem {
     id: number;
     name: string;
     price: number | null;
+    image_url: string | null;
     allow_web_scheduling: boolean;
 }
 

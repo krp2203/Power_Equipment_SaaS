@@ -10,6 +10,7 @@ from .forms import OrganizationSettingsForm, AddUserForm, EditUserForm, MarkupTi
 from itsdangerous import URLSafeSerializer
 from app.core.multitenancy import global_tenant_bypass
 from sqlalchemy.orm.attributes import flag_modified
+from app.core.uploads import save_image_upload, UploadError
 
 
 def _flash_form_errors(form):
@@ -887,6 +888,12 @@ def add_service():
             allow_web_scheduling=form.allow_web_scheduling.data,
             sort_order=max_sort + 1,
         )
+        if form.image.data:
+            try:
+                svc.image_url = save_image_upload(form.image.data, 'services', org.id)
+            except UploadError as e:
+                flash(str(e), "danger")
+                return redirect(url_for('settings.services'))
         db.session.add(svc)
         db.session.commit()
         flash("Service added.", "success")
@@ -908,6 +915,14 @@ def edit_service(service_id):
         svc.name = form.name.data
         svc.price = form.price.data
         svc.allow_web_scheduling = form.allow_web_scheduling.data
+        if form.image.data:
+            try:
+                svc.image_url = save_image_upload(form.image.data, 'services', org.id)
+            except UploadError as e:
+                flash(str(e), "danger")
+                return redirect(url_for('settings.services'))
+        elif request.form.get('remove_image'):
+            svc.image_url = None
         db.session.commit()
         flash("Service updated.", "success")
     else:

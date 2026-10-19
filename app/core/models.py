@@ -491,6 +491,10 @@ class DealerService(db.Model):
 
     name = db.Column(db.String(150), nullable=False)
     price = db.Column(db.Numeric(10, 2), nullable=True)  # NULL = no price shown
+    # NULL = no uploaded image - the public page falls back to a generic
+    # icon matched by keyword against the service name (see
+    # dealer_frontend_next/components/ServiceScheduler.tsx).
+    image_url = db.Column(db.String(255), nullable=True)
     allow_web_scheduling = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
     is_active = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
     sort_order = db.Column(db.Integer, nullable=False, default=0, server_default='0')
