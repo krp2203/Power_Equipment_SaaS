@@ -6,6 +6,8 @@ from flask_wtf.file import FileField, FileAllowed
 
 class RentalItemForm(FlaskForm):
     name = StringField('Item Name', validators=[DataRequired(), Length(max=150)])
+    category = StringField('Category (optional)', validators=[Optional(), Length(max=100)],
+        description="e.g. Lawn and Garden, Construction Equipment - groups items on your public page.")
     rate_hourly = DecimalField('Hourly Rate ($, optional)', places=2,
         validators=[Optional(), NumberRange(min=0, message="Rate can't be negative.")],
         description="Leave blank to hide this tier on your public page.")

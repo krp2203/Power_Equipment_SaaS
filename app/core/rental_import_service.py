@@ -8,11 +8,13 @@ header matching is substring-based like Parts import, not exact-match, so
 headers like "Dealer Cost (USD)"-style variants with extra text still
 match automatically.
 """
+import re
 import pandas as pd
 from decimal import Decimal, InvalidOperation
 
 HEADER_ALIASES = {
     'name': ['name', 'item', 'item name', 'equipment', 'equipment name'],
+    'category': ['category', 'section', 'group', 'type'],
     'rate_hourly': ['hourly rate', 'hour rate', 'hr rate', 'per hour', 'per hour rate'],
     'rate_4hr': ['4 hour rate', '4hr rate', '4 hr rate', '4hour rate', '4-hour rate'],
     'rate_8hr': ['8 hour rate', '8hr rate', '8 hr rate', '8hour rate', '8-hour rate'],
@@ -25,14 +27,29 @@ HEADER_ALIASES = {
 
 MONEY_FIELDS = ('rate_hourly', 'rate_4hr', 'rate_8hr', 'rate_24hr', 'rate_weekly', 'deposit', 'minimum_rental_price')
 
-SAMPLE_HEADERS = ['Name', 'Hourly Rate', '4 Hour Rate', '8 Hour Rate', '24 Hour Rate', 'Weekly Rate',
+SAMPLE_HEADERS = ['Name', 'Category', 'Hourly Rate', '4 Hour Rate', '8 Hour Rate', '24 Hour Rate', 'Weekly Rate',
                    'Deposit', 'Minimum Rental Price', 'Minimum Rental Hours']
 SAMPLE_ROWS = [
-    {'Name': 'Mini Excavator', 'Hourly Rate': '', '4 Hour Rate': '', '8 Hour Rate': '', '24 Hour Rate': '275.00',
-     'Weekly Rate': '950.00', 'Deposit': '500.00', 'Minimum Rental Price': '', 'Minimum Rental Hours': ''},
-    {'Name': 'Push Mower', 'Hourly Rate': '15.00', '4 Hour Rate': '35.00', '8 Hour Rate': '55.00', '24 Hour Rate': '75.00',
-     'Weekly Rate': '225.00', 'Deposit': '', 'Minimum Rental Price': '48.00', 'Minimum Rental Hours': '2'},
+    {'Name': 'Mini Excavator', 'Category': 'Construction Equipment', 'Hourly Rate': '', '4 Hour Rate': '',
+     '8 Hour Rate': '', '24 Hour Rate': '275.00', 'Weekly Rate': '950.00', 'Deposit': '500.00',
+     'Minimum Rental Price': '', 'Minimum Rental Hours': ''},
+    {'Name': 'Push Mower', 'Category': 'Lawn and Garden', 'Hourly Rate': '15.00', '4 Hour Rate': '35.00',
+     '8 Hour Rate': '55.00', '24 Hour Rate': '75.00', 'Weekly Rate': '225.00', 'Deposit': '',
+     'Minimum Rental Price': '48.00', 'Minimum Rental Hours': '2'},
 ]
+
+# Some dealer price sheets repeat a category heading on continuation pages
+# as e.g. "Lawn and Garden Cont." - strip that suffix so it doesn't create
+# a separate, duplicate category from the real one.
+_CONT_SUFFIX_RE = re.compile(r'\s+cont(?:inued)?\.?\s*$', re.IGNORECASE)
+
+
+def _normalize_category(raw):
+    value = raw.strip()
+    if not value:
+        return None
+    value = _CONT_SUFFIX_RE.sub('', value).strip()
+    return value[:100] or None
 
 
 def _build_column_map(headers):
@@ -75,6 +92,8 @@ def _build_column_map(headers):
 
 def parse_rental_file(file_path):
     """Returns (rows, errors). Each valid row is a dict with keys name,
+    category (str or None - a trailing "Cont."/"Continued" suffix some
+    price sheets repeat on later pages is stripped automatically),
     rate_hourly, rate_4hr, rate_8hr, rate_24hr, rate_weekly, deposit,
     minimum_rental_price (Decimal or None), and minimum_rental_hours (int
     or None). Each error is {'row_num': int, 'error': str}. Raises
@@ -99,7 +118,9 @@ def parse_rental_file(file_path):
             errors.append({'row_num': row_num, 'error': 'Missing name'})
             continue
 
-        parsed = {'name': name[:150]}
+        category_col = col_map['category']
+        raw_category = str(raw[category_col]).strip() if category_col else ''
+        parsed = {'name': name[:150], 'category': _normalize_category(raw_category)}
         bad = False
         for field in MONEY_FIELDS:
             col = col_map[field]

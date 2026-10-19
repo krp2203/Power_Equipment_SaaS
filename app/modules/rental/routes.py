@@ -47,6 +47,7 @@ def add_item():
         item = RentalItem(
             organization_id=org.id,
             name=form.name.data,
+            category=(form.category.data or '').strip() or None,
             rate_hourly=form.rate_hourly.data,
             rate_4hr=form.rate_4hr.data,
             rate_8hr=form.rate_8hr.data,
@@ -81,6 +82,7 @@ def edit_item(item_id):
 
     if form.validate_on_submit():
         item.name = form.name.data
+        item.category = (form.category.data or '').strip() or None
         item.rate_hourly = form.rate_hourly.data
         item.rate_4hr = form.rate_4hr.data
         item.rate_8hr = form.rate_8hr.data
@@ -252,6 +254,7 @@ def import_confirm():
         db.session.add(RentalItem(
             organization_id=org.id,
             name=row['name'],
+            category=row['category'],
             rate_hourly=row['rate_hourly'],
             rate_4hr=row['rate_4hr'],
             rate_8hr=row['rate_8hr'],
