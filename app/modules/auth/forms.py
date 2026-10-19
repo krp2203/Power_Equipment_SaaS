@@ -20,6 +20,14 @@ class ChangePasswordForm(FlaskForm):
     confirm_password = PasswordField('Confirm New Password', validators=[DataRequired(), EqualTo('new_password', message='Passwords must match.')])
     submit_password = SubmitField('Change Password')
 
+class SetNewPasswordForm(FlaskForm):
+    """Used from a password-reset email link - no current_password field,
+    since possession of the (signed, time-limited) token IS the proof of
+    authorization, unlike ChangePasswordForm's in-session self-service flow."""
+    new_password = PasswordField('New Password', validators=[DataRequired(), Length(min=6, message="Password must be at least 6 characters.")])
+    confirm_password = PasswordField('Confirm New Password', validators=[DataRequired(), EqualTo('new_password', message='Passwords must match.')])
+    submit = SubmitField('Set New Password')
+
 from app.core.models import User, Organization
 from wtforms.validators import ValidationError
 

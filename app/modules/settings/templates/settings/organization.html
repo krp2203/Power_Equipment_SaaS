@@ -361,6 +361,19 @@
                                                             title="Edit User">
                                                             <i class="bi bi-pencil"></i>
                                                         </button>
+                                                        <form
+                                                            action="{{ url_for('settings.send_user_password_reset', user_id=u.id) }}"
+                                                            method="POST"
+                                                            onsubmit="return confirm('Send a password reset email to {{ u.username }}{{ ' (' + u.email + ')' if u.email else '' }}?');"
+                                                            style="display:inline;">
+                                                            <input type="hidden" name="csrf_token"
+                                                                value="{{ csrf_token() }}">
+                                                            <button type="submit"
+                                                                class="btn btn-outline-secondary btn-sm border-0"
+                                                                title="Send Password Reset Email">
+                                                                <i class="bi bi-key"></i>
+                                                            </button>
+                                                        </form>
                                                         {% if u.id != current_user.id %}
                                                         <form
                                                             action="{{ url_for('settings.delete_user', user_id=u.id) }}"

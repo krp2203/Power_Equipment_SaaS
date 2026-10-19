@@ -412,6 +412,73 @@ def send_admin_alert(subject, message):
         return False
 
 
+def send_password_reset_email(user, reset_url, org_name=None):
+    """
+    Emails a user a link to set a new password. Used both for a dealer
+    admin resetting one of their own staff's password from Settings > Users,
+    and could equally serve a future self-service "forgot password" flow -
+    the link itself (app/modules/auth/routes.py's reset_password_token route)
+    doesn't care who triggered it, only that the signed token is valid and
+    unexpired.
+
+    Args:
+        user: User instance (needs .email, .username)
+        reset_url (str): Fully-qualified link to the reset-password page
+        org_name (str, optional): Dealer name, for a friendlier subject/greeting
+    """
+    try:
+        subject = f"Reset your password" + (f" - {org_name}" if org_name else "")
+
+        html_body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 500px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #2c3e50;">Reset Your Password</h2>
+                    <p>Hi {user.username},</p>
+                    <p>{"An administrator at " + org_name + " has" if org_name else "A request has been made to"} reset the password for your account.</p>
+                    <p style="text-align: center; margin: 30px 0;">
+                        <a href="{reset_url}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:bold;">Set a New Password</a>
+                    </p>
+                    <p style="color: #666; font-size: 13px;">This link expires in 1 hour. If you weren't expecting this, you can safely ignore this email - your password won't change unless you click the link above and set a new one.</p>
+                    <p style="color: #666; font-size: 13px;">If the button doesn't work, copy and paste this URL into your browser:<br>
+                        <a href="{reset_url}">{reset_url}</a>
+                    </p>
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+                    <p style="color: #666; font-size: 12px;">
+                        This is an automated email. Please do not reply directly to this message.
+                    </p>
+                </div>
+            </body>
+        </html>
+        """
+
+        text_body = f"""Reset Your Password
+
+Hi {user.username},
+
+{"An administrator at " + org_name + " has" if org_name else "A request has been made to"} reset the password for your account.
+
+Set a new password here (expires in 1 hour):
+{reset_url}
+
+If you weren't expecting this, you can safely ignore this email.
+        """
+
+        msg = Message(
+            subject=subject,
+            recipients=[user.email],
+            html=html_body,
+            body=text_body,
+            sender=current_app.config.get('MAIL_SENDER', 'noreply@mail.bentcrankshaft.com')
+        )
+        mail.send(msg)
+        print(f"✅ Password reset email sent to {user.email}")
+        return True
+    except Exception as e:
+        print(f"❌ Failed to send password reset email to {user.email}: {str(e)}")
+        return False
+
+
 def send_test_email(recipient_email):
     """
     Send a simple test email to verify mail configuration.

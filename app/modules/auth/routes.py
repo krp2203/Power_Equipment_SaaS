@@ -4,7 +4,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from app.core.models import User, Organization
 from app.core.extensions import db
 from . import auth_bp
-from .forms import ProfileForm, ChangePasswordForm, LoginForm
+from .forms import ProfileForm, ChangePasswordForm, LoginForm, SetNewPasswordForm
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -113,6 +113,41 @@ def force_reset():
             flash('Incorrect current password.', 'danger')
             
     return render_template('auth/force_reset.html', form=form)
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password_token(token):
+    """Public landing page for a password-reset link (emailed by an admin
+    from Settings > Users, or a future self-service 'forgot password' flow).
+    No login required - the signed, time-limited token IS the authorization,
+    unlike force_reset above which requires an active session plus knowing
+    the current/temp password."""
+    from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadData
+    from flask import current_app
+
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='password-reset')
+    try:
+        data = s.loads(token, max_age=3600)  # 1 hour
+        reset_user = User.query.get(data.get('user_id'))
+    except SignatureExpired:
+        flash('This password reset link has expired. Please ask an administrator to send a new one.', 'danger')
+        return redirect(url_for('auth.login'))
+    except BadData:
+        flash('This password reset link is invalid.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    if not reset_user:
+        flash('This password reset link is invalid.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    form = SetNewPasswordForm()
+    if form.validate_on_submit():
+        reset_user.password = generate_password_hash(form.new_password.data)
+        reset_user.password_reset_required = False
+        db.session.commit()
+        flash('Your password has been reset. You can now log in.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/reset_password.html', form=form, reset_user=reset_user)
 
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
