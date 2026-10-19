@@ -228,6 +228,14 @@ export default function Navigation({ config }: { config: DealerConfig }) {
           >
             Service
           </Link>
+          {config.modules.rental && (
+            <Link
+              href="/rentals"
+              className="text-2xl font-bold text-white hover:opacity-80 transition-opacity whitespace-nowrap"
+            >
+              Rentals
+            </Link>
+          )}
         </div>
 
         {/* Right column - Contact links right-aligned */}

@@ -57,7 +57,8 @@ export async function getDealerConfig(): Promise<DealerConfig> {
             modules: {
                 ari: data.integrations?.ari?.enabled || false,
                 pos: data.integrations?.pos?.provider || 'none',
-                facebook: data.integrations?.facebook?.enabled || false
+                facebook: data.integrations?.facebook?.enabled || false,
+                rental: data.integrations?.rental?.enabled || false
             },
             facebook_page_id: data.integrations?.facebook?.page_id,
             hours: data.hours || null,

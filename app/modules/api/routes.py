@@ -163,6 +163,9 @@ def get_site_info():
             },
             "pos": {
                 "enabled": bool(modules.get('pos', False))
+            },
+            "rental": {
+                "enabled": bool(modules.get('rental', False))
             }
         }
     }
@@ -197,6 +200,28 @@ def get_services():
         "image_url": s.image_url,
         "allow_web_scheduling": bool(s.allow_web_scheduling),
     } for s in services])
+
+
+@api_bp.route('/v1/rentals', methods=['GET'])
+def get_rentals():
+    """Active rental items for the public /rentals page."""
+    from app.core.models import RentalItem
+
+    if not g.current_org:
+        return jsonify([])
+
+    items = (RentalItem.query
+             .filter_by(organization_id=g.current_org.id, is_active=True)
+             .order_by(RentalItem.sort_order, RentalItem.id).all())
+    return jsonify([{
+        "id": r.id,
+        "name": r.name,
+        "image_url": r.image_url,
+        "rate_4hr": float(r.rate_4hr) if r.rate_4hr is not None else None,
+        "rate_8hr": float(r.rate_8hr) if r.rate_8hr is not None else None,
+        "rate_24hr": float(r.rate_24hr) if r.rate_24hr is not None else None,
+        "rate_weekly": float(r.rate_weekly) if r.rate_weekly is not None else None,
+    } for r in items])
 
 def _catalog_brand_query(org_id, manufacturer=None):
     from app.core.models import ManufacturerBrand
@@ -516,7 +541,7 @@ def create_quote_request():
     customer_phone = (data.get('customer_phone') or '').strip() or None
     notes = (data.get('notes') or '').strip() or None
     items = data.get('items') or []
-    request_type = data.get('request_type') if data.get('request_type') in ('parts', 'equipment') else 'parts'
+    request_type = data.get('request_type') if data.get('request_type') in ('parts', 'equipment', 'rental') else 'parts'
 
     if not customer_name:
         return jsonify({'error': 'Name is required.'}), 400

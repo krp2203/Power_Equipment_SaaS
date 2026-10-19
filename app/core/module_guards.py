@@ -25,3 +25,26 @@ def require_pos_module():
         return redirect(url_for('marketing.dashboard'))
 
     return None
+
+
+def require_rental_module():
+    """`before_request` guard for the Rental blueprint.
+
+    Mirrors require_pos_module: a dealer's rental division is off by
+    default. Until a master operator switches on
+    ``organization.modules['rental']`` from the Site Manager, the Rental
+    Manager and import flow are unreachable by URL, not just hidden in the
+    nav.
+    """
+    if not current_user.is_authenticated:
+        return None
+
+    org = getattr(g, 'current_org', None)
+    if org is None:
+        return None
+
+    if not (org.modules or {}).get('rental'):
+        flash("The Rental module isn't enabled for this account.", "warning")
+        return redirect(url_for('marketing.dashboard'))
+
+    return None

@@ -17,6 +17,16 @@ export interface DealerServiceItem {
     allow_web_scheduling: boolean;
 }
 
+export interface DealerRentalItem {
+    id: number;
+    name: string;
+    image_url: string | null;
+    rate_4hr: number | null;
+    rate_8hr: number | null;
+    rate_24hr: number | null;
+    rate_weekly: number | null;
+}
+
 export interface DealerConfig {
     name: string;
     slug: string;
@@ -24,6 +34,7 @@ export interface DealerConfig {
         ari?: boolean;
         pos?: string;
         facebook?: boolean;
+        rental?: boolean;
     };
     facebook_page_id?: string;
     hours?: HoursOfOperation | null;

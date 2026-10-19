@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{% block title %}Preview Import - Rental Items{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1><i class="bi bi-eye me-2"></i>Preview Import</h1>
+
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm text-center py-3">
+                <div class="h3 mb-0">{{ total_rows }}</div>
+                <div class="text-muted small">Total rows</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm text-center py-3 border-success">
+                <div class="h3 mb-0 text-success">{{ valid_count }}</div>
+                <div class="text-muted small">Rental items to add</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm text-center py-3 {% if error_count %}border-danger{% endif %}">
+                <div class="h3 mb-0 {% if error_count %}text-danger{% endif %}">{{ error_count }}</div>
+                <div class="text-muted small">Rows with errors (skipped)</div>
+            </div>
+        </div>
+    </div>
+
+    {% if error_rows %}
+    <div class="card shadow-sm mb-4 border-danger">
+        <div class="card-header bg-danger text-white">Rows that will be skipped ({{ error_count }}{% if error_count > 100 %}, showing first 100{% endif %})</div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 300px;">
+                <table class="table table-sm mb-0">
+                    <thead class="bg-light"><tr><th>Row #</th><th>Problem</th></tr></thead>
+                    <tbody>
+                        {% for row in error_rows %}
+                        <tr><td>{{ row.row_num }}</td><td class="text-danger">{{ row.error }}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">
+            Rental items that will be added
+            {% if valid_count > 100 %}(showing first 100 of {{ valid_count }}){% endif %}
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive" style="max-height: 500px;">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Name</th>
+                            <th>4 Hour</th>
+                            <th>8 Hour</th>
+                            <th>24 Hour</th>
+                            <th>Weekly</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for row in preview_rows %}
+                        <tr>
+                            <td>{{ row.name }}</td>
+                            <td>{{ '$%.2f'|format(row.rate_4hr) if row.rate_4hr is not none else '' }}</td>
+                            <td>{{ '$%.2f'|format(row.rate_8hr) if row.rate_8hr is not none else '' }}</td>
+                            <td>{{ '$%.2f'|format(row.rate_24hr) if row.rate_24hr is not none else '' }}</td>
+                            <td>{{ '$%.2f'|format(row.rate_weekly) if row.rate_weekly is not none else '' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <form method="POST" action="{{ url_for('rental.import_confirm') }}"
+        onsubmit="return confirm('Add {{ valid_count }} rental item(s)?');">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+        <input type="hidden" name="upload_id" value="{{ upload_id }}">
+        <button type="submit" class="btn btn-success" {% if valid_count == 0 %}disabled{% endif %}>
+            Confirm &amp; Add {{ valid_count }} Rental Item(s)
+        </button>
+        <a href="{{ url_for('rental.import_start') }}" class="btn btn-outline-secondary">Start Over</a>
+    </form>
+</div>
+{% endblock %}

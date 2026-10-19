@@ -10,10 +10,16 @@ interface RequestQuoteFormProps {
     // dealer with, not a live reference back to the record.
     itemLabel: string;
     itemDescription?: string | null;
+    // 'equipment' default keeps every existing caller's behavior unchanged.
+    requestType?: 'parts' | 'equipment' | 'rental';
+    title?: string;
+    messagePlaceholder?: string;
     onClose: () => void;
 }
 
-export default function RequestQuoteForm({ itemLabel, itemDescription, onClose }: RequestQuoteFormProps) {
+export default function RequestQuoteForm({
+    itemLabel, itemDescription, requestType, title, messagePlaceholder, onClose,
+}: RequestQuoteFormProps) {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [phone, setPhone] = useState('');
@@ -35,7 +41,7 @@ export default function RequestQuoteForm({ itemLabel, itemDescription, onClose }
                     customer_email: email || undefined,
                     customer_phone: phone || undefined,
                     notes: message || undefined,
-                    request_type: 'equipment',
+                    request_type: requestType || 'equipment',
                     items: [{
                         part_number: itemLabel,
                         description: itemDescription || undefined,
@@ -78,7 +84,7 @@ export default function RequestQuoteForm({ itemLabel, itemDescription, onClose }
                     </div>
                 ) : (
                     <form onSubmit={submit}>
-                        <h3 className="text-xl font-bold text-gray-900 mb-1">Request a Quote</h3>
+                        <h3 className="text-xl font-bold text-gray-900 mb-1">{title || 'Request a Quote'}</h3>
                         <p className="text-gray-500 text-sm mb-4">{itemLabel}</p>
 
                         {error && (
@@ -109,7 +115,7 @@ export default function RequestQuoteForm({ itemLabel, itemDescription, onClose }
                                 className="w-full h-11 rounded-lg border-gray-200 bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all px-3"
                             />
                             <textarea
-                                placeholder="Anything else we should know? (optional)"
+                                placeholder={messagePlaceholder || 'Anything else we should know? (optional)'}
                                 value={message}
                                 onChange={(e) => setMessage(e.target.value)}
                                 rows={3}

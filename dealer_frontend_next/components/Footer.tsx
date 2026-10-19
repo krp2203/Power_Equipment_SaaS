@@ -78,6 +78,9 @@ export default function Footer({ config }: { config: DealerConfig }) {
                             <li><a href="/inventory" className="hover:text-white">New Inventory</a></li>
                             <li><a href="/parts" className="hover:text-white">Parts</a></li>
                             <li><a href="/service" className="hover:text-white">Service Department</a></li>
+                            {config.modules.rental && (
+                                <li><a href="/rentals" className="hover:text-white">Equipment Rentals</a></li>
+                            )}
                             {brands.map(b => (
                                 <li key={b.slug}>
                                     <a href={`/brands/${b.slug}`} className="hover:text-white">{b.name}</a>
