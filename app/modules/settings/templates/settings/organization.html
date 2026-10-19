@@ -361,33 +361,23 @@
                                                             title="Edit User">
                                                             <i class="bi bi-pencil"></i>
                                                         </button>
-                                                        <form
-                                                            action="{{ url_for('settings.send_user_password_reset', user_id=u.id) }}"
-                                                            method="POST"
-                                                            onsubmit="return confirm('Send a password reset email to {{ u.username }}{{ ' (' + u.email + ')' if u.email else '' }}?');"
-                                                            style="display:inline;">
-                                                            <input type="hidden" name="csrf_token"
-                                                                value="{{ csrf_token() }}">
-                                                            <button type="submit"
-                                                                class="btn btn-outline-secondary btn-sm border-0"
-                                                                title="Send Password Reset Email">
-                                                                <i class="bi bi-key"></i>
-                                                            </button>
-                                                        </form>
+                                                        <button type="button"
+                                                            class="btn btn-outline-secondary btn-sm border-0 user-reset-password-btn"
+                                                            data-user-id="{{ u.id }}"
+                                                            data-username="{{ u.username }}"
+                                                            data-email="{{ u.email or '' }}"
+                                                            data-url="{{ url_for('settings.send_user_password_reset', user_id=u.id) }}"
+                                                            title="Send Password Reset Email">
+                                                            <i class="bi bi-key"></i>
+                                                        </button>
                                                         {% if u.id != current_user.id %}
-                                                        <form
-                                                            action="{{ url_for('settings.delete_user', user_id=u.id) }}"
-                                                            method="POST"
-                                                            onsubmit="return confirm('Are you sure you want to remove {{ u.username }}?');"
-                                                            style="display:inline;">
-                                                            <input type="hidden" name="csrf_token"
-                                                                value="{{ csrf_token() }}">
-                                                            <button type="submit"
-                                                                class="btn btn-outline-danger btn-sm border-0"
-                                                                title="Delete User">
-                                                                <i class="bi bi-trash"></i>
-                                                            </button>
-                                                        </form>
+                                                        <button type="button"
+                                                            class="btn btn-outline-danger btn-sm border-0 user-delete-btn"
+                                                            data-username="{{ u.username }}"
+                                                            data-url="{{ url_for('settings.delete_user', user_id=u.id) }}"
+                                                            title="Delete User">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
                                                         {% endif %}
                                                     </div>
                                                     {% if u.id == current_user.id %}
@@ -798,5 +788,43 @@
         const clearBtn = document.getElementById(`clearBtn-${slotNumber}`);
         if (clearBtn) clearBtn.style.display = 'none';
     }
+
+    // Users tab: reset-password and delete buttons are AJAX POSTs rather
+    // than their own <form> elements. A native nested <form> here would sit
+    // inside the page-wide #settingsForm (branding/content/integrations/
+    // users all share one outer form with the "Save All Settings" button) -
+    // browsers silently drop a nested <form> tag and fold its button into
+    // the OUTER form instead, so clicking these used to submit the entire
+    // Platform Settings form to itself instead of hitting the intended
+    // route. Confirmed via nginx access logs: a real click here showed up
+    // as "POST /settings/organization", never reaching
+    // /settings/users/<id>/send-password-reset at all.
+    document.querySelectorAll('.user-reset-password-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            const email = btn.dataset.email;
+            const label = email ? `${btn.dataset.username} (${email})` : btn.dataset.username;
+            if (!confirm(`Send a password reset email to ${label}?`)) return;
+
+            fetch(btn.dataset.url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token() }}' },
+            })
+            .then(() => { window.location.href = "{{ url_for('settings.organization') }}#users"; })
+            .catch(() => { window.location.href = "{{ url_for('settings.organization') }}#users"; });
+        });
+    });
+
+    document.querySelectorAll('.user-delete-btn').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (!confirm(`Are you sure you want to remove ${btn.dataset.username}?`)) return;
+
+            fetch(btn.dataset.url, {
+                method: 'POST',
+                headers: { 'X-CSRFToken': '{{ csrf_token() }}' },
+            })
+            .then(() => { window.location.href = "{{ url_for('settings.organization') }}#users"; })
+            .catch(() => { window.location.href = "{{ url_for('settings.organization') }}#users"; });
+        });
+    });
 </script>
 {% endblock %}
