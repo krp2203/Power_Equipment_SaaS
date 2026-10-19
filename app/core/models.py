@@ -481,6 +481,50 @@ class InvoicePaymentOption(db.Model):
     )
 
 
+class DealerService(db.Model):
+    """A dealer-configurable service offering shown on the public /service
+    page (e.g. "Chainsaw Service"). allow_web_scheduling is intent/label only
+    - no real booking calendar exists; the public CTA is always a phone call
+    either way, the flag just changes its wording."""
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+
+    name = db.Column(db.String(150), nullable=False)
+    price = db.Column(db.Numeric(10, 2), nullable=True)  # NULL = no price shown
+    allow_web_scheduling = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    sort_order = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.Index('ix_dealer_service_org', 'organization_id'),
+        db.Index('ix_dealer_service_org_active', 'organization_id', 'is_active'),
+    )
+
+
+class HoursGroup(db.Model):
+    """A dealer-named weekly hours schedule (e.g. "Regular Hours", "Winter
+    Hours"). At most one row per org has is_active=True - that's the one
+    shown on the public site; switching it is just a flag flip, no re-entry
+    of times. Single JSON schedule column rather than per-day rows since the
+    only query need is "the active group for this org", not per-day lookups."""
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+
+    name = db.Column(db.String(100), nullable=False)
+    # {"mon": {"closed": false, "open": "08:00", "close": "17:00"}, ... "sun": {...}}
+    schedule = db.Column(db.JSON, nullable=False, default=dict)
+    is_active = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    sort_order = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.Index('ix_hours_group_org', 'organization_id'),
+        db.Index('uq_hours_group_one_active_per_org', 'organization_id', unique=True,
+                 postgresql_where=text('is_active')),
+    )
+
+
 class FacebookPost(db.Model):
     """Track Facebook posts with status for user visibility"""
     id = db.Column(db.Integer, primary_key=True)

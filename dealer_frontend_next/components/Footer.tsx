@@ -3,6 +3,21 @@
 import { useEffect, useState } from 'react';
 import { DealerConfig, CatalogBrandSummary } from '@/lib/types';
 
+const DAY_ORDER: Array<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun'> =
+    ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+const DAY_LABELS: Record<string, string> = {
+    mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun',
+};
+
+function formatTime(time: string | null): string {
+    if (!time) return '';
+    const [hourStr, minute] = time.split(':');
+    const hour = parseInt(hourStr, 10);
+    const period = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 === 0 ? 12 : hour % 12;
+    return `${hour12}:${minute} ${period}`;
+}
+
 export default function Footer({ config }: { config: DealerConfig }) {
     const primaryColor = config.theme.primaryColor || '#2563EB';
     const [brands, setBrands] = useState<CatalogBrandSummary[]>([]);
@@ -69,6 +84,25 @@ export default function Footer({ config }: { config: DealerConfig }) {
                             )}
                             <li className="whitespace-pre-wrap">{config.theme.contact_address || 'Contact us for more information'}</li>
                         </ul>
+                        {config.hours && (
+                            <ul className="mt-3 space-y-0.5 text-gray-400 text-sm">
+                                {DAY_ORDER.map((day) => {
+                                    const entry = config.hours!.schedule[day];
+                                    return (
+                                        <li key={day} className="flex justify-between gap-4">
+                                            <span>{DAY_LABELS[day]}</span>
+                                            <span>
+                                                {entry?.closed
+                                                    ? 'Closed'
+                                                    : entry?.open && entry?.close
+                                                        ? `${formatTime(entry.open)} - ${formatTime(entry.close)}`
+                                                        : '-'}
+                                            </span>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        )}
                     </div>
                 </div>
                 <div className="border-t border-gray-700 mt-8 pt-4 text-center text-sm text-gray-500">

@@ -1,3 +1,21 @@
+export interface DaySchedule {
+    closed: boolean;
+    open: string | null;
+    close: string | null;
+}
+
+export interface HoursOfOperation {
+    group_name: string;
+    schedule: Record<'mon' | 'tue' | 'wed' | 'thu' | 'fri' | 'sat' | 'sun', DaySchedule>;
+}
+
+export interface DealerServiceItem {
+    id: number;
+    name: string;
+    price: number | null;
+    allow_web_scheduling: boolean;
+}
+
 export interface DealerConfig {
     name: string;
     slug: string;
@@ -7,6 +25,7 @@ export interface DealerConfig {
         facebook?: boolean;
     };
     facebook_page_id?: string;
+    hours?: HoursOfOperation | null;
     theme: {
         primaryColor?: string;
         logoUrl?: string;

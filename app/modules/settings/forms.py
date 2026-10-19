@@ -49,7 +49,7 @@ class OrganizationSettingsForm(FlaskForm):
     # Contact Customization
     contact_phone = StringField('Contact Phone')
     contact_email = StringField('Contact Email')
-    contact_address = TextAreaField('Contact Address')
+    contact_address = TextAreaField('Contact Address', description="Street address only - set your hours from the Hours of Operation page.")
     contact_text = TextAreaField('Contact Page Message', description="Message above contact details")
 
     # Social Media Links
@@ -89,3 +89,12 @@ class MarkupTierForm(FlaskForm):
                     NumberRange(min=0, message="Markup % can't be negative.")],
         description="How much to mark up dealer cost in this range, e.g. 55 for 55%.")
     submit = SubmitField('Save Tier')
+
+class ServiceForm(FlaskForm):
+    name = StringField('Service Name', validators=[DataRequired(), Length(max=150)])
+    price = DecimalField('Price ($, optional)', places=2,
+        validators=[Optional(), NumberRange(min=0, message="Price can't be negative.")],
+        description="Leave blank to hide pricing and just show the service name.")
+    allow_web_scheduling = BooleanField('Allow Web Scheduling', default=False,
+        description="Shows \"Request This Service\" instead of \"Call to Schedule\" on your site.")
+    submit = SubmitField('Save Service')

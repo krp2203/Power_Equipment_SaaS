@@ -167,7 +167,35 @@ def get_site_info():
         }
     }
 
+    # Active hours group, if any - a separate table, so not part of the
+    # generic theme_config camelCase conversion above.
+    from app.core.models import HoursGroup
+    active_hours = HoursGroup.query.filter_by(organization_id=org.id, is_active=True).first()
+    response["hours"] = {
+        "group_name": active_hours.name,
+        "schedule": active_hours.schedule,
+    } if active_hours else None
+
     return jsonify(response)
+
+
+@api_bp.route('/v1/services', methods=['GET'])
+def get_services():
+    """Active services for the public /service page."""
+    from app.core.models import DealerService
+
+    if not g.current_org:
+        return jsonify([])
+
+    services = (DealerService.query
+                .filter_by(organization_id=g.current_org.id, is_active=True)
+                .order_by(DealerService.sort_order, DealerService.id).all())
+    return jsonify([{
+        "id": s.id,
+        "name": s.name,
+        "price": float(s.price) if s.price is not None else None,
+        "allow_web_scheduling": bool(s.allow_web_scheduling),
+    } for s in services])
 
 def _catalog_brand_query(org_id, manufacturer=None):
     from app.core.models import ManufacturerBrand
