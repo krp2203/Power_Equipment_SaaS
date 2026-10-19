@@ -41,6 +41,10 @@ const nextConfig: NextConfig = {
         destination: 'http://web:5000/admin/purchasing/',
       },
       {
+        source: '/admin/rental/',
+        destination: 'http://web:5000/admin/rental/',
+      },
+      {
         source: '/admin/:path*',
         destination: 'http://web:5000/admin/:path*', // Proxy Admin Routes
       },
