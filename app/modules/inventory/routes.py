@@ -232,7 +232,14 @@ def manage():
         query = query.order_by(Unit.id.desc())
         
     units = query.all()
-    return render_template('inventory/manage.html', units=units, current_sort=sort, current_order=order)
+
+    from sqlalchemy import func
+    last_updated = db.session.query(func.max(Unit.updated_at)).filter(
+        Unit.organization_id == g.current_org.id, Unit.is_inventory == True
+    ).scalar()
+
+    return render_template('inventory/manage.html', units=units, current_sort=sort,
+                            current_order=order, last_updated=last_updated)
 
 @inventory_bp.route('/add', methods=['GET', 'POST'])
 @login_required
