@@ -33,7 +33,15 @@
                 </div>
                 <div class="col-md-3">
                     {{ form.image.label(class="form-label small") }}
-                    {{ form.image(class="form-control form-control-sm") }}
+                    {{ form.image(class="d-none", id="service-image-input-create") }}
+                    <div class="service-paste-zone border border-2 border-dashed rounded text-center py-1 px-2 small text-muted"
+                         tabindex="0" data-service-key="create" style="cursor: text; outline: none;">
+                        Click, then paste (Ctrl+V)
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-1 service-browse-btn" data-service-key="create">
+                        Browse&hellip;
+                    </button>
+                    <div id="service-thumb-wrap-create" class="mt-1"></div>
                 </div>
                 <div class="col-md-2 form-check mt-4">
                     {{ form.allow_web_scheduling(class="form-check-input") }}
@@ -72,13 +80,15 @@
                             </form>
                         </td>
                         <td>
-                            {% if svc.image_url %}
-                            <img src="{{ svc.image_url }}" alt="" class="rounded border" style="width: 48px; height: 48px; object-fit: cover;">
-                            {% else %}
-                            <div class="rounded border d-flex align-items-center justify-content-center text-muted bg-light" style="width: 48px; height: 48px;">
-                                <i class="bi bi-image"></i>
+                            <div id="service-thumb-wrap-{{ svc.id }}">
+                                {% if svc.image_url %}
+                                <img src="{{ svc.image_url }}" alt="" class="rounded border" style="width: 48px; height: 48px; object-fit: cover;">
+                                {% else %}
+                                <div class="rounded border d-flex align-items-center justify-content-center text-muted bg-light" style="width: 48px; height: 48px;">
+                                    <i class="bi bi-image"></i>
+                                </div>
+                                {% endif %}
                             </div>
-                            {% endif %}
                         </td>
                         <td class="p-2">
                             <form method="POST" action="{{ url_for('settings.edit_service', service_id=svc.id) }}"
@@ -91,7 +101,14 @@
                                     <input type="number" step="0.01" name="price" value="{{ svc.price if svc.price is not none else '' }}" placeholder="no price shown" class="form-control form-control-sm">
                                 </div>
                                 <div class="col-md-3">
-                                    <input type="file" name="image" accept="image/*" class="form-control form-control-sm">
+                                    <input type="file" name="image" accept="image/*" class="d-none" id="service-image-input-{{ svc.id }}">
+                                    <div class="service-paste-zone border border-2 border-dashed rounded text-center py-1 px-2 small text-muted"
+                                         tabindex="0" data-service-key="{{ svc.id }}" style="cursor: text; outline: none;">
+                                        Click, then paste (Ctrl+V)
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary w-100 mt-1 service-browse-btn" data-service-key="{{ svc.id }}">
+                                        Browse&hellip;
+                                    </button>
                                     {% if svc.image_url %}
                                     <div class="form-check mt-1">
                                         <input type="checkbox" name="remove_image" class="form-check-input" id="remove-image-{{ svc.id }}">
@@ -147,6 +164,84 @@ document.querySelectorAll('.service-active-toggle').forEach(function (toggle) {
         })
         .catch(() => { toggle.checked = !toggle.checked; });
     });
+});
+
+// Paste-to-upload for service images, same pattern used for Inventory Unit
+// images and Brand Carousel logos elsewhere in Settings: the real
+// <input type="file"> is hidden (clicking it always pops the OS file
+// picker immediately), so a separate focusable zone is the only thing
+// a click/paste targets, and the explicit "Browse..." button is the only
+// thing that opens the picker. A shared "last-focused zone" variable
+// routes one document-wide paste listener to whichever service (or the
+// "Create New Service" form) was last clicked - deliberately never
+// cleared on blur, so paste still works even if focus moved away
+// (e.g. to the address bar) right before Ctrl+V.
+let focusedServiceImageKey = null;
+
+function serviceImageInput(key) {
+    return document.getElementById(`service-image-input-${key}`);
+}
+
+function updateServiceThumb(key, file) {
+    const wrap = document.getElementById(`service-thumb-wrap-${key}`);
+    if (!wrap) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        wrap.innerHTML = `<img src="${e.target.result}" alt="" class="rounded border" style="width: 48px; height: 48px; object-fit: cover;">`;
+    };
+    reader.readAsDataURL(file);
+}
+
+document.querySelectorAll('.service-paste-zone').forEach(function (zone) {
+    zone.addEventListener('focus', () => {
+        focusedServiceImageKey = zone.dataset.serviceKey;
+        zone.style.borderColor = 'var(--bs-primary, #0d6efd)';
+        zone.style.backgroundColor = 'rgba(13, 110, 253, 0.05)';
+    });
+    zone.addEventListener('blur', () => {
+        zone.style.borderColor = '';
+        zone.style.backgroundColor = '';
+    });
+});
+
+document.querySelectorAll('.service-browse-btn').forEach(function (btn) {
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const input = serviceImageInput(btn.dataset.serviceKey);
+        if (input) input.click();
+    });
+});
+
+document.querySelectorAll('input[id^="service-image-input-"]').forEach(function (input) {
+    input.addEventListener('change', function () {
+        const key = input.id.replace('service-image-input-', '');
+        if (input.files && input.files[0]) {
+            updateServiceThumb(key, input.files[0]);
+        }
+    });
+});
+
+document.addEventListener('paste', function (e) {
+    if (!focusedServiceImageKey) return;
+    const input = serviceImageInput(focusedServiceImageKey);
+    if (!input) return;
+    const items = (e.clipboardData || window.clipboardData || {}).items;
+    if (!items) return;
+
+    for (const item of items) {
+        if (item.type && item.type.indexOf('image') === 0) {
+            const file = item.getAsFile();
+            if (!file) continue;
+
+            const dataTransfer = new DataTransfer();
+            dataTransfer.items.add(file);
+            input.files = dataTransfer.files;
+            updateServiceThumb(focusedServiceImageKey, file);
+
+            e.preventDefault();
+            break;
+        }
+    }
 });
 </script>
 {% endblock %}
