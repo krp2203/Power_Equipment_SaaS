@@ -32,7 +32,14 @@ def index():
     items = (RentalItem.query.filter_by(organization_id=org.id)
              .order_by(RentalItem.sort_order, RentalItem.id).all())
     form = RentalItemForm()
-    return render_template('rental/index.html', items=items, form=form)
+    # Distinct categories in display order (not alphabetical), for the
+    # category filter dropdown - matches how the public page orders its
+    # category filter boxes.
+    categories = []
+    for item in items:
+        if item.category and item.category not in categories:
+            categories.append(item.category)
+    return render_template('rental/index.html', items=items, form=form, categories=categories)
 
 
 @rental_bp.route('/add', methods=['POST'])

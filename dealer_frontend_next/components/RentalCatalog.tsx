@@ -17,12 +17,29 @@ function formatRate(label: string, value: number | null) {
     );
 }
 
+const OTHER_CATEGORY = 'Other Equipment';
+
+// Not a typo-tolerant fuzzy match (e.g. Levenshtein) - a lighter, dependency-
+// free version: every word in the search box must appear somewhere in the
+// item name, in any order, case-insensitive. Handles "excavator mini"
+// matching "Mini Excavator" and partial words, without pulling in a search
+// library for what's ultimately a client-side filter over at most a few
+// hundred items.
+function matchesSearch(name: string, query: string): boolean {
+    const q = query.trim().toLowerCase();
+    if (!q) return true;
+    const lowerName = name.toLowerCase();
+    return q.split(/\s+/).every((token) => lowerName.includes(token));
+}
+
 export default function RentalCatalog({ initialConfig }: RentalCatalogProps) {
     const [config, setConfig] = useState<DealerConfig | null>(initialConfig || null);
     const [items, setItems] = useState<DealerRentalItem[]>([]);
     const [loaded, setLoaded] = useState(false);
     const [requestItem, setRequestItem] = useState<DealerRentalItem | null>(null);
     const [requestingGeneric, setRequestingGeneric] = useState(false);
+    const [search, setSearch] = useState('');
+    const [activeCategory, setActiveCategory] = useState<string | null>(null);
 
     useEffect(() => {
         if (!initialConfig?.theme?.contact_phone) {
@@ -99,23 +116,39 @@ export default function RentalCatalog({ initialConfig }: RentalCatalogProps) {
         );
     }
 
-    // Group by category, preserving the order categories first appear in
-    // (which follows sort_order from the API) rather than alphabetizing -
-    // that matches how a dealer ordered their own price sheet. Items with
-    // no category are grouped last under "Other Equipment".
-    const OTHER = 'Other Equipment';
+    // Full category list (from ALL items, not the filtered set) so the
+    // filter boxes themselves don't disappear as a search narrows things
+    // down - order follows first appearance in sort_order, matching how
+    // the dealer ordered their own price sheet, not alphabetical.
+    const allCategories: string[] = [];
+    for (const item of items) {
+        const key = item.category || OTHER_CATEGORY;
+        if (!allCategories.includes(key)) allCategories.push(key);
+    }
+    if (allCategories.includes(OTHER_CATEGORY) && allCategories.length > 1) {
+        allCategories.splice(allCategories.indexOf(OTHER_CATEGORY), 1);
+        allCategories.push(OTHER_CATEGORY);
+    }
+
+    const filteredItems = items.filter((item) => {
+        const key = item.category || OTHER_CATEGORY;
+        if (activeCategory && key !== activeCategory) return false;
+        return matchesSearch(item.name, search);
+    });
+
+    // Group the filtered items by category, same ordering rule as above.
     const groups: Array<[string, DealerRentalItem[]]> = [];
     const groupIndex: Record<string, number> = {};
-    for (const item of items) {
-        const key = item.category || OTHER;
+    for (const item of filteredItems) {
+        const key = item.category || OTHER_CATEGORY;
         if (!(key in groupIndex)) {
             groupIndex[key] = groups.length;
             groups.push([key, []]);
         }
         groups[groupIndex[key]][1].push(item);
     }
-    if (OTHER in groupIndex && groups.length > 1) {
-        const idx = groupIndex[OTHER];
+    if (OTHER_CATEGORY in groupIndex && groups.length > 1) {
+        const idx = groupIndex[OTHER_CATEGORY];
         const [other] = groups.splice(idx, 1);
         groups.push(other);
     }
@@ -124,6 +157,52 @@ export default function RentalCatalog({ initialConfig }: RentalCatalogProps) {
         <div className="max-w-5xl mx-auto">
             <h2 className="text-2xl font-bold mb-2 text-center">Equipment Rentals</h2>
             <p className="text-gray-600 mb-6 text-center">Browse our rental equipment and request a time that works for you</p>
+
+            <div className="mb-6">
+                <input
+                    type="text"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="Search equipment..."
+                    className="w-full max-w-md mx-auto block h-11 rounded-lg border border-gray-200 bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none px-4 mb-4"
+                />
+                {allCategories.length > 1 && (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
+                        <button
+                            onClick={() => setActiveCategory(null)}
+                            className={`bg-white p-3 rounded shadow border text-center text-sm font-semibold transition-colors ${
+                                activeCategory === null ? 'border-blue-600 text-blue-600' : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                            }`}
+                        >
+                            All
+                        </button>
+                        {allCategories.map((category) => (
+                            <button
+                                key={category}
+                                onClick={() => setActiveCategory(category)}
+                                className={`bg-white p-3 rounded shadow border text-center text-sm font-semibold transition-colors ${
+                                    activeCategory === category ? 'border-blue-600 text-blue-600' : 'border-gray-200 text-gray-700 hover:border-gray-300'
+                                }`}
+                            >
+                                {category}
+                            </button>
+                        ))}
+                    </div>
+                )}
+            </div>
+
+            {filteredItems.length === 0 && (
+                <div className="text-center text-gray-500 py-12">
+                    <p className="mb-3">No equipment matches your search.</p>
+                    <button
+                        onClick={() => { setSearch(''); setActiveCategory(null); }}
+                        className="text-blue-600 hover:text-blue-700 font-semibold"
+                    >
+                        Clear filters
+                    </button>
+                </div>
+            )}
+
             {groups.map(([category, categoryItems]) => (
                 <div key={category} className="mb-8">
                     {groups.length > 1 && (
