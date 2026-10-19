@@ -1,10 +1,12 @@
 """
-Parses a dealer-uploaded Excel file of rental items (Name + up to 4 rate
-columns) for bulk import into RentalItem. Unlike parts_import_service.py
-(arbitrary vendor layouts needing a user-confirmed column map), a rental
-price list is authored from the template this app provides (see the
-rental.import_sample route), so a small set of header aliases is matched
-automatically - no mapping step needed.
+Parses a dealer-uploaded Excel file of rental items (Name + rate/deposit/
+minimum columns) for bulk import into RentalItem. Still no user-confirmed
+column-mapping step (unlike parts_import_service.py, built for genuinely
+arbitrary vendor layouts) - a rental price list is assumed to be close to
+the template this app provides (see the rental.import_sample route) - but
+header matching is substring-based like Parts import, not exact-match, so
+headers like "Dealer Cost (USD)"-style variants with extra text still
+match automatically.
 """
 import pandas as pd
 from decimal import Decimal, InvalidOperation
@@ -33,12 +35,42 @@ SAMPLE_ROWS = [
 ]
 
 
-def _match_column(headers, aliases):
-    lower = {h.strip().lower(): h for h in headers}
-    for alias in aliases:
-        if alias in lower:
-            return lower[alias]
-    return None
+def _build_column_map(headers):
+    """Maps each HEADER_ALIASES field to the best-matching header, using
+    substring containment like the Parts importer (so "Dealer Cost (USD)"-
+    style headers with extra text still match) - but resolved via a
+    longest-alias-wins greedy assignment across all fields at once, not
+    matched per-field in isolation. That's needed because naive per-field
+    substring matching has real collisions here: "24 Hour Rate" literally
+    contains "4 Hour Rate" as a substring, and "8 Hour Rate" contains
+    "Hour Rate" (the Hourly Rate field's alias). Scoring every (header,
+    field, alias) match by alias length and assigning longest-first means
+    the more specific match always wins each header, so a 24hr column can
+    never be misclaimed by the 4hr field, etc."""
+    candidates = []
+    for header in headers:
+        h = header.strip().lower()
+        for field, aliases in HEADER_ALIASES.items():
+            for alias in aliases:
+                if alias in h:
+                    candidates.append((len(alias), header, field))
+
+    candidates.sort(key=lambda c: c[0], reverse=True)
+
+    col_map = {}
+    used_headers = set()
+    used_fields = set()
+    for _, header, field in candidates:
+        if header in used_headers or field in used_fields:
+            continue
+        col_map[field] = header
+        used_headers.add(header)
+        used_fields.add(field)
+
+    for field in HEADER_ALIASES:
+        col_map.setdefault(field, None)
+
+    return col_map
 
 
 def parse_rental_file(file_path):
@@ -51,7 +83,7 @@ def parse_rental_file(file_path):
     df = pd.read_excel(file_path, dtype=str, engine='openpyxl')
     df = df.fillna('')
     headers = list(df.columns)
-    col_map = {field: _match_column(headers, aliases) for field, aliases in HEADER_ALIASES.items()}
+    col_map = _build_column_map(headers)
 
     if not col_map['name']:
         raise ValueError(
