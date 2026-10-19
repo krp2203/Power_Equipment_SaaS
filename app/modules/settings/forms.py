@@ -95,6 +95,8 @@ class ServiceForm(FlaskForm):
     price = DecimalField('Price ($, optional)', places=2,
         validators=[Optional(), NumberRange(min=0, message="Price can't be negative.")],
         description="Leave blank to hide pricing and just show the service name.")
+    image = FileField('Image (optional)', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')],
+        description="Leave blank to use a generic icon for this service.")
     allow_web_scheduling = BooleanField('Allow Web Scheduling', default=False,
         description="Shows \"Request This Service\" instead of \"Call to Schedule\" on your site.")
     submit = SubmitField('Save Service')

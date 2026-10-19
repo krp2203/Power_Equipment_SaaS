@@ -7,6 +7,37 @@ interface ServiceSchedulerProps {
     initialConfig?: DealerConfig;
 }
 
+// Generic clipart for services that don't have a dealer-uploaded image -
+// matched by keyword against the service name so the preloaded starter
+// catalog (and most custom names) get a sensible icon for free.
+const ICON_KEYWORDS: Array<[string, string]> = [
+    ['chainsaw', '🪚'],
+    ['generator', '🔌'],
+    ['leaf blower', '🍃'],
+    ['power washer', '🚿'],
+    ['pressure washer', '🚿'],
+    ['snowthrower', '❄️'],
+    ['snow blower', '❄️'],
+    ['trimmer', '✂️'],
+    ['edger', '✂️'],
+    ['tiller', '🌱'],
+    ['cultivator', '🌱'],
+    ['tractor', '🚜'],
+    ['zero-turn', '🚜'],
+    ['riding mower', '🚜'],
+    ['mower', '🌿'],
+    ['utv', '🛻'],
+    ['atv', '🛻'],
+];
+
+function genericServiceIcon(name: string): string {
+    const lower = name.toLowerCase();
+    for (const [keyword, icon] of ICON_KEYWORDS) {
+        if (lower.includes(keyword)) return icon;
+    }
+    return '🛠️';
+}
+
 export default function ServiceScheduler({ initialConfig }: ServiceSchedulerProps) {
     const [config, setConfig] = useState<DealerConfig | null>(initialConfig || null);
     const [services, setServices] = useState<DealerServiceItem[]>([]);
@@ -78,11 +109,25 @@ export default function ServiceScheduler({ initialConfig }: ServiceSchedulerProp
             <div className="grid gap-4 sm:grid-cols-2">
                 {services.map((svc) => (
                     <div key={svc.id} className="bg-white p-5 rounded shadow border flex flex-col justify-between">
-                        <div>
-                            <h3 className="text-lg font-semibold">{svc.name}</h3>
-                            {svc.price !== null && (
-                                <p className="text-gray-600 mt-1">Starting at ${svc.price.toFixed(2)}</p>
+                        <div className="flex items-start gap-4">
+                            {svc.image_url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                    src={svc.image_url}
+                                    alt={svc.name}
+                                    className="w-14 h-14 rounded object-cover border flex-shrink-0"
+                                />
+                            ) : (
+                                <div className="w-14 h-14 rounded border bg-gray-50 flex items-center justify-center text-2xl flex-shrink-0">
+                                    {genericServiceIcon(svc.name)}
+                                </div>
                             )}
+                            <div>
+                                <h3 className="text-lg font-semibold">{svc.name}</h3>
+                                {svc.price !== null && (
+                                    <p className="text-gray-600 mt-1">Starting at ${svc.price.toFixed(2)}</p>
+                                )}
+                            </div>
                         </div>
                         <a
                             href={phoneLink}

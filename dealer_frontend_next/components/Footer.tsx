@@ -36,6 +36,28 @@ export default function Footer({ config }: { config: DealerConfig }) {
                     <div>
                         <h3 className="text-xl font-bold mb-4">{config.name}</h3>
                         <p className="text-gray-400 mb-4">{config.theme.footer_tagline || 'Your trusted power equipment dealer.'}</p>
+                        {config.hours && (
+                            <div className="mb-4">
+                                <h4 className="text-sm font-semibold mb-2 text-gray-300">Store Hours</h4>
+                                <ul className="space-y-0.5 text-gray-400 text-sm">
+                                    {DAY_ORDER.map((day) => {
+                                        const entry = config.hours!.schedule[day];
+                                        return (
+                                            <li key={day} className="flex justify-between gap-4 max-w-[220px]">
+                                                <span>{DAY_LABELS[day]}</span>
+                                                <span>
+                                                    {entry?.closed
+                                                        ? 'Closed'
+                                                        : entry?.open && entry?.close
+                                                            ? `${formatTime(entry.open)} - ${formatTime(entry.close)}`
+                                                            : '-'}
+                                                </span>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </div>
+                        )}
                         {config.modules.facebook && config.facebook_page_id && (
                             <a
                                 href={`https://facebook.com/${config.facebook_page_id}`}
@@ -84,25 +106,6 @@ export default function Footer({ config }: { config: DealerConfig }) {
                             )}
                             <li className="whitespace-pre-wrap">{config.theme.contact_address || 'Contact us for more information'}</li>
                         </ul>
-                        {config.hours && (
-                            <ul className="mt-3 space-y-0.5 text-gray-400 text-sm">
-                                {DAY_ORDER.map((day) => {
-                                    const entry = config.hours!.schedule[day];
-                                    return (
-                                        <li key={day} className="flex justify-between gap-4">
-                                            <span>{DAY_LABELS[day]}</span>
-                                            <span>
-                                                {entry?.closed
-                                                    ? 'Closed'
-                                                    : entry?.open && entry?.close
-                                                        ? `${formatTime(entry.open)} - ${formatTime(entry.close)}`
-                                                        : '-'}
-                                            </span>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        )}
                     </div>
                 </div>
                 <div className="border-t border-gray-700 mt-8 pt-4 text-center text-sm text-gray-500">

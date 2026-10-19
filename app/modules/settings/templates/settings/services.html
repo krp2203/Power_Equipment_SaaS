@@ -21,17 +21,21 @@
             </form>
         </div>
         <div class="card-body">
-            <form method="POST" action="{{ url_for('settings.add_service') }}" class="row g-2 align-items-end">
+            <form method="POST" action="{{ url_for('settings.add_service') }}" enctype="multipart/form-data" class="row g-2 align-items-end">
                 {{ form.hidden_tag() }}
-                <div class="col-md-4">
+                <div class="col-md-3">
                     {{ form.name.label(class="form-label small") }}
                     {{ form.name(class="form-control") }}
                 </div>
-                <div class="col-md-3">
+                <div class="col-md-2">
                     {{ form.price.label(class="form-label small") }}
                     {{ form.price(class="form-control") }}
                 </div>
-                <div class="col-md-3 form-check mt-4">
+                <div class="col-md-3">
+                    {{ form.image.label(class="form-label small") }}
+                    {{ form.image(class="form-control form-control-sm") }}
+                </div>
+                <div class="col-md-2 form-check mt-4">
                     {{ form.allow_web_scheduling(class="form-check-input") }}
                     {{ form.allow_web_scheduling.label(class="form-check-label small") }}
                 </div>
@@ -48,9 +52,8 @@
                 <thead class="bg-light">
                     <tr>
                         <th style="width: 90px;"></th>
-                        <th>Name</th>
-                        <th>Price</th>
-                        <th>Web Scheduling</th>
+                        <th style="width: 70px;">Image</th>
+                        <th>Name / Price / Scheduling</th>
                         <th>Active</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -68,21 +71,39 @@
                                 <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move down"><i class="bi bi-arrow-down"></i></button>
                             </form>
                         </td>
-                        <td colspan="3" class="p-2">
+                        <td>
+                            {% if svc.image_url %}
+                            <img src="{{ svc.image_url }}" alt="" class="rounded border" style="width: 48px; height: 48px; object-fit: cover;">
+                            {% else %}
+                            <div class="rounded border d-flex align-items-center justify-content-center text-muted bg-light" style="width: 48px; height: 48px;">
+                                <i class="bi bi-image"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="p-2">
                             <form method="POST" action="{{ url_for('settings.edit_service', service_id=svc.id) }}"
-                                class="row g-2 align-items-center">
+                                enctype="multipart/form-data" class="row g-2 align-items-center">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
-                                <div class="col-md-5">
+                                <div class="col-md-3">
                                     <input type="text" name="name" value="{{ svc.name }}" class="form-control form-control-sm">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <input type="number" step="0.01" name="price" value="{{ svc.price if svc.price is not none else '' }}" placeholder="no price shown" class="form-control form-control-sm">
                                 </div>
-                                <div class="col-md-3 form-check">
-                                    <input type="checkbox" name="allow_web_scheduling" class="form-check-input" {% if svc.allow_web_scheduling %}checked{% endif %}>
-                                    <label class="form-check-label small">Allow</label>
+                                <div class="col-md-3">
+                                    <input type="file" name="image" accept="image/*" class="form-control form-control-sm">
+                                    {% if svc.image_url %}
+                                    <div class="form-check mt-1">
+                                        <input type="checkbox" name="remove_image" class="form-check-input" id="remove-image-{{ svc.id }}">
+                                        <label class="form-check-label small" for="remove-image-{{ svc.id }}">Remove image</label>
+                                    </div>
+                                    {% endif %}
                                 </div>
-                                <div class="col-md-1">
+                                <div class="col-md-2 form-check">
+                                    <input type="checkbox" name="allow_web_scheduling" class="form-check-input" {% if svc.allow_web_scheduling %}checked{% endif %}>
+                                    <label class="form-check-label small">Allow sched.</label>
+                                </div>
+                                <div class="col-md-2">
                                     <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Save</button>
                                 </div>
                             </form>
@@ -102,7 +123,7 @@
                         </td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="6" class="text-center text-muted py-4">No services yet &mdash; add one above or click "Add Pre-Loaded Services".</td></tr>
+                    <tr><td colspan="5" class="text-center text-muted py-4">No services yet &mdash; add one above or click "Add Pre-Loaded Services".</td></tr>
                     {% endfor %}
                 </tbody>
             </table>

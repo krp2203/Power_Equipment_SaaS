@@ -194,6 +194,7 @@ def get_services():
         "id": s.id,
         "name": s.name,
         "price": float(s.price) if s.price is not None else None,
+        "image_url": s.image_url,
         "allow_web_scheduling": bool(s.allow_web_scheduling),
     } for s in services])
 
