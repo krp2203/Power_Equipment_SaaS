@@ -126,7 +126,7 @@ def reset_password_token(token):
 
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='password-reset')
     try:
-        data = s.loads(token, max_age=3600)  # 1 hour
+        data = s.loads(token, max_age=86400)  # 24 hours
         reset_user = User.query.get(data.get('user_id'))
     except SignatureExpired:
         flash('This password reset link has expired. Please ask an administrator to send a new one.', 'danger')
