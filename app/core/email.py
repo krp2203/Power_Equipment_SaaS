@@ -438,7 +438,7 @@ def send_password_reset_email(user, reset_url, org_name=None):
                     <p style="text-align: center; margin: 30px 0;">
                         <a href="{reset_url}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:bold;">Set a New Password</a>
                     </p>
-                    <p style="color: #666; font-size: 13px;">This link expires in 1 hour. If you weren't expecting this, you can safely ignore this email - your password won't change unless you click the link above and set a new one.</p>
+                    <p style="color: #666; font-size: 13px;">This link expires in 24 hours. If you weren't expecting this, you can safely ignore this email - your password won't change unless you click the link above and set a new one.</p>
                     <p style="color: #666; font-size: 13px;">If the button doesn't work, copy and paste this URL into your browser:<br>
                         <a href="{reset_url}">{reset_url}</a>
                     </p>
@@ -457,7 +457,7 @@ Hi {user.username},
 
 {"An administrator at " + org_name + " has" if org_name else "A request has been made to"} reset the password for your account.
 
-Set a new password here (expires in 1 hour):
+Set a new password here (expires in 24 hours):
 {reset_url}
 
 If you weren't expecting this, you can safely ignore this email.
