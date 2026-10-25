@@ -129,9 +129,24 @@ def reset_password_token(token):
         data = s.loads(token, max_age=86400)  # 24 hours
         reset_user = User.query.get(data.get('user_id'))
     except SignatureExpired:
+        # e.payload here is the raw base64-encoded bytes, not a decoded dict
+        # (confirmed directly against itsdangerous - do not call .get() on
+        # it) - logging the token prefix is simple and safe, and already
+        # distinguishes "expired" from the BadData case below, which is the
+        # diagnostic distinction that actually matters.
+        current_app.logger.warning(f"Password reset link expired: token prefix {token[:12]!r}")
         flash('This password reset link has expired. Please ask an administrator to send a new one.', 'danger')
         return redirect(url_for('auth.login'))
-    except BadData:
+    except BadData as e:
+        # Signature/format check failed outright - no trustworthy payload to
+        # read. Logging a short prefix (not the full token) and the
+        # exception's own class name is enough to tell a corrupted-in-transit
+        # token (e.g. an email client/gateway mangling the link) apart from
+        # one that's simply garbage, without logging a sensitive value
+        # indefinitely.
+        current_app.logger.warning(
+            f"Password reset link rejected ({type(e).__name__}): token prefix {token[:12]!r}"
+        )
         flash('This password reset link is invalid.', 'danger')
         return redirect(url_for('auth.login'))
 

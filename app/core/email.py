@@ -468,7 +468,13 @@ If you weren't expecting this, you can safely ignore this email.
             recipients=[user.email],
             html=html_body,
             body=text_body,
-            sender=current_app.config.get('MAIL_SENDER', 'noreply@mail.bentcrankshaft.com')
+            sender=current_app.config.get('MAIL_SENDER', 'noreply@mail.bentcrankshaft.com'),
+            # Mailgun rewrites every link in the HTML body to a click.mailgun.org
+            # tracking redirect by default - fine for marketing email, but a
+            # real risk for a signed auth token: any lossy rewrite/decode along
+            # that redirect chain corrupts the token and the link shows as
+            # "invalid" (itsdangerous BadData) even though it was just clicked.
+            extra_headers={'X-Mailgun-Track-Clicks': 'no'},
         )
         mail.send(msg)
         print(f"✅ Password reset email sent to {user.email}")
