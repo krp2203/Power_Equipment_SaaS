@@ -387,7 +387,12 @@ def send_user_password_reset(user_id):
 
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='password-reset')
     token = s.dumps({'user_id': user.id})
-    reset_url = url_for('auth.reset_password_token', token=token, _external=True)
+    # Build from the org directly (same reasoning as super_admin.reset_user_password)
+    # rather than _external=True - this route only "worked" by coincidence
+    # today, since a dealer-admin is normally already browsing their own
+    # subdomain when they trigger it, not because the host was actually
+    # derived correctly.
+    reset_url = f"{org.public_base_url}/auth/reset-password/{token}"
 
     from app.core.email import send_password_reset_email
     if send_password_reset_email(user, reset_url, org_name=org.name):
