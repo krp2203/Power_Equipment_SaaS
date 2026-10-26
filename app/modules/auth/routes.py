@@ -3,6 +3,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from app.core.models import User, Organization
 from app.core.extensions import db
+from app.core.multitenancy import global_tenant_bypass
 from . import auth_bp
 from .forms import ProfileForm, ChangePasswordForm, LoginForm, SetNewPasswordForm
 
@@ -127,7 +128,19 @@ def reset_password_token(token):
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='password-reset')
     try:
         data = s.loads(token, max_age=86400)  # 24 hours
-        reset_user = User.query.get(data.get('user_id'))
+        # The verified signature IS the authorization for this lookup, so it
+        # must not also be silently org-scoped by the global multitenancy
+        # filter (app/core/multitenancy.py) - an anonymous visitor clicking
+        # this link has no session, so g.current_org_id falls back to the
+        # master org (1) and g.is_superuser is False, meaning the filter
+        # would inject organization_id == 1 onto this query and return None
+        # for any user outside org 1, even though the token is 100% valid.
+        # This exact bug: a SaaS Admin resetting a user at a dealer other
+        # than org 1, from the bare bentcrankshaft.com domain, always failed
+        # with "invalid" - the token decoded and verified fine, the lookup
+        # right after it just silently returned nothing.
+        with global_tenant_bypass():
+            reset_user = User.query.get(data.get('user_id'))
     except SignatureExpired:
         # e.payload here is the raw base64-encoded bytes, not a decoded dict
         # (confirmed directly against itsdangerous - do not call .get() on
