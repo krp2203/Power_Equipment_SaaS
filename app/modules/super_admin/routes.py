@@ -247,7 +247,17 @@ def reset_user_password(user_id):
     from itsdangerous import URLSafeTimedSerializer
     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='password-reset')
     token = s.dumps({'user_id': user.id})
-    reset_url = url_for('auth.reset_password_token', token=token, _external=True)
+    # Build the link from the TARGET user's own org, not _external=True
+    # (which would resolve to whatever host the SaaS admin is currently
+    # browsing - the bare master domain here, not the dealer's own site).
+    # Clicking a link on the wrong host, setting the password, and logging
+    # in all worked, but the next request's session (org X) vs. host
+    # (master org) mismatch correctly triggered this app's own tenant
+    # security check and silently logged the user back out - looked like
+    # "goes back to the master site" but was really a signal the link was
+    # never pointing at the right place to begin with.
+    base_url = user.organization.public_base_url if user.organization else "https://bentcrankshaft.com"
+    reset_url = f"{base_url}/auth/reset-password/{token}"
 
     from app.core.email import send_password_reset_email
     org_name = user.organization.name if user.organization else None

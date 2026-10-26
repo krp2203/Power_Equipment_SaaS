@@ -62,6 +62,23 @@ class Organization(db.Model):
         """Shop labor rate per hour, used when a technician has no personal rate."""
         return self._settings_decimal('default_labor_rate')
 
+    @property
+    def public_base_url(self):
+        """This org's own public site URL (scheme + host, no trailing
+        slash). Always the {slug}.bentcrankshaft.com subdomain, which is
+        guaranteed to resolve and have a valid cert - NOT custom_domain,
+        which can be set on the org record before its SSL cert/nginx config
+        are actually provisioned (see send_dealer_admin_notification's own
+        setup checklist in app/core/email.py) and would 404/TLS-error if
+        used too early. Used for building links (e.g. password reset) that
+        must work immediately and host-independently, unlike _external=True
+        url_for(), which resolves from whatever host the current request
+        happens to be on - wrong for e.g. a SaaS Admin, browsing the bare
+        master domain, triggering an action for a different dealer's user."""
+        if self.slug:
+            return f"https://{self.slug}.bentcrankshaft.com"
+        return "https://bentcrankshaft.com"
+
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
