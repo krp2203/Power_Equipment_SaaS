@@ -5,9 +5,9 @@ from wtforms.validators import DataRequired, Email, Length, Optional
 class CreateTenantForm(FlaskForm):
     org_name = StringField('Organization / Dealer Name', validators=[DataRequired(), Length(min=3, max=100)], description="e.g. Bob's Mowers")
     slug = StringField('Subdomain Slug', validators=[DataRequired(), Length(min=3, max=50)], description="e.g. bobsmowers (for bobsmowers.bentcrankshaft.com)")
-    dealer_email = StringField('Dealer Email', validators=[Optional(), Email(), Length(max=120)], description="Optional: sends the dealer a welcome email with their login link and credentials")
+    dealer_email = StringField('Dealer Email', validators=[Optional(), Email(), Length(max=120)], description="Optional: sends the dealer a welcome email with their login link, and (if no password is set below) a one-time link to create their own password")
     admin_username = StringField('Admin Username', validators=[DataRequired(), Length(min=3, max=50)], default="admin", description="Default: admin")
-    admin_password = PasswordField('Admin Password', description="Optional: Leave blank to auto-generate a temporary password")
+    admin_password = PasswordField('Admin Password', description="Optional: leave blank to let the dealer set their own password via the welcome email (requires Dealer Email above); if no email is given, a temp password is generated and shown here instead")
     custom_domain = StringField('Custom Domain (Optional)', validators=[Length(min=0, max=255)], description="e.g. bobsmowers.com (dealer can add this later)")
 
     submit = SubmitField('Create New Site')

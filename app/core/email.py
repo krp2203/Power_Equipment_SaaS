@@ -117,7 +117,7 @@ Subdomain: https://{dealer_slug}.bentcrankshaft.com
         return False
 
 
-def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, temp_password=None, custom_domain=None):
+def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, temp_password=None, custom_domain=None, setup_url=None):
     """
     Send a welcome email to a new dealer.
 
@@ -126,7 +126,13 @@ def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, te
         dealer_email (str): Email address of the dealer contact
         username (str): Username for login
         dealer_slug (str, optional): Dealer subdomain slug (e.g., 'kens-mowers')
-        temp_password (str, optional): Temporary password if one was generated
+        temp_password (str, optional): Temporary password if one was generated.
+            Mutually exclusive with setup_url in practice - a caller passing
+            setup_url has no real password to relay at all.
+        setup_url (str, optional): One-time link (auth.setup_account_token)
+            letting the dealer create their own password instead of being
+            handed a temp_password - the preferred path whenever we have an
+            email to send it to (see super_admin.add_tenant).
     """
     try:
         # Get master organization contact info
@@ -148,13 +154,34 @@ def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, te
             login_url = "https://bentcrankshaft.com/auth/login"
 
         # Create HTML email body
-        if temp_password:
+        if setup_url:
+            password_note = "<p>For security, you'll create your own password using the button below.</p>"
+        elif temp_password:
             password_note = f"""
             <p><strong>Temporary Password:</strong> <code>{temp_password}</code></p>
             <p>Please change this password after your first login in your profile settings.</p>
             """
         else:
             password_note = "<p>You can now log in with your username and password.</p>"
+
+        # Set-password CTA (only when there's no temp password to hand
+        # over at all - see setup_account_token in app/modules/auth/routes.py)
+        setup_cta_section = ""
+        if setup_url:
+            setup_cta_section = f"""
+            <p style="text-align: center; margin: 30px 0;">
+                <a href="{setup_url}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:12px 24px;border-radius:6px;font-weight:bold;">Set Your Password</a>
+            </p>
+            <p style="color: #666; font-size: 13px;">This link can only be used once, to set your initial password. If the button doesn't work, copy and paste this URL into your browser:<br>
+                <a href="{setup_url}">{setup_url}</a>
+            </p>
+            """
+
+        first_next_step = (
+            f'<li><strong>Set your password</strong> using the button above, then log in at <a href="{login_url}">{login_url}</a></li>'
+            if setup_url else
+            f'<li><strong>Log in</strong> to your account at <a href="{login_url}">{login_url}</a></li>'
+        )
 
         # Custom domain section
         custom_domain_section = ""
@@ -207,6 +234,7 @@ def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, te
                         <strong>Username:</strong> <code style="background: #f5f5f5; padding: 2px 6px; border-radius: 3px;">{username}</code><br>
                         {password_note}
                     </p>
+                    {setup_cta_section}
 
                     <h3>Your Website Address</h3>
                     <p>Your site is immediately available at:</p>
@@ -224,7 +252,7 @@ def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, te
 
                     <h3>Next Steps</h3>
                     <ol>
-                        <li><strong>Log in</strong> to your account at <a href="{login_url}">{login_url}</a></li>
+                        {first_next_step}
                         <li><strong>Complete onboarding</strong> - Takes about 5 minutes</li>
                         {f'<li><strong>Configure your domain</strong> - Follow the DNS instructions above</li>' if custom_domain else ''}
                         <li><strong>Explore your dashboard</strong> - Add inventory, manage parts, and more</li>
@@ -258,6 +286,7 @@ Your dealer account has been successfully created! We're excited to have you on 
 Your Login Information:
 - Username: {username}
 {f'- Temporary Password: {temp_password}' if temp_password else ''}
+{f'- Set your password (one-time link): {setup_url}' if setup_url else ''}
 - Login URL: {login_url}
 
 Getting Started:
@@ -286,7 +315,13 @@ This is an automated email. Please do not reply directly to this message.
             cc=cc_list,
             html=html_body,
             body=text_body,
-            sender=current_app.config.get('MAIL_SENDER', 'noreply@mail.bentcrankshaft.com')
+            sender=current_app.config.get('MAIL_SENDER', 'noreply@mail.bentcrankshaft.com'),
+            # This email can now carry a signed, one-time auth link
+            # (setup_url) - Mailgun's click-tracking rewrite is exactly
+            # what broke password-reset links before this header was
+            # added there (see send_password_reset_email below), so it
+            # needs the same protection here.
+            extra_headers={'X-Mailgun-Track-Clicks': 'no'}
         )
 
         mail.send(msg)

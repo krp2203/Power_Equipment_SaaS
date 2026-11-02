@@ -177,6 +177,63 @@ def reset_password_token(token):
 
     return render_template('auth/reset_password.html', form=form, reset_user=reset_user)
 
+@auth_bp.route('/setup-account/<token>', methods=['GET', 'POST'])
+def setup_account_token(token):
+    """First-time password setup for a dealer account created by the SaaS
+    Admin (super_admin.add_tenant) with an email on file. Deliberately a
+    separate route/salt from reset_password_token above rather than a
+    shared one: that flow expires after 24h and is reusable until then,
+    while this one must never expire on a timer but must only work once -
+    opposite tradeoffs, so overloading one route for both risked breaking
+    the already-shipped reset flow.
+    """
+    from itsdangerous import URLSafeTimedSerializer, BadData
+    from flask import current_app
+
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='dealer-setup')
+    try:
+        # No max_age - this link is meant to sit in an inbox indefinitely
+        # until the dealer gets to it, unlike the reset-password link.
+        data = s.loads(token)
+        # Same cross-tenant lookup consideration as reset_password_token:
+        # an anonymous visitor has no session, so the global multitenancy
+        # filter would otherwise scope this query to the master org and
+        # silently return nothing for any other dealer's user.
+        with global_tenant_bypass():
+            setup_user = User.query.get(data.get('user_id'))
+    except BadData as e:
+        current_app.logger.warning(
+            f"Dealer setup link rejected ({type(e).__name__}): token prefix {token[:12]!r}"
+        )
+        flash('This setup link is invalid.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    if not setup_user:
+        flash('This setup link is invalid.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    # Single-use, enforced via the same flag that makes the account need
+    # setup in the first place: it starts True at account creation and
+    # flips False the moment a password is successfully set below, so a
+    # second visit to this same link (forwarded, bookmarked, reused) lands
+    # here instead of being allowed to silently overwrite the password
+    # again. Note: if some future flow ever flips password_reset_required
+    # back to True on this account, an old unused setup link would start
+    # working again - acceptable today since nothing else currently does.
+    if not setup_user.password_reset_required:
+        flash('This setup link has already been used. Contact support if you need a new one.', 'danger')
+        return redirect(url_for('auth.login'))
+
+    form = SetNewPasswordForm()
+    if form.validate_on_submit():
+        setup_user.password = generate_password_hash(form.new_password.data)
+        setup_user.password_reset_required = False
+        db.session.commit()
+        flash('Your password has been set. You can now log in.', 'success')
+        return redirect(url_for('auth.login'))
+
+    return render_template('auth/reset_password.html', form=form, reset_user=setup_user)
+
 @auth_bp.route('/profile', methods=['GET', 'POST'])
 @login_required
 def profile():
