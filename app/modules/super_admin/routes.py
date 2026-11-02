@@ -20,15 +20,31 @@ def add_tenant():
     if form.validate_on_submit():
         import secrets
         import string
-        
-        # 0. Handle Admin Password (Auto-gen if empty)
+
+        has_dealer_email = bool(form.dealer_email.data)
+
+        # 0. Handle Admin Password. An explicitly-typed password is a
+        # deliberate override - always keeps the old behavior (shown in
+        # the welcome email + flash). Left blank: if there's an email to
+        # send to, the dealer sets their own password via a one-time
+        # setup link instead (see below) - raw_password then becomes a
+        # throwaway value, never shown anywhere, only needed to satisfy
+        # User.password's NOT NULL column. Only when there's no email at
+        # all (nowhere to send a link) do we fall back to a real
+        # auto-generated temp password surfaced in the flash, so the
+        # admin can still relay it manually.
         raw_password = form.admin_password.data
         was_auto_gen = False
+        use_setup_link = False
         if not raw_password:
-            alphabet = string.ascii_letters + string.digits
-            raw_password = ''.join(secrets.choice(alphabet) for _ in range(12))
             was_auto_gen = True
-            
+            if has_dealer_email:
+                use_setup_link = True
+                raw_password = secrets.token_urlsafe(24)
+            else:
+                alphabet = string.ascii_letters + string.digits
+                raw_password = ''.join(secrets.choice(alphabet) for _ in range(12))
+
         # 1. Create Organization
         from datetime import datetime, timedelta
 
@@ -63,15 +79,26 @@ def add_tenant():
         db.session.commit()
 
         # 3. Send Dealer Welcome Email (only if an email was provided)
-        if form.dealer_email.data:
+        if has_dealer_email:
             try:
                 from app.core.email import send_welcome_email
+                setup_url = None
+                if use_setup_link:
+                    from itsdangerous import URLSafeTimedSerializer
+                    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='dealer-setup')
+                    token = s.dumps({'user_id': new_user.id})
+                    # Built from the new org's own subdomain (public_base_url),
+                    # not url_for(..., _external=True) - the SaaS Admin is
+                    # browsing the bare master domain right now, which is
+                    # exactly the bug fixed for the password-reset links.
+                    setup_url = f"{new_org.public_base_url}/auth/setup-account/{token}"
                 send_welcome_email(
                     dealer_name=new_org.name,
                     dealer_email=form.dealer_email.data,
                     username=new_user.username,
                     dealer_slug=new_org.slug,
-                    temp_password=raw_password,
+                    temp_password=None if use_setup_link else raw_password,
+                    setup_url=setup_url,
                     custom_domain=new_org.custom_domain
                 )
             except Exception as e:
@@ -89,7 +116,9 @@ def add_tenant():
             print(f"Warning: Failed to send admin notification: {e}")
 
         msg = f"Site '{new_org.name}' created successfully!"
-        if was_auto_gen:
+        if use_setup_link:
+            msg += " A setup email was sent so the dealer can create their own password."
+        elif was_auto_gen:
             msg += f" TEMP CREDENTIALS -> User: {new_user.username} | Pass: {raw_password}"
 
         flash(msg, "success")
