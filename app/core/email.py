@@ -117,7 +117,7 @@ Subdomain: https://{dealer_slug}.bentcrankshaft.com
         return False
 
 
-def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, temp_password=None, custom_domain=None, setup_url=None):
+def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, temp_password=None, custom_domain=None, setup_url=None, is_resend=False):
     """
     Send a welcome email to a new dealer.
 
@@ -133,6 +133,11 @@ def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, te
             letting the dealer create their own password instead of being
             handed a temp_password - the preferred path whenever we have an
             email to send it to (see super_admin.add_tenant).
+        is_resend (bool): True when this is super_admin.reset_and_resend
+            re-issuing a setup_url for an EXISTING dealer account, not a
+            brand-new one - only changes the subject/heading/intro wording
+            so it doesn't tell an existing dealer their account was "just
+            created."
     """
     try:
         # Get master organization contact info
@@ -145,7 +150,10 @@ def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, te
             support_email = master_org.theme_config.get('contact_email', support_email)
             support_phone = master_org.theme_config.get('contact_phone', support_phone)
 
-        subject = f"Welcome to Power Equipment SaaS - {dealer_name}"
+        subject = (
+            f"Reset Your Dealer Account Password - {dealer_name}" if is_resend else
+            f"Welcome to Power Equipment SaaS - {dealer_name}"
+        )
 
         # Build login URL
         if dealer_slug:
@@ -223,11 +231,11 @@ def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, te
         <html>
             <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
                 <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
-                    <h2 style="color: #2c3e50;">Welcome to Power Equipment Dealer Portal! 🎉</h2>
+                    <h2 style="color: #2c3e50;">{"Password Reset for Your Dealer Account" if is_resend else "Welcome to Power Equipment Dealer Portal! 🎉"}</h2>
 
                     <p>Hi {dealer_name},</p>
 
-                    <p>Your dealer account has been successfully created! We're excited to have you on board.</p>
+                    <p>{"A new one-time link has been generated for your account below." if is_resend else "Your dealer account has been successfully created! We're excited to have you on board."}</p>
 
                     <h3>Your Login Information</h3>
                     <p>
@@ -277,11 +285,11 @@ def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, te
 
         # Create plain text version
         text_body = f"""
-Welcome to Power Equipment Dealer Portal!
+{"Password Reset for Your Dealer Account" if is_resend else "Welcome to Power Equipment Dealer Portal!"}
 
 Hi {dealer_name},
 
-Your dealer account has been successfully created! We're excited to have you on board.
+{"A new one-time link has been generated for your account below." if is_resend else "Your dealer account has been successfully created! We're excited to have you on board."}
 
 Your Login Information:
 - Username: {username}

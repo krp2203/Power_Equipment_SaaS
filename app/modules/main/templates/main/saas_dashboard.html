@@ -276,6 +276,14 @@
                                             {% endif %}
                                         </button>
                                     </form>
+                                    <form action="{{ url_for('super_admin.reset_and_resend', org_id=org.id) }}"
+                                        method="POST" style="display:inline;"
+                                        onsubmit="return confirm('Reset &amp; resend for {{ org.name }}? This sends a new password-setup link and shows the onboarding walkthrough again next login. Their existing data (inventory, settings, etc.) will NOT be affected.');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-arrow-repeat"></i> Reset &amp; Resend
+                                        </button>
+                                    </form>
                                     {% endif %}
                                     {% endif %}
                                 </div>

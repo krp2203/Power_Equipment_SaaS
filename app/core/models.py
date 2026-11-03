@@ -99,6 +99,14 @@ class User(UserMixin, db.Model):
     # Settings
     password_reset_required = db.Column(db.Boolean, default=False, nullable=False)
     receive_automated_reports = db.Column(db.Boolean, default=False, nullable=False)
+
+    # Bumped every time a new dealer-setup link (auth.setup_account_token)
+    # is issued for this user, and embedded in that token's signed payload.
+    # Lets a "Reset & Resend" admin action invalidate any older, still-
+    # unexpired setup link just by bumping this - without it, re-arming
+    # password_reset_required=True alone would also reactivate a stale
+    # link still sitting in an old email.
+    setup_token_version = db.Column(db.Integer, default=0, nullable=False)
     
     notifications = db.relationship('Notification', backref='recipient', lazy=True, cascade="all, delete-orphan")
     labor_entries = db.relationship('LaborEntry', backref='user_rel', lazy=True)
