@@ -86,7 +86,7 @@ def add_tenant():
                 if use_setup_link:
                     from itsdangerous import URLSafeTimedSerializer
                     s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='dealer-setup')
-                    token = s.dumps({'user_id': new_user.id})
+                    token = s.dumps({'user_id': new_user.id, 'v': new_user.setup_token_version})
                     # Built from the new org's own subdomain (public_base_url),
                     # not url_for(..., _external=True) - the SaaS Admin is
                     # browsing the bare master domain right now, which is
@@ -249,6 +249,76 @@ def delete_tenant(org_id):
     db.session.commit()
     
     flash(f"Organization '{org_name}' has been permanently deleted.", "success")
+    return redirect(url_for('marketing.dashboard'))
+
+@super_admin_bp.route('/tenants/<int:org_id>/reset-resend', methods=['POST'])
+@login_required
+def reset_and_resend(org_id):
+    """For a dealer who lost/never got their setup email, or needs a fresh
+    credential: forces a new password (never shown anywhere - the dealer
+    sets their own via the emailed link, same as add_tenant's setup-link
+    path), resends the welcome email with a new one-time setup link, and
+    replays the onboarding walkthrough on next login. Touches nothing
+    else - onboarding_complete is a pure gate/redirect flag
+    (settings.onboarding / marketing.dashboard), not a data reset.
+    """
+    # Security: Ensure only Super Admin (Org 1) can do this
+    if g.current_org_id != 1 and not session.get('impersonation_origin_org'):
+         flash("Unauthorized.", "danger")
+         return redirect(url_for('main.index'))
+
+    # Prevent resetting Org 1's own account this way
+    if org_id == 1:
+        flash("Cannot reset the master organization's account this way.", "danger")
+        return redirect(url_for('marketing.dashboard'))
+
+    org = Organization.query.get_or_404(org_id)
+
+    # add_tenant doesn't actually set role='admin' on the user it creates
+    # (see the commented-out line there), so a strict role='admin' lookup
+    # would miss most dealers created that way - fall back to simply the
+    # org's first/oldest user.
+    admin_user = (
+        User.query.filter_by(organization_id=org.id, role='admin').first()
+        or User.query.filter_by(organization_id=org.id).order_by(User.id).first()
+    )
+    if not admin_user:
+        flash(f"'{org.name}' has no users to send a setup link to.", "danger")
+        return redirect(url_for('marketing.dashboard'))
+    if not admin_user.email:
+        flash(f"{admin_user.username} doesn't have an email address on file - can't send a setup link.", "danger")
+        return redirect(url_for('marketing.dashboard'))
+
+    import secrets
+    raw_password = secrets.token_urlsafe(24)  # throwaway - never shown anywhere
+    admin_user.password = generate_password_hash(raw_password)
+    admin_user.password_reset_required = True
+    # Bumping this invalidates any older setup link already sent to this
+    # user (used or not) - see the version check in auth.setup_account_token.
+    admin_user.setup_token_version += 1
+    org.onboarding_complete = False
+    db.session.commit()
+
+    from itsdangerous import URLSafeTimedSerializer
+    s = URLSafeTimedSerializer(current_app.config['SECRET_KEY'], salt='dealer-setup')
+    token = s.dumps({'user_id': admin_user.id, 'v': admin_user.setup_token_version})
+    setup_url = f"{org.public_base_url}/auth/setup-account/{token}"
+
+    from app.core.email import send_welcome_email
+    if send_welcome_email(
+        dealer_name=org.name,
+        dealer_email=admin_user.email,
+        username=admin_user.username,
+        dealer_slug=org.slug,
+        temp_password=None,
+        setup_url=setup_url,
+        custom_domain=org.custom_domain,
+        is_resend=True
+    ):
+        flash(f"A new setup link was sent to {admin_user.email}. {org.name}'s setup walkthrough will show again on next login.", "success")
+    else:
+        flash("Couldn't send the setup email - check mail settings and try again.", "danger")
+
     return redirect(url_for('marketing.dashboard'))
 
 @super_admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])

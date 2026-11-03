@@ -212,21 +212,55 @@ def setup_account_token(token):
         flash('This setup link is invalid.', 'danger')
         return redirect(url_for('auth.login'))
 
+    # Version check: a "Reset & Resend" admin action (super_admin routes)
+    # bumps setup_token_version and mints a fresh token whenever it needs
+    # to issue a new link for this account - this is what makes an older
+    # link (already used, or just superseded by a newer one) stop working,
+    # since the version embedded in an old token can never match a bumped
+    # counter. `.get('v', 0)` makes a token minted before this version
+    # check existed (no 'v' key at all) compare equal to a freshly
+    # migrated user's default of 0, so nothing already in flight breaks.
+    if data.get('v', 0) != setup_user.setup_token_version:
+        flash('This setup link is no longer valid - a newer one may have been sent. Contact support if you need the latest link.', 'danger')
+        return redirect(url_for('auth.login'))
+
     # Single-use, enforced via the same flag that makes the account need
     # setup in the first place: it starts True at account creation and
     # flips False the moment a password is successfully set below, so a
     # second visit to this same link (forwarded, bookmarked, reused) lands
     # here instead of being allowed to silently overwrite the password
-    # again. Note: if some future flow ever flips password_reset_required
-    # back to True on this account, an old unused setup link would start
-    # working again - acceptable today since nothing else currently does.
+    # again.
     if not setup_user.password_reset_required:
         flash('This setup link has already been used. Contact support if you need a new one.', 'danger')
         return redirect(url_for('auth.login'))
 
     form = SetNewPasswordForm()
     if form.validate_on_submit():
+        # The check above (plain Python, against a row fetched earlier in
+        # the request) isn't atomic against two genuinely simultaneous
+        # submissions of the same link - both could pass it before either
+        # commits. Re-fetch with a row lock and the same condition built
+        # into the WHERE clause, so only one concurrent request can ever
+        # win this; a loser sees locked_user as None and is rejected here
+        # instead of silently overwriting the first submission's password.
+        with global_tenant_bypass():
+            locked_user = (
+                User.query.filter_by(id=setup_user.id, password_reset_required=True)
+                .with_for_update()
+                .first()
+            )
+        if not locked_user:
+            flash('This setup link has already been used. Contact support if you need a new one.', 'danger')
+            return redirect(url_for('auth.login'))
+        setup_user = locked_user
+
         setup_user.password = generate_password_hash(form.new_password.data)
+        # Not bumping setup_token_version here - password_reset_required
+        # alone already makes this exact token single-use (the check
+        # above), and leaving the version unchanged means a stray re-visit
+        # of this same, just-used link correctly says "already been
+        # used" instead of the less specific "no longer valid" (which is
+        # reserved for when a newer link has actually superseded this one).
         setup_user.password_reset_required = False
         db.session.commit()
         flash('Your password has been set. You can now log in.', 'success')
