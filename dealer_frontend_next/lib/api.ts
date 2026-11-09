@@ -29,12 +29,18 @@ export async function getDealerConfig(): Promise<DealerConfig> {
         // If accessing via IP (local dev), use localhost
         targetHost = 'localhost';
         slug = '';
-    } else {
-        // Extract slug from subdomain (e.g., 'kens-mowers.bentcrankshaft.com' -> 'kens-mowers')
+    } else if (host.endsWith('.bentcrankshaft.com') || host.endsWith('.bentcrankshaft.local')) {
+        // Real platform subdomain (e.g., 'kens-mowers.bentcrankshaft.com' -> 'kens-mowers')
         const hostParts = host.split('.');
         if (hostParts.length > 1 && !host.includes('localhost')) {
             slug = hostParts[0]; // First part is the slug
         }
+    } else {
+        // External custom domain (e.g. ncpowerequipment.com, www.walllawnmower.com) -
+        // don't guess a slug from the first label (it's often "www", not a real slug).
+        // Leave slug empty so the backend resolves tenant purely from the Host header
+        // via its own custom_domain lookup.
+        slug = '';
     }
 
     try {

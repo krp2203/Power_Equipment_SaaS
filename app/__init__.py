@@ -72,20 +72,36 @@ def create_app(config_name=None):
         
         # Check Headers first (Nginx or Dev Proxy)
         header_host = request.headers.get('X-Forwarded-Host', request.host)
-        host_parts = header_host.split('.')
-        
-        if len(host_parts) >= 3:
-            potential_slug = host_parts[0]
-            if potential_slug in ['www', 'app', 'saas', 'mail', 'api', 'admin']:
-                print(f"DEBUG: Master subdomain detected: {potential_slug}", flush=True)
-                tenant = Organization.query.get(1)
+
+        # Only treat this as one of OUR OWN *.bentcrankshaft.com(/.local) subdomains
+        # when the host actually ends in that suffix - counting dot-separated parts
+        # alone (the old check) misclassifies any external custom domain that happens
+        # to have a "www." prefix (e.g. www.walllawnmower.com also has 3 parts, same
+        # as kens-mowers.bentcrankshaft.com) and force-routes it to the Master org
+        # instead of reaching the custom_domain lookup below.
+        is_own_domain = (
+            header_host in ('bentcrankshaft.com', 'bentcrankshaft.local')
+            or header_host.endswith('.bentcrankshaft.com')
+            or header_host.endswith('.bentcrankshaft.local')
+        )
+
+        if is_own_domain:
+            host_parts = header_host.split('.')
+            if len(host_parts) >= 3:
+                potential_slug = host_parts[0]
+                if potential_slug in ['www', 'app', 'saas', 'mail', 'api', 'admin']:
+                    print(f"DEBUG: Master subdomain detected: {potential_slug}", flush=True)
+                    tenant = Organization.query.get(1)
+                else:
+                    tenant = Organization.query.filter_by(slug=potential_slug).first()
             else:
-                tenant = Organization.query.filter_by(slug=potential_slug).first()
+                # Bare bentcrankshaft.com/.local root domain
+                tenant = Organization.query.get(1)
         elif 'localhost' in header_host or '127.0.0.1' in header_host:
              # Localhost Development: Default to Master Org if no subdomain
              tenant = Organization.query.get(1)
         else:
-            # Check for custom domain mapping (e.g., ncpowerequipment.com)
+            # External custom domain (e.g., ncpowerequipment.com, www.walllawnmower.com)
             tenant = Organization.query.filter_by(custom_domain=header_host).first()
 
             if not tenant:
