@@ -116,6 +116,7 @@ def edit_brand(brand_id):
         brand.slug = _unique_slug(org.id, name, exclude_id=brand.id)
     brand.name = name
     brand.intro_text = (request.form.get('intro_text') or '').strip() or None
+    brand.show_name = request.form.get('show_name') == 'on'
 
     logo = request.files.get('logo')
     if logo and logo.filename:

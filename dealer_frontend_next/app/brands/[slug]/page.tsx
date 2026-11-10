@@ -60,7 +60,9 @@ export default function BrandCatalogPage({ params }: { params: Promise<{ slug: s
                 {brand.logo_url && (
                     <img src={brand.logo_url} alt={brand.name} className="h-20 mx-auto mb-4 object-contain" />
                 )}
-                <h1 className="text-4xl font-extrabold text-gray-900">{brand.name}</h1>
+                {brand.show_name !== false && (
+                    <h1 className="text-4xl font-extrabold text-gray-900">{brand.name}</h1>
+                )}
                 {brand.intro_text && (
                     <p className="text-gray-500 max-w-2xl mx-auto mt-3">{brand.intro_text}</p>
                 )}

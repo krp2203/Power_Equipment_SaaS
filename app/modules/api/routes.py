@@ -293,7 +293,8 @@ def get_catalog_brand(slug):
         ManufacturerCatalogItem.display_order, ManufacturerCatalogItem.id).all()
 
     return jsonify({
-        "brand": {"name": brand.name, "logo_url": brand.logo_url, "intro_text": brand.intro_text},
+        "brand": {"name": brand.name, "logo_url": brand.logo_url, "intro_text": brand.intro_text,
+                   "show_name": brand.show_name},
         "items": [{
             "id": item.id,
             "model_name": item.model_name,
