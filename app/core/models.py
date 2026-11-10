@@ -811,6 +811,11 @@ class ManufacturerBrand(db.Model):
     slug = db.Column(db.String(100), nullable=False)
     logo_url = db.Column(db.String(500))
     intro_text = db.Column(db.Text)
+    # Lets a dealer hide the "{{ brand.name }}" heading on the public brand
+    # page when the logo already spells out the name (common enough that the
+    # heading is pure redundancy) - the logo itself is unaffected, and
+    # img alt text still uses the name either way for accessibility.
+    show_name = db.Column(db.Boolean, default=True, nullable=False, server_default=db.true())
     display_order = db.Column(db.Integer, default=0)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 

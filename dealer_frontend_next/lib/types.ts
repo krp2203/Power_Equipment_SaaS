@@ -119,6 +119,7 @@ export interface CatalogBrandDetail {
         name: string;
         logo_url?: string | null;
         intro_text?: string | null;
+        show_name?: boolean;
     };
     items: CatalogItem[];
 }

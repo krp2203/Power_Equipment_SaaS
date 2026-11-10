@@ -46,6 +46,10 @@
                 <div class="col-md-1">
                     <button type="submit" class="btn btn-primary w-100">Save</button>
                 </div>
+                <div class="col-12 form-check mt-2">
+                    <input type="checkbox" name="show_name" id="show_name" class="form-check-input" {% if brand.show_name %}checked{% endif %}>
+                    <label class="form-check-label small" for="show_name">Show manufacturer name on this page (turn off if the logo already includes the name)</label>
+                </div>
             </form>
         </div>
     </div>
