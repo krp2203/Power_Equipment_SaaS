@@ -166,10 +166,15 @@ def organization():
 
         org.theme_config = new_theme
         
-        # Update Columns - Only allow slug/custom_domain update if SaaS Admin
+        # Update Columns - Only allow slug/custom_domain update if SaaS Admin.
+        # Guard on the field actually being present in the submitted form: this
+        # field isn't rendered for non-SaaS-admin dealers, and formerly wasn't
+        # rendered at all here, so any save silently nulled out an existing
+        # custom_domain even when the dealer was only editing an unrelated tab.
         if is_saas_admin:
             org.slug = form.slug.data
-            org.custom_domain = form.custom_domain.data.lower() if form.custom_domain.data else None
+            if 'custom_domain' in request.form:
+                org.custom_domain = form.custom_domain.data.lower() if form.custom_domain.data else None
             
         org.ari_dealer_id = form.ari_dealer_id.data
 
