@@ -124,6 +124,12 @@
                                             </div>
                                             {{ wtf.form_field(form.slug, label_visible=False) }}
                                         </div>
+                                        {% if session.get('impersonation_origin_org') or g.current_org.id == 1 %}
+                                        <div class="mt-3">
+                                            <label class="form-label mb-0">{{ form.custom_domain.label.text }}</label>
+                                            {{ wtf.form_field(form.custom_domain, label_visible=False) }}
+                                        </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>

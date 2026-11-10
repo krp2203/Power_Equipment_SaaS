@@ -139,7 +139,8 @@
                                     {{ org.slug }}.bentcrankshaft.com
                                 </div>
                                 <form action="{{ url_for('super_admin.update_custom_domain', org_id=org.id) }}" method="POST"
-                                    class="d-flex align-items-center gap-1 mt-1">
+                                    class="d-flex align-items-center gap-1 mt-1"
+                                    onsubmit="var orig={{ (org.custom_domain or '') | tojson }}; if (orig && this.custom_domain.value.trim() === '') { return confirm('Clear the custom domain (' + orig + ') for ' + {{ org.name | tojson }} + '? The site will stop resolving on that domain until a new one is set.'); } return true;">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
                                     <input type="text" name="custom_domain" placeholder="Custom domain (e.g. bobsmowers.com)"
                                         value="{{ org.custom_domain or '' }}"
