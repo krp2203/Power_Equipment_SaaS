@@ -117,6 +117,89 @@ Subdomain: https://{dealer_slug}.bentcrankshaft.com
         return False
 
 
+def send_payment_received_notification(org, payment_id, setup_fee_cents, monthly_price_cents):
+    """
+    Send a notification to SaaS admin (ken@bentcrankshaft.com) when a dealer's
+    card is successfully charged to start a paid plan - the only way the admin
+    otherwise finds out is noticing the deposit in Square. Fires from
+    billing_service.activate_subscription() right after it commits, for both
+    the dealer self-service "Start My Plan" and the admin-initiated "Start
+    Plan" paths (both call that same function).
+
+    Args:
+        org: the Organization that just activated.
+        payment_id (str): Square payment ID for the initial charge, for reconciliation.
+        setup_fee_cents (int): one-time setup fee charged today.
+        monthly_price_cents (int): the org's recurring monthly price (also charged today,
+            as the first month; billed again starting next cycle).
+    """
+    try:
+        admin_email = "ken@bentcrankshaft.com"
+
+        total_charged = (setup_fee_cents + monthly_price_cents) / 100
+        setup_fee = setup_fee_cents / 100
+        monthly_price = monthly_price_cents / 100
+
+        subject = f"💰 Payment Received - {org.name} is now on a paid plan"
+
+        html_body = f"""
+        <html>
+            <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                    <h2 style="color: #2c3e50;">Payment Received 💰</h2>
+
+                    <h3>Dealer</h3>
+                    <p>
+                        <strong>Name:</strong> {org.name}<br>
+                        <strong>Slug:</strong> {org.slug}<br>
+                        <strong>Site:</strong> {org.public_base_url}<br>
+                    </p>
+
+                    <h3>Charge Details</h3>
+                    <p>
+                        <strong>Charged today:</strong> ${total_charged:,.2f} (${setup_fee:,.2f} setup fee + ${monthly_price:,.2f} first month)<br>
+                        <strong>Recurring monthly:</strong> ${monthly_price:,.2f}, starting next billing cycle<br>
+                        <strong>Square payment ID:</strong> {payment_id}<br>
+                    </p>
+
+                    <hr style="margin: 30px 0; border: none; border-top: 1px solid #ddd;">
+                    <p style="color: #666; font-size: 12px;">
+                        This is an automated notification. Do not reply to this email.
+                    </p>
+                </div>
+            </body>
+        </html>
+        """
+
+        text_body = f"""
+Payment Received
+
+Dealer: {org.name}
+Slug: {org.slug}
+Site: {org.public_base_url}
+
+Charged today: ${total_charged:,.2f} (${setup_fee:,.2f} setup fee + ${monthly_price:,.2f} first month)
+Recurring monthly: ${monthly_price:,.2f}, starting next billing cycle
+Square payment ID: {payment_id}
+        """
+
+        msg = Message(
+            subject=subject,
+            recipients=[admin_email],
+            html=html_body,
+            body=text_body,
+            sender=current_app.config.get('MAIL_SENDER', 'noreply@mail.bentcrankshaft.com')
+        )
+
+        mail.send(msg)
+        print(f"✅ Payment notification sent to {admin_email}")
+        return True
+
+    except Exception as e:
+        print(f"❌ Failed to send payment notification: {str(e)}")
+        return False
+
+
 def send_welcome_email(dealer_name, dealer_email, username, dealer_slug=None, temp_password=None, custom_domain=None, setup_url=None, is_resend=False):
     """
     Send a welcome email to a new dealer.
