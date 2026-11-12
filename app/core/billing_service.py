@@ -97,3 +97,16 @@ def activate_subscription(org, card_nonce, contact_email, contact_name):
     org.subscription_status = 'active'
     org.monthly_price = monthly_price_cents
     db.session.commit()
+
+    # Best-effort - covers both call sites (dealer self-service and
+    # admin-initiated) since both funnel through here. Must never let a mail
+    # hiccup turn an already-successful, already-charged payment into a
+    # user-facing error.
+    try:
+        from app.core.email import send_payment_received_notification
+        send_payment_received_notification(
+            org, payment_id=payment_id, setup_fee_cents=SETUP_FEE_CENTS,
+            monthly_price_cents=monthly_price_cents,
+        )
+    except Exception as e:
+        print(f"Warning: Failed to send payment notification: {e}")
