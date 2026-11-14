@@ -531,6 +531,36 @@ class DealerService(db.Model):
     )
 
 
+class FinancingLender(db.Model):
+    """A dealer-managed financing-company link (e.g. Sheffield Financial,
+    Vibrant) shown on the homepage financing bar and /financing page, and
+    used as the target for "Click here to get approved" CTAs. Dealers use
+    different lenders depending on ticket price/credit, and the roster
+    changes over time (lenders get dropped/added), so this is a free-form
+    editable list rather than anything hardcoded.
+    is_preferred is exclusive - at most one True per organization_id,
+    enforced in settings.routes (toggle_financing_preferred), same
+    convention as VendorManufacturer.is_primary. It picks the single
+    direct-link target for the CTA buttons; with none preferred, those
+    CTAs fall back to the /financing page listing every active lender."""
+    id = db.Column(db.Integer, primary_key=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+
+    name = db.Column(db.String(150), nullable=False)
+    url = db.Column(db.String(500), nullable=False)
+    logo_url = db.Column(db.String(255), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    is_preferred = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    sort_order = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        db.Index('ix_financing_lender_org', 'organization_id'),
+        db.Index('ix_financing_lender_org_active', 'organization_id', 'is_active'),
+    )
+
+
 class RentalItem(db.Model):
     """A dealer-configurable rental equipment listing shown on the public
     /rentals page (e.g. "Mini Excavator"). This is a pricing catalog only -

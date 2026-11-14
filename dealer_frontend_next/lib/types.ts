@@ -17,6 +17,15 @@ export interface DealerServiceItem {
     allow_web_scheduling: boolean;
 }
 
+export interface FinancingLenderItem {
+    id: number;
+    name: string;
+    url: string;
+    logo_url: string | null;
+    description: string | null;
+    is_preferred: boolean;
+}
+
 export interface DealerRentalItem {
     id: number;
     name: string;

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useFinancingLenders } from '@/lib/useFinancingLenders';
 
 interface RequestQuoteFormProps {
     // What's being asked about - sent as a single free-text line item, same
@@ -27,9 +28,13 @@ export default function RequestQuoteForm({
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [done, setDone] = useState(false);
+    const { ctaHref } = useFinancingLenders();
+    // Every current caller except RentalCatalog.tsx (which explicitly passes
+    // 'rental') relies on the 'equipment' default - financing doesn't apply
+    // to rentals, so this naturally excludes those with no caller changes.
+    const showApply = (requestType || 'equipment') === 'equipment' && !!ctaHref;
 
-    const submit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const doSubmit = async (alsoApply: boolean) => {
         setSubmitting(true);
         setError(null);
         try {
@@ -53,12 +58,20 @@ export default function RequestQuoteForm({
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data.error || 'Failed to submit request');
             }
+            if (alsoApply && ctaHref) {
+                window.open(ctaHref, '_blank', 'noopener,noreferrer');
+            }
             setDone(true);
         } catch (err: any) {
             setError(err.message || 'Something went wrong. Please try again.');
         } finally {
             setSubmitting(false);
         }
+    };
+
+    const submit = (e: React.FormEvent) => {
+        e.preventDefault();
+        doSubmit(false);
     };
 
     return (
@@ -139,6 +152,16 @@ export default function RequestQuoteForm({
                                 {submitting ? 'Sending...' : 'Send Request'}
                             </button>
                         </div>
+                        {showApply && (
+                            <button
+                                type="button"
+                                disabled={submitting}
+                                onClick={() => doSubmit(true)}
+                                className="w-full mt-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white py-3 rounded-xl font-bold transition-colors"
+                            >
+                                {submitting ? 'Sending...' : 'Send & Apply for Financing'}
+                            </button>
+                        )}
                     </form>
                 )}
             </div>

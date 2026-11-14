@@ -1,0 +1,166 @@
+{% extends "base.html" %}
+
+{% block title %}Financing Lenders{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <h1><i class="bi bi-cash-coin me-2"></i>Financing Lenders</h1>
+    <p class="text-muted">
+        Manage the financing companies your customers can apply through. Active lenders show up on your
+        public <strong>/financing</strong> page and in the financing bar on your homepage. Mark one lender
+        <strong>Preferred</strong> to make it the direct target of "Click here to get approved" buttons across
+        your site - with none preferred, those buttons send customers to your Financing page instead, where
+        every active lender is listed.
+    </p>
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header">Add a Lender</div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('settings.add_financing_lender') }}" enctype="multipart/form-data" class="row g-2 align-items-end">
+                {{ form.hidden_tag() }}
+                <div class="col-md-2">
+                    {{ form.name.label(class="form-label small") }}
+                    {{ form.name(class="form-control") }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.url.label(class="form-label small") }}
+                    {{ form.url(class="form-control", placeholder="https://...") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.logo.label(class="form-label small") }}
+                    {{ form.logo(class="form-control") }}
+                </div>
+                <div class="col-md-3">
+                    {{ form.description.label(class="form-label small") }}
+                    {{ form.description(class="form-control", rows="1") }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.submit(class="btn btn-primary w-100") }}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light">
+                    <tr>
+                        <th style="width: 90px;"></th>
+                        <th style="width: 60px;">Logo</th>
+                        <th>Name / Link / Notes</th>
+                        <th style="width: 80px;">Active</th>
+                        <th style="width: 90px;">Preferred</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lender in lenders %}
+                    <tr id="lender-row-{{ lender.id }}">
+                        <td>
+                            <form method="POST" action="{{ url_for('settings.move_financing_lender', lender_id=lender.id, direction='up') }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move up"><i class="bi bi-arrow-up"></i></button>
+                            </form>
+                            <form method="POST" action="{{ url_for('settings.move_financing_lender', lender_id=lender.id, direction='down') }}" class="d-inline">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button type="submit" class="btn btn-sm btn-outline-secondary" title="Move down"><i class="bi bi-arrow-down"></i></button>
+                            </form>
+                        </td>
+                        <td>
+                            {% if lender.logo_url %}
+                            <img src="{{ lender.logo_url }}" alt="" class="rounded border" style="width: 48px; height: 48px; object-fit: contain;">
+                            {% else %}
+                            <div class="rounded border d-flex align-items-center justify-content-center text-muted bg-light" style="width: 48px; height: 48px;">
+                                <i class="bi bi-bank"></i>
+                            </div>
+                            {% endif %}
+                        </td>
+                        <td class="p-2">
+                            <form method="POST" action="{{ url_for('settings.edit_financing_lender', lender_id=lender.id) }}"
+                                enctype="multipart/form-data" class="row g-2 align-items-center">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <div class="col-md-3">
+                                    <input type="text" name="name" value="{{ lender.name }}" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" name="url" value="{{ lender.url }}" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3">
+                                    <input type="text" name="description" value="{{ lender.description or '' }}" placeholder="optional note" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-2">
+                                    <input type="file" name="logo" accept="image/*" class="form-control form-control-sm">
+                                    {% if lender.logo_url %}
+                                    <div class="form-check mt-1">
+                                        <input type="checkbox" name="remove_logo" class="form-check-input" id="remove-logo-{{ lender.id }}">
+                                        <label class="form-check-label small" for="remove-logo-{{ lender.id }}">Remove logo</label>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary w-100">Save</button>
+                                </div>
+                            </form>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input type="checkbox" class="form-check-input lender-active-toggle"
+                                       data-lender-id="{{ lender.id }}" {% if lender.is_active %}checked{% endif %}>
+                            </div>
+                        </td>
+                        <td>
+                            <div class="form-check form-switch">
+                                <input type="checkbox" class="form-check-input lender-preferred-toggle"
+                                       data-lender-id="{{ lender.id }}" {% if lender.is_preferred %}checked{% endif %}>
+                            </div>
+                        </td>
+                        <td class="text-end">
+                            <form method="POST" action="{{ url_for('settings.delete_financing_lender', lender_id=lender.id) }}" class="d-inline"
+                                onsubmit="return confirm('Delete this lender?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="6" class="text-center text-muted py-4">No lenders yet &mdash; add one above.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function wireToggle(selector, urlPrefix, checkedField) {
+    document.querySelectorAll(selector).forEach(function (toggle) {
+        toggle.addEventListener('change', function () {
+            const lenderId = toggle.dataset.lenderId;
+            fetch(`${urlPrefix}/${lenderId}/toggle-${checkedField}`, {
+                method: 'POST',
+                headers: {'X-CSRFToken': '{{ csrf_token() }}'},
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.error) {
+                    toggle.checked = !toggle.checked;
+                    return;
+                }
+                // Preferred is exclusive - uncheck every other row's switch
+                // when this one turns on, so the UI reflects the server
+                // state without a full page reload.
+                if (checkedField === 'preferred' && data.is_preferred) {
+                    document.querySelectorAll('.lender-preferred-toggle').forEach(function (other) {
+                        if (other !== toggle) other.checked = false;
+                    });
+                }
+            })
+            .catch(() => { toggle.checked = !toggle.checked; });
+        });
+    });
+}
+wireToggle('.lender-active-toggle', '/settings/financing', 'active');
+wireToggle('.lender-preferred-toggle', '/settings/financing', 'preferred');
+</script>
+{% endblock %}

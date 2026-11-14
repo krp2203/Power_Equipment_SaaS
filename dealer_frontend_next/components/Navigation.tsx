@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { DealerConfig, CatalogBrandSummary } from '@/lib/types';
+import { useFinancingLenders } from '@/lib/useFinancingLenders';
 
 const mobileStyles = `
   @media (max-width: 768px) {
@@ -50,6 +51,7 @@ export default function Navigation({ config }: { config: DealerConfig }) {
   const phoneNumber = config.theme.contact_phone || '';
   const address = config.theme.contact_address || '';
   const [brands, setBrands] = useState<CatalogBrandSummary[]>([]);
+  const { lenders } = useFinancingLenders();
   // Click/tap-toggled rather than CSS :hover - hover has no reliable
   // equivalent on touchscreens, which was why this didn't work on mobile.
   const [isBrandsOpen, setIsBrandsOpen] = useState(false);
@@ -234,6 +236,14 @@ export default function Navigation({ config }: { config: DealerConfig }) {
               className="text-2xl font-bold text-white hover:opacity-80 transition-opacity whitespace-nowrap"
             >
               Rentals
+            </Link>
+          )}
+          {lenders.length > 0 && (
+            <Link
+              href="/financing"
+              className="text-2xl font-bold text-white hover:opacity-80 transition-opacity whitespace-nowrap"
+            >
+              Financing
             </Link>
           )}
         </div>

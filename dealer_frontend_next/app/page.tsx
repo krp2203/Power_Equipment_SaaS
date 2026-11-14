@@ -3,6 +3,7 @@ import { getDealerConfig } from '@/lib/api';
 import BrandCarousel from '@/components/BrandCarousel';
 import AdvertisementCarousel from '@/components/AdvertisementCarousel';
 import FeaturedInventory from '@/components/FeaturedInventory';
+import FinancingBar from '@/components/FinancingBar';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,6 +48,9 @@ export default async function Home() {
       {advertisements && advertisements.length > 0 && (
         <AdvertisementCarousel advertisements={advertisements} />
       )}
+
+      {/* Financing bar - only renders once a dealer has an active lender */}
+      <FinancingBar />
 
       {/* Featured Inventory (closeout / special price / new arrivals) */}
       <FeaturedInventory />
