@@ -202,6 +202,29 @@ def get_services():
     } for s in services])
 
 
+@api_bp.route('/v1/financing', methods=['GET'])
+def get_financing_lenders():
+    """Active financing lenders for the current org - feeds the homepage
+    financing bar, the nav link, the /financing page, and every "Click here
+    to get approved" CTA's preferred-lender-or-fallback decision."""
+    from app.core.models import FinancingLender
+
+    if not g.current_org:
+        return jsonify([])
+
+    lenders = (FinancingLender.query
+               .filter_by(organization_id=g.current_org.id, is_active=True)
+               .order_by(FinancingLender.sort_order, FinancingLender.id).all())
+    return jsonify([{
+        "id": l.id,
+        "name": l.name,
+        "url": l.url,
+        "logo_url": l.logo_url,
+        "description": l.description,
+        "is_preferred": bool(l.is_preferred),
+    } for l in lenders])
+
+
 @api_bp.route('/v1/rentals', methods=['GET'])
 def get_rentals():
     """Active rental items for the public /rentals page."""

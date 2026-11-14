@@ -6,7 +6,7 @@ import os
 from app.core.extensions import db
 from app.core.models import User
 from . import settings_bp
-from .forms import OrganizationSettingsForm, AddUserForm, EditUserForm, MarkupTierForm, ServiceForm
+from .forms import OrganizationSettingsForm, AddUserForm, EditUserForm, MarkupTierForm, ServiceForm, FinancingLenderForm
 from itsdangerous import URLSafeSerializer
 from app.core.multitenancy import global_tenant_bypass
 from sqlalchemy.orm.attributes import flag_modified
@@ -1053,6 +1053,154 @@ def seed_services():
         flash("All pre-loaded services are already in your list.", "info")
 
     return redirect(url_for('settings.services'))
+
+
+# ====== FINANCING LENDERS ======
+
+@settings_bp.route('/settings/financing', methods=['GET'])
+@login_required
+def financing():
+    from app.core.models import FinancingLender
+    org = g.current_org
+    if not org:
+        flash("No organization context found.", "danger")
+        return redirect(url_for('main.index'))
+
+    items = (FinancingLender.query.filter_by(organization_id=org.id)
+             .order_by(FinancingLender.sort_order, FinancingLender.id).all())
+    form = FinancingLenderForm()
+    return render_template('settings/financing.html', lenders=items, form=form)
+
+
+@settings_bp.route('/settings/financing/add', methods=['POST'])
+@login_required
+def add_financing_lender():
+    from app.core.models import FinancingLender
+    from sqlalchemy import func as sa_func
+    org = g.current_org
+    form = FinancingLenderForm()
+
+    if form.validate_on_submit():
+        max_sort = db.session.query(sa_func.max(FinancingLender.sort_order)).filter_by(
+            organization_id=org.id).scalar() or 0
+        lender = FinancingLender(
+            organization_id=org.id,
+            name=form.name.data,
+            url=form.url.data,
+            description=form.description.data,
+            sort_order=max_sort + 1,
+        )
+        if form.logo.data:
+            try:
+                lender.logo_url = save_image_upload(form.logo.data, 'financing', org.id)
+            except UploadError as e:
+                flash(str(e), "danger")
+                return redirect(url_for('settings.financing'))
+        db.session.add(lender)
+        db.session.commit()
+        flash("Lender added.", "success")
+    else:
+        _flash_form_errors(form)
+
+    return redirect(url_for('settings.financing'))
+
+
+@settings_bp.route('/settings/financing/<int:lender_id>/edit', methods=['POST'])
+@login_required
+def edit_financing_lender(lender_id):
+    from app.core.models import FinancingLender
+    org = g.current_org
+    lender = FinancingLender.query.filter_by(id=lender_id, organization_id=org.id).first_or_404()
+    form = FinancingLenderForm()
+
+    if form.validate_on_submit():
+        lender.name = form.name.data
+        lender.url = form.url.data
+        lender.description = form.description.data
+        if form.logo.data:
+            try:
+                lender.logo_url = save_image_upload(form.logo.data, 'financing', org.id)
+            except UploadError as e:
+                flash(str(e), "danger")
+                return redirect(url_for('settings.financing'))
+        elif request.form.get('remove_logo'):
+            lender.logo_url = None
+        db.session.commit()
+        flash("Lender updated.", "success")
+    else:
+        _flash_form_errors(form)
+
+    return redirect(url_for('settings.financing'))
+
+
+@settings_bp.route('/settings/financing/<int:lender_id>/delete', methods=['POST'])
+@login_required
+def delete_financing_lender(lender_id):
+    from app.core.models import FinancingLender
+    org = g.current_org
+    lender = FinancingLender.query.filter_by(id=lender_id, organization_id=org.id).first_or_404()
+    db.session.delete(lender)
+    db.session.commit()
+    flash("Lender removed.", "success")
+    return redirect(url_for('settings.financing'))
+
+
+@settings_bp.route('/settings/financing/<int:lender_id>/toggle-active', methods=['POST'])
+@login_required
+def toggle_financing_active(lender_id):
+    """AJAX: flip a single lender's active flag from the list."""
+    from app.core.models import FinancingLender
+    lender = FinancingLender.query.filter_by(id=lender_id, organization_id=g.current_org.id).first()
+    if not lender:
+        return jsonify({'error': 'Lender not found'}), 404
+    lender.is_active = not lender.is_active
+    db.session.commit()
+    return jsonify({'id': lender.id, 'is_active': lender.is_active})
+
+
+@settings_bp.route('/settings/financing/<int:lender_id>/toggle-preferred', methods=['POST'])
+@login_required
+def toggle_financing_preferred(lender_id):
+    """AJAX: exclusive "preferred" flag - at most one per org. Clicking the
+    already-preferred lender clears it back to "none chosen" (valid - CTAs
+    then fall back to the /financing page); clicking any other one clears
+    every other lender's flag first, same clear-others-then-set convention
+    as purchasing.set_primary_vendor_manufacturer."""
+    from app.core.models import FinancingLender
+    org_id = g.current_org.id
+    lender = FinancingLender.query.filter_by(id=lender_id, organization_id=org_id).first()
+    if not lender:
+        return jsonify({'error': 'Lender not found'}), 404
+
+    if lender.is_preferred:
+        lender.is_preferred = False
+    else:
+        for other in FinancingLender.query.filter_by(organization_id=org_id).all():
+            other.is_preferred = (other.id == lender.id)
+    db.session.commit()
+    return jsonify({'id': lender.id, 'is_preferred': lender.is_preferred})
+
+
+@settings_bp.route('/settings/financing/<int:lender_id>/move/<direction>', methods=['POST'])
+@login_required
+def move_financing_lender(lender_id, direction):
+    from app.core.models import FinancingLender
+    org = g.current_org
+    lender = FinancingLender.query.filter_by(id=lender_id, organization_id=org.id).first_or_404()
+
+    items = (FinancingLender.query.filter_by(organization_id=org.id)
+             .order_by(FinancingLender.sort_order, FinancingLender.id).all())
+    idx = next((i for i, l in enumerate(items) if l.id == lender.id), None)
+    if idx is None:
+        return redirect(url_for('settings.financing'))
+
+    swap_idx = idx - 1 if direction == 'up' else idx + 1 if direction == 'down' else None
+    if swap_idx is not None and 0 <= swap_idx < len(items):
+        other = items[swap_idx]
+        lender.sort_order, other.sort_order = other.sort_order, lender.sort_order
+        db.session.commit()
+
+    return redirect(url_for('settings.financing'))
 
 
 # ====== HOURS OF OPERATION ======

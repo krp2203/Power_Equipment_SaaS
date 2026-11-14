@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from 'react';
 import { InventoryItem, DealerConfig } from '@/lib/types';
 import Link from 'next/link';
+import { useFinancingLenders } from '@/lib/useFinancingLenders';
 
 export default function InventoryDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
@@ -10,6 +11,7 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
     const [config, setConfig] = useState<DealerConfig | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { ctaHref } = useFinancingLenders();
 
     useEffect(() => {
         // Fetch Unit Details
@@ -147,7 +149,17 @@ export default function InventoryDetailPage({ params }: { params: Promise<{ id: 
                             )}
                         </div>
 
-                        <div className="mt-auto">
+                        <div className="mt-auto space-y-3">
+                            {ctaHref && (
+                                <a
+                                    href={ctaHref}
+                                    target={ctaHref.startsWith('/') ? undefined : '_blank'}
+                                    rel={ctaHref.startsWith('/') ? undefined : 'noopener noreferrer'}
+                                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-4 rounded-lg shadow-lg transition-transform active:scale-[0.98] text-center block"
+                                >
+                                    Click Here to Get Approved
+                                </a>
+                            )}
                             <a
                                 href={phoneLink}
                                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-lg shadow-lg transition-transform active:scale-[0.98] text-center block"

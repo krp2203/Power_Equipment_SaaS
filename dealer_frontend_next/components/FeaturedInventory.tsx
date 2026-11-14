@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { InventoryHighlight } from '@/lib/types';
 import RequestQuoteForm from '@/components/RequestQuoteForm';
+import { useFinancingLenders } from '@/lib/useFinancingLenders';
 
 const REASON_BADGES: Record<string, { label: string; className: string }> = {
     closeout: { label: 'Close Out', className: 'bg-red-600' },
@@ -13,6 +14,7 @@ const REASON_BADGES: Record<string, { label: string; className: string }> = {
 export default function FeaturedInventory() {
     const [items, setItems] = useState<InventoryHighlight[]>([]);
     const [quoteItem, setQuoteItem] = useState<InventoryHighlight | null>(null);
+    const { ctaHref } = useFinancingLenders();
 
     useEffect(() => {
         fetch('/api/v1/inventory/highlights')
@@ -60,12 +62,24 @@ export default function FeaturedInventory() {
                                     <div className="text-base font-black text-gray-900 mb-2">
                                         {item.price > 0 ? `$${item.price.toLocaleString()}` : 'Call for Price'}
                                     </div>
-                                    <button
-                                        onClick={() => setQuoteItem(item)}
-                                        className="mt-auto bg-gray-900 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
-                                    >
-                                        Request a Quote
-                                    </button>
+                                    <div className="mt-auto space-y-1.5">
+                                        {ctaHref && (
+                                            <a
+                                                href={ctaHref}
+                                                target={ctaHref.startsWith('/') ? undefined : '_blank'}
+                                                rel={ctaHref.startsWith('/') ? undefined : 'noopener noreferrer'}
+                                                className="block w-full bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors text-center"
+                                            >
+                                                Click Here to Get Approved
+                                            </a>
+                                        )}
+                                        <button
+                                            onClick={() => setQuoteItem(item)}
+                                            className="w-full bg-gray-900 hover:bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors"
+                                        >
+                                            Request a Quote
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         );

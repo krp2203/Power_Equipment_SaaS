@@ -100,3 +100,12 @@ class ServiceForm(FlaskForm):
     allow_web_scheduling = BooleanField('Allow Web Scheduling', default=False,
         description="Shows \"Request This Service\" instead of \"Call to Schedule\" on your site.")
     submit = SubmitField('Save Service')
+
+class FinancingLenderForm(FlaskForm):
+    name = StringField('Lender Name', validators=[DataRequired(), Length(max=150)])
+    url = StringField('Application / Info Link', validators=[DataRequired(), Length(max=500)],
+        description="Where customers go to apply, e.g. a prequalification link.")
+    logo = FileField('Logo (optional)', validators=[FileAllowed(['jpg', 'jpeg', 'png', 'webp', 'gif'], 'Images only!')])
+    description = TextAreaField('Notes (optional)', validators=[Optional(), Length(max=2000)],
+        description="e.g. \"Best for purchases $20k and up\" - shown on the Financing page to help customers pick.")
+    submit = SubmitField('Save Lender')
