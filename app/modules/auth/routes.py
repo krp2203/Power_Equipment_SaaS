@@ -1,4 +1,4 @@
-from flask import render_template, redirect, url_for, flash, request, session, g
+from flask import render_template, redirect, url_for, flash, request, session, g, abort
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash, generate_password_hash
 from app.core.models import User, Organization
@@ -305,6 +305,15 @@ from .forms import SignupForm
 
 @auth_bp.route('/signup', methods=['GET', 'POST'])
 def signup():
+    # Self-serve org creation only makes sense from the main marketing
+    # domain - reachable from any dealer's own subdomain/custom domain, or
+    # an unmapped host like a stray test subdomain, it's just a target for
+    # bots/crawlers to spin up junk trial orgs (see app/__init__.py's
+    # g.is_main_domain, deliberately narrower than the "unmapped domain
+    # defaults to Master org" fallback used elsewhere).
+    if not g.get('is_main_domain'):
+        abort(404)
+
     if current_user.is_authenticated:
         return redirect(url_for('marketing.dashboard'))
 
