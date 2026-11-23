@@ -3,7 +3,6 @@ from flask_login import UserMixin
 from sqlalchemy import UniqueConstraint, func, text
 from sqlalchemy.ext.hybrid import hybrid_property
 from app.core.extensions import db
-import json
 from decimal import Decimal, InvalidOperation
 
 class Organization(db.Model):
@@ -362,63 +361,6 @@ class AuditLog(db.Model):
     changes = db.Column(db.JSON) # Only store what changed
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
-
-class ServiceBulletin(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
-    
-    sb_number = db.Column(db.String(50), nullable=False)
-    issue_date = db.Column(db.Date, nullable=False)
-    title = db.Column(db.String(200), nullable=False)
-    description = db.Column(db.Text)
-    pdf_filename = db.Column(db.String(255))
-    pdf_original_name = db.Column(db.String(255))
-    warranty_code = db.Column(db.String(50))
-    labor_hours = db.Column(db.String(100))
-    required_parts = db.Column(db.Text, default='[]')
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
-    affected_models = db.relationship('ServiceBulletinModel', backref='bulletin', lazy=True, cascade='all, delete-orphan')
-    completions = db.relationship('ServiceBulletinCompletion', backref='bulletin', lazy=True, cascade='all, delete-orphan')
-    
-    __table_args__ = (
-        UniqueConstraint('organization_id', 'sb_number', name='_org_sb_uc'),
-    )
-
-    @property
-    def parsed_required_parts(self):
-        if not self.required_parts: return []
-        try: return json.loads(self.required_parts)
-        except: return []
-
-class ServiceBulletinModel(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
-    
-    bulletin_id = db.Column(db.Integer, db.ForeignKey('service_bulletin.id', ondelete='CASCADE'), nullable=False)
-    model_name = db.Column(db.String(100), nullable=False)
-    serial_start = db.Column(db.String(50), nullable=False)
-    serial_end = db.Column(db.String(50), nullable=False)
-
-class ServiceBulletinCompletion(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
-    
-    bulletin_id = db.Column(db.Integer, db.ForeignKey('service_bulletin.id', ondelete='CASCADE'), nullable=False)
-    serial_number = db.Column(db.String(50), nullable=False)
-    model_name = db.Column(db.String(100))
-    
-    # Optional link to Unit if exists in system
-    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id', ondelete='CASCADE'), nullable=True)
-    
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
-    completion_date = db.Column(db.DateTime, default=datetime.utcnow)
-    completion_date = db.Column(db.DateTime, default=datetime.utcnow)
-    notes = db.Column(db.Text)
-    parts_used = db.Column(db.Text, default='[]')
-    status = db.Column(db.String(50), default='Completed')
-    
-    user = db.relationship('User', backref=db.backref('bulletin_completions', passive_deletes=True))
 
 class PartInventory(db.Model):
     id = db.Column(db.Integer, primary_key=True)

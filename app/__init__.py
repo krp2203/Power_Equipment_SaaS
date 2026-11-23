@@ -206,9 +206,6 @@ def create_app(config_name=None):
     from app.modules.cases import cases_bp
     app.register_blueprint(cases_bp)
 
-    from app.modules.service_bulletins import service_bulletins_bp
-    app.register_blueprint(service_bulletins_bp)
-
     from app.modules.api import api_bp
     # Exempt API blueprint from CSRF (token / header authenticated, not cookie-session)
     csrf.exempt(api_bp)
