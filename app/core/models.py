@@ -39,7 +39,7 @@ class Organization(db.Model):
     onboarding_complete = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     
-    users = db.relationship('User', backref='organization', lazy=True)
+    users = db.relationship('User', backref='organization', lazy=True, passive_deletes=True)
     invoice_payment_options = db.relationship(
         'InvoicePaymentOption', backref='organization', lazy=True,
         order_by='InvoicePaymentOption.sort_order, InvoicePaymentOption.id',
@@ -81,7 +81,7 @@ class Organization(db.Model):
 
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
     
     username = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(120), nullable=True)
@@ -119,7 +119,7 @@ class User(UserMixin, db.Model):
 
 class Dealer(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     name = db.Column(db.String(150), nullable=False)
     address = db.Column(db.String(300))
@@ -137,9 +137,9 @@ class Dealer(db.Model):
 
 class Contact(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
     
-    dealer_id = db.Column(db.Integer, db.ForeignKey('dealer.id'), nullable=False)
+    dealer_id = db.Column(db.Integer, db.ForeignKey('dealer.id', ondelete='CASCADE'), nullable=False)
     name = db.Column(db.String(100))
     role = db.Column(db.String(100))
     email = db.Column(db.String(100))
@@ -147,10 +147,10 @@ class Contact(db.Model):
 
 class DealerNote(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
-    dealer_id = db.Column(db.Integer, db.ForeignKey('dealer.id'), nullable=False)
-    parent_id = db.Column(db.Integer, db.ForeignKey('dealer_note.id'), nullable=True)
+    dealer_id = db.Column(db.Integer, db.ForeignKey('dealer.id', ondelete='CASCADE'), nullable=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey('dealer_note.id', ondelete='CASCADE'), nullable=True)
     text = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.Column(db.String(80))
@@ -159,17 +159,17 @@ class DealerNote(db.Model):
 
 class Tag(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
     name = db.Column(db.String(50), nullable=False) # Removed unique contraint globally, unique per org implicitly via logic or adding constraint later
 
 case_tags = db.Table('case_tags',
-    db.Column('case_id', db.Integer, db.ForeignKey('case.id'), primary_key=True),
+    db.Column('case_id', db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), primary_key=True),
     db.Column('tag_id', db.Integer, db.ForeignKey('tag.id'), primary_key=True)
 )
 
 class Unit(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     manufacturer = db.Column(db.String(100))
     model_number = db.Column(db.String(100))
@@ -193,7 +193,7 @@ class Unit(db.Model):
     is_closeout = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
     is_special_price = db.Column(db.Boolean, default=False, nullable=False, server_default=db.false())
 
-    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id', ondelete='CASCADE'), nullable=True)
 
     cases = db.relationship('Case', backref='unit', lazy=True)
     images = db.relationship('UnitImage', backref='unit', lazy=True, cascade="all, delete-orphan")
@@ -225,7 +225,7 @@ class Unit(db.Model):
 
 class UnitImage(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=False)
+    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id', ondelete='CASCADE'), nullable=False)
     image_url = db.Column(db.String(500), nullable=False)
     is_primary = db.Column(db.Boolean, default=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
@@ -235,8 +235,8 @@ class UnitComponent(db.Model):
     """Make/model/serial for a sub-assembly of a Unit - engine, transmission,
     deck, PTO, or an attachment."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
-    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
+    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id', ondelete='CASCADE'), nullable=False)
 
     component_type = db.Column(db.String(60), nullable=False)  # Engine, Transmission, Deck, Attachment, ...
     manufacturer = db.Column(db.String(100))
@@ -251,10 +251,10 @@ class UnitComponent(db.Model):
 
 class Case(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
-    dealer_id = db.Column(db.Integer, db.ForeignKey('dealer.id'))
-    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'))
+    dealer_id = db.Column(db.Integer, db.ForeignKey('dealer.id', ondelete='CASCADE'))
+    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id', ondelete='CASCADE'))
     status = db.Column(db.String(50), default='New')
     case_type = db.Column(db.String(50), nullable=False, default='Support')
     assigned_to = db.Column(db.String(80))
@@ -294,10 +294,10 @@ class Case(db.Model):
 
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False)
-    parent_id = db.Column(db.Integer, db.ForeignKey('note.id'), nullable=True)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), nullable=False)
+    parent_id = db.Column(db.Integer, db.ForeignKey('note.id', ondelete='CASCADE'), nullable=True)
     text = db.Column(db.Text, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.Column(db.String(80))
@@ -307,30 +307,30 @@ class Note(db.Model):
 
 class Notification(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
-    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=True)
-    note_id = db.Column(db.Integer, db.ForeignKey('note.id'), nullable=True)
+    recipient_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), nullable=True)
+    note_id = db.Column(db.Integer, db.ForeignKey('note.id', ondelete='CASCADE'), nullable=True)
     message = db.Column(db.String(255), nullable=False)
-    dealer_note_id = db.Column(db.Integer, db.ForeignKey('dealer_note.id'), nullable=True)
+    dealer_note_id = db.Column(db.Integer, db.ForeignKey('dealer_note.id', ondelete='CASCADE'), nullable=True)
     is_read = db.Column(db.Boolean, default=False, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 class Attachment(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), nullable=False)
     filename = db.Column(db.String(200), nullable=False)
     original_filename = db.Column(db.String(200), nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
 
 class PartUsed(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), nullable=False)
     part_number = db.Column(db.String(100), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     cost_at_time_of_use = db.Column(db.Numeric(10, 2), nullable=False)
@@ -340,10 +340,10 @@ class PartUsed(db.Model):
 
 class LaborEntry(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
-    case_id = db.Column(db.Integer, db.ForeignKey('case.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    case_id = db.Column(db.Integer, db.ForeignKey('case.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     hours_spent = db.Column(db.Numeric(10, 2), nullable=False)
     rate_at_time_of_log = db.Column(db.Numeric(10, 2), nullable=False)
     description = db.Column(db.Text)
@@ -352,8 +352,8 @@ class LaborEntry(db.Model):
 
 class AuditLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=True)
     
     action = db.Column(db.String(50), nullable=False) # CREATE, UPDATE, DELETE
     resource_type = db.Column(db.String(50), nullable=False) # Case, User, Bulletin
@@ -365,7 +365,7 @@ class AuditLog(db.Model):
 
 class ServiceBulletin(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
     
     sb_number = db.Column(db.String(50), nullable=False)
     issue_date = db.Column(db.Date, nullable=False)
@@ -393,25 +393,25 @@ class ServiceBulletin(db.Model):
 
 class ServiceBulletinModel(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
     
-    bulletin_id = db.Column(db.Integer, db.ForeignKey('service_bulletin.id'), nullable=False)
+    bulletin_id = db.Column(db.Integer, db.ForeignKey('service_bulletin.id', ondelete='CASCADE'), nullable=False)
     model_name = db.Column(db.String(100), nullable=False)
     serial_start = db.Column(db.String(50), nullable=False)
     serial_end = db.Column(db.String(50), nullable=False)
 
 class ServiceBulletinCompletion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
     
-    bulletin_id = db.Column(db.Integer, db.ForeignKey('service_bulletin.id'), nullable=False)
+    bulletin_id = db.Column(db.Integer, db.ForeignKey('service_bulletin.id', ondelete='CASCADE'), nullable=False)
     serial_number = db.Column(db.String(50), nullable=False)
     model_name = db.Column(db.String(100))
     
     # Optional link to Unit if exists in system
-    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=True)
+    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id', ondelete='CASCADE'), nullable=True)
     
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     completion_date = db.Column(db.DateTime, default=datetime.utcnow)
     completion_date = db.Column(db.DateTime, default=datetime.utcnow)
     notes = db.Column(db.Text)
@@ -422,7 +422,7 @@ class ServiceBulletinCompletion(db.Model):
 
 class PartInventory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     part_number = db.Column(db.String(100), nullable=False)
     manufacturer = db.Column(db.String(100))
@@ -443,7 +443,7 @@ class PartInventory(db.Model):
     upc = db.Column(db.String(50), nullable=True)
     superseded_to = db.Column(db.String(100), nullable=True)       # Replacement part number, if this one's discontinued
 
-    vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id'), nullable=True)
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id', ondelete='CASCADE'), nullable=True)
 
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
@@ -470,7 +470,7 @@ class PartInventory(db.Model):
 class MarkupTier(db.Model):
     """Per-organization cost-range -> markup% rules, used to compute PartInventory.extended_price from dealer_cost."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     min_cost = db.Column(db.Numeric(10, 2), nullable=False)
     max_cost = db.Column(db.Numeric(10, 2), nullable=True)  # NULL = "and above", no upper bound
@@ -489,7 +489,7 @@ class InvoicePaymentOption(db.Model):
     """A dealer-configurable payment button / QR code / note that renders on
     every invoice (on screen, in print, and in the emailed copy)."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     sort_order = db.Column(db.Integer, nullable=False, default=0)
     kind = db.Column(db.String(10), nullable=False)  # 'link', 'qr', 'text'
@@ -512,7 +512,7 @@ class DealerService(db.Model):
     - no real booking calendar exists; the public CTA is always a phone call
     either way, the flag just changes its wording."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     name = db.Column(db.String(150), nullable=False)
     price = db.Column(db.Numeric(10, 2), nullable=True)  # NULL = no price shown
@@ -544,7 +544,7 @@ class FinancingLender(db.Model):
     direct-link target for the CTA buttons; with none preferred, those
     CTAs fall back to the /financing page listing every active lender."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     name = db.Column(db.String(150), nullable=False)
     url = db.Column(db.String(500), nullable=False)
@@ -570,7 +570,7 @@ class RentalItem(db.Model):
     may only want to show daily/weekly rates for a large excavator and
     skip the hourly tiers entirely."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     name = db.Column(db.String(150), nullable=False)
     # Free text, not a fixed enum - dealer price sheets organize equipment
@@ -616,7 +616,7 @@ class HoursGroup(db.Model):
     than per-day rows since the only query need is "the group(s) for this
     org", not per-day lookups."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     name = db.Column(db.String(100), nullable=False)
     # {"mon": {"closed": false, "open": "08:00", "close": "17:00"}, ... "sun": {...}}
@@ -680,8 +680,8 @@ class HoursGroup(db.Model):
 class FacebookPost(db.Model):
     """Track Facebook posts with status for user visibility"""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
 
     # Post Content
     title = db.Column(db.String(200))
@@ -700,13 +700,13 @@ class FacebookPost(db.Model):
     posted_at = db.Column(db.DateTime)  # When successfully posted to FB
 
     # Relationships
-    organization = db.relationship('Organization', backref='facebook_posts')
+    organization = db.relationship('Organization', backref=db.backref('facebook_posts', passive_deletes=True))
     user = db.relationship('User', backref='facebook_posts')
 
 class MediaContent(db.Model):
     """Unified media assets for promotions across all channels (FB, IG, Website Banner)"""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     # Content
     title = db.Column(db.String(150), nullable=False)
@@ -730,15 +730,15 @@ class MediaContent(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    organization = db.relationship('Organization', backref='media_content')
+    organization = db.relationship('Organization', backref=db.backref('media_content', passive_deletes=True))
     scheduled_posts = db.relationship('ScheduledPost', backref='media_content', cascade='all, delete-orphan')
 
 
 class ScheduledPost(db.Model):
     """Tracks where and when media content has been posted"""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
-    media_content_id = db.Column(db.Integer, db.ForeignKey('media_content.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
+    media_content_id = db.Column(db.Integer, db.ForeignKey('media_content.id', ondelete='CASCADE'), nullable=False)
 
     # Destination
     destination = db.Column(db.String(20), nullable=False)  # 'facebook', 'instagram', 'banner'
@@ -757,13 +757,13 @@ class ScheduledPost(db.Model):
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     # Relationships
-    organization = db.relationship('Organization', backref='scheduled_posts')
+    organization = db.relationship('Organization', backref=db.backref('scheduled_posts', passive_deletes=True))
 
 
 class Banner(db.Model):
     """Website banner management"""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     # Content
     image_url = db.Column(db.String(500), nullable=False)  # Full-size image URL
@@ -781,7 +781,7 @@ class Banner(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     # Relationships
-    organization = db.relationship('Organization', backref='banners')
+    organization = db.relationship('Organization', backref=db.backref('banners', passive_deletes=True))
 
 
 class QuoteRequest(db.Model):
@@ -793,7 +793,7 @@ class QuoteRequest(db.Model):
     dealer has a place to review submissions.
     """
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     customer_name = db.Column(db.String(150), nullable=False)
     customer_email = db.Column(db.String(120), nullable=True)
@@ -818,7 +818,7 @@ class QuoteRequest(db.Model):
 
 class QuoteRequestItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    quote_request_id = db.Column(db.Integer, db.ForeignKey('quote_request.id'), nullable=False)
+    quote_request_id = db.Column(db.Integer, db.ForeignKey('quote_request.id', ondelete='CASCADE'), nullable=False)
     # Nullable + a text snapshot: keeps the request readable even if the part
     # is later deleted/renumbered, same reasoning as invoice line snapshots.
     part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id', ondelete='SET NULL'), nullable=True)
@@ -835,7 +835,7 @@ class ManufacturerBrand(db.Model):
     inventory. Not to be confused with theme_config['brand_logos'], which is just
     the unlabeled logo carousel on the homepage."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     name = db.Column(db.String(100), nullable=False)
     slug = db.Column(db.String(100), nullable=False)
@@ -861,7 +861,7 @@ class ManufacturerBrand(db.Model):
 
 class ManufacturerCatalogItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
     brand_id = db.Column(db.Integer, db.ForeignKey('manufacturer_brand.id', ondelete='CASCADE'), nullable=False)
 
     model_name = db.Column(db.String(150), nullable=False)
@@ -883,7 +883,7 @@ class ManufacturerCatalogItem(db.Model):
 class Customer(db.Model):
     """An end customer of the dealer (equipment owner / invoice bill-to), distinct from Dealer/Contact (sub-dealer network)."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     first_name = db.Column(db.String(80))
     last_name = db.Column(db.String(80), nullable=False, server_default='')
@@ -914,7 +914,7 @@ class Customer(db.Model):
 class Vendor(db.Model):
     """A parts/whole-goods supplier the dealer orders from."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     name = db.Column(db.String(150), nullable=False)
     account_number = db.Column(db.String(100))  # dealer's account # with this vendor
@@ -935,8 +935,8 @@ class VendorManufacturer(db.Model):
     """Which manufacturers a vendor supplies. Used to pick the vendor to
     special-order a part from (part.manufacturer -> primary vendor)."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
-    vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id', ondelete='CASCADE'), nullable=False)
     manufacturer = db.Column(db.String(100), nullable=False)
     # When a manufacturer is carried by more than one vendor, the primary one
     # is used for automatic special orders.
@@ -950,12 +950,12 @@ class VendorManufacturer(db.Model):
 
 class Invoice(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
     invoice_number = db.Column(db.Integer, nullable=False)  # sequential per org, assigned at creation
     invoice_type = db.Column(db.String(20), nullable=False)  # parts, whole_good, service
-    service_ticket_id = db.Column(db.Integer, db.ForeignKey('service_ticket.id'), nullable=True)
-    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=True)
+    service_ticket_id = db.Column(db.Integer, db.ForeignKey('service_ticket.id', ondelete='CASCADE'), nullable=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id', ondelete='CASCADE'), nullable=True)
 
     # Snapshot bill-to fields, so an invoice stays accurate even if the
     # Customer record (or Unit owner info it was copied from) changes later.
@@ -982,7 +982,7 @@ class Invoice(db.Model):
 
     notes = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    created_by = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    created_by = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=True)
 
     line_items = db.relationship('InvoiceLineItem', backref='invoice', lazy=True, cascade="all, delete-orphan")
 
@@ -993,7 +993,7 @@ class Invoice(db.Model):
 
 class InvoiceLineItem(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=False)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id', ondelete='CASCADE'), nullable=False)
 
     line_type = db.Column(db.String(20), nullable=False)  # part, labor, whole_good, misc
     description = db.Column(db.String(255), nullable=False)
@@ -1002,9 +1002,9 @@ class InvoiceLineItem(db.Model):
     line_total = db.Column(db.Numeric(10, 2), nullable=False)
 
     part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id', ondelete='SET NULL'), nullable=True)
-    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=True)
+    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id', ondelete='CASCADE'), nullable=True)
     # Set when this part line was short on stock and got special-ordered.
-    po_line_item_id = db.Column(db.Integer, db.ForeignKey('purchase_order_line_item.id'), nullable=True)
+    po_line_item_id = db.Column(db.Integer, db.ForeignKey('purchase_order_line_item.id', ondelete='CASCADE'), nullable=True)
 
     @property
     def on_order(self):
@@ -1014,8 +1014,8 @@ class InvoiceLineItem(db.Model):
 
 class PurchaseOrder(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
-    vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
+    vendor_id = db.Column(db.Integer, db.ForeignKey('vendor.id', ondelete='CASCADE'), nullable=False)
 
     po_number = db.Column(db.Integer, nullable=False)  # sequential per org
     status = db.Column(db.String(20), default='draft')  # draft, ordered, partially_received, received, closed
@@ -1043,7 +1043,7 @@ class PurchaseOrderLineItem(db.Model):
     for a serial number and creates a Unit record, linked via unit_id.
     """
     id = db.Column(db.Integer, primary_key=True)
-    purchase_order_id = db.Column(db.Integer, db.ForeignKey('purchase_order.id'), nullable=False)
+    purchase_order_id = db.Column(db.Integer, db.ForeignKey('purchase_order.id', ondelete='CASCADE'), nullable=False)
 
     line_type = db.Column(db.String(20), nullable=False, default='part')  # part, whole_good
     part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id', ondelete='SET NULL'), nullable=True)
@@ -1058,11 +1058,11 @@ class PurchaseOrderLineItem(db.Model):
     quantity_received = db.Column(db.Integer, nullable=False, default=0)
     unit_cost = db.Column(db.Numeric(10, 2), nullable=True)
 
-    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=True)  # set once a whole_good line is received
+    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id', ondelete='CASCADE'), nullable=True)  # set once a whole_good line is received
 
     # If this line was auto-generated to special-order a part for a job, which job.
-    service_ticket_id = db.Column(db.Integer, db.ForeignKey('service_ticket.id'), nullable=True)
-    invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id'), nullable=True)
+    service_ticket_id = db.Column(db.Integer, db.ForeignKey('service_ticket.id', ondelete='CASCADE'), nullable=True)
+    invoice_id = db.Column(db.Integer, db.ForeignKey('invoice.id', ondelete='CASCADE'), nullable=True)
 
     service_ticket = db.relationship('ServiceTicket', backref='po_line_items')
     invoice = db.relationship('Invoice', backref='po_line_items')
@@ -1075,11 +1075,11 @@ class ServiceTicket(db.Model):
     separate distributor-side case/claim tracking system unrelated to this.
     """
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
-    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id'), nullable=True)
-    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id'), nullable=True)
-    technician_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('customer.id', ondelete='CASCADE'), nullable=True)
+    unit_id = db.Column(db.Integer, db.ForeignKey('unit.id', ondelete='CASCADE'), nullable=True)
+    technician_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=True)
 
     status = db.Column(db.String(30), nullable=False, default='Received')
     # Received, In Progress, Waiting on Parts, Ready for Pickup, Closed
@@ -1114,9 +1114,9 @@ class ServiceTicket(db.Model):
 
 class ServiceTicketPart(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
-    service_ticket_id = db.Column(db.Integer, db.ForeignKey('service_ticket.id'), nullable=False)
+    service_ticket_id = db.Column(db.Integer, db.ForeignKey('service_ticket.id', ondelete='CASCADE'), nullable=False)
     part_number = db.Column(db.String(100), nullable=False)
     quantity = db.Column(db.Integer, nullable=False, default=1)
     cost_at_time_of_use = db.Column(db.Numeric(10, 2), nullable=False)
@@ -1126,7 +1126,7 @@ class ServiceTicketPart(db.Model):
 
     part_inventory_id = db.Column(db.Integer, db.ForeignKey('part_inventory.id', ondelete='SET NULL'), nullable=True)
     # Set when this part was short on stock and got special-ordered.
-    po_line_item_id = db.Column(db.Integer, db.ForeignKey('purchase_order_line_item.id'), nullable=True)
+    po_line_item_id = db.Column(db.Integer, db.ForeignKey('purchase_order_line_item.id', ondelete='CASCADE'), nullable=True)
 
     part = db.relationship('PartInventory')
     po_line_item = db.relationship('PurchaseOrderLineItem', backref='service_ticket_parts')
@@ -1139,10 +1139,10 @@ class ServiceTicketPart(db.Model):
 
 class ServiceTicketLabor(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
 
-    service_ticket_id = db.Column(db.Integer, db.ForeignKey('service_ticket.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    service_ticket_id = db.Column(db.Integer, db.ForeignKey('service_ticket.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     hours_spent = db.Column(db.Numeric(10, 2), nullable=False)
     rate_at_time_of_log = db.Column(db.Numeric(10, 2), nullable=False)
     description = db.Column(db.Text)
@@ -1153,9 +1153,9 @@ class ServiceTicketLabor(db.Model):
 class ServiceTicketNote(db.Model):
     """A timestamped, append-only entry in a service ticket's work log."""
     id = db.Column(db.Integer, primary_key=True)
-    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=False)
-    service_ticket_id = db.Column(db.Integer, db.ForeignKey('service_ticket.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
+    service_ticket_id = db.Column(db.Integer, db.ForeignKey('service_ticket.id', ondelete='CASCADE'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=True)
     body = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
 
