@@ -77,10 +77,6 @@ const nextConfig: NextConfig = {
       {
         source: '/cases/:path*',
         destination: 'http://web:5000/cases/:path*',
-      },
-      {
-        source: '/service_bulletins/:path*',
-        destination: 'http://web:5000/service_bulletins/:path*',
       }
     ];
   },
