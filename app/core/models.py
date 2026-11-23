@@ -418,7 +418,7 @@ class ServiceBulletinCompletion(db.Model):
     parts_used = db.Column(db.Text, default='[]')
     status = db.Column(db.String(50), default='Completed')
     
-    user = db.relationship('User', backref='bulletin_completions')
+    user = db.relationship('User', backref=db.backref('bulletin_completions', passive_deletes=True))
 
 class PartInventory(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -681,7 +681,11 @@ class FacebookPost(db.Model):
     """Track Facebook posts with status for user visibility"""
     id = db.Column(db.Integer, primary_key=True)
     organization_id = db.Column(db.Integer, db.ForeignKey('organization.id', ondelete='CASCADE'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    # Nullable + SET NULL rather than CASCADE: a Facebook post that actually
+    # went out is a record of what was posted to the dealer's real page -
+    # it shouldn't vanish just because the staff member who posted it later
+    # left (settings.delete_user).
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True)
 
     # Post Content
     title = db.Column(db.String(200))
@@ -701,7 +705,7 @@ class FacebookPost(db.Model):
 
     # Relationships
     organization = db.relationship('Organization', backref=db.backref('facebook_posts', passive_deletes=True))
-    user = db.relationship('User', backref='facebook_posts')
+    user = db.relationship('User', backref=db.backref('facebook_posts', passive_deletes=True))
 
 class MediaContent(db.Model):
     """Unified media assets for promotions across all channels (FB, IG, Website Banner)"""
