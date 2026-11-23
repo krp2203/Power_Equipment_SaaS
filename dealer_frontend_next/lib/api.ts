@@ -1,4 +1,15 @@
 import { DealerConfig } from './types';
+import { notFound } from 'next/navigation';
+
+// Used only when the backend is genuinely unreachable (network/5xx) - a
+// clean 404 (unknown tenant) is handled separately via notFound(), never
+// via this placeholder. See getDealerConfig().
+const UNREACHABLE_BACKEND_FALLBACK: DealerConfig = {
+    name: 'Demo Dealer',
+    slug: 'demo',
+    modules: { ari: true, pos: 'ideal' },
+    theme: { primaryColor: '#DC2626' } // Red
+};
 
 const API_BASE = typeof window === 'undefined'
     ? 'http://web:5000/api/v1'  // Server-side (Internal Docker network)
@@ -43,8 +54,9 @@ export async function getDealerConfig(): Promise<DealerConfig> {
         slug = '';
     }
 
+    let res: Response;
     try {
-        const res = await fetch(`${API_BASE}/site-info${slug ? `?slug=${slug}` : ''}`, {
+        res = await fetch(`${API_BASE}/site-info${slug ? `?slug=${slug}` : ''}`, {
             cache: 'no-store',
             headers: {
                 'Cookie': cookieHeader,
@@ -52,6 +64,24 @@ export async function getDealerConfig(): Promise<DealerConfig> {
                 'Host': targetHost // Pass the actual host for consistent behavior
             }
         });
+    } catch (err) {
+        console.error("API Fetch Error:", err);
+        if (err instanceof TypeError) {
+            console.error("Likely network issue. API_BASE:", API_BASE);
+        }
+        return UNREACHABLE_BACKEND_FALLBACK;
+    }
+
+    // A genuinely unknown tenant (stray/unmapped subdomain, random Host
+    // header) should 404 for real, not render a plausible-looking fake
+    // dealer site. This must stay outside any try/catch below it - Next's
+    // notFound() throws a special signal that a catch would otherwise
+    // swallow right back into the same placeholder this is fixing.
+    if (res.status === 404) {
+        notFound();
+    }
+
+    try {
         if (!res.ok) throw new Error('Failed to fetch config');
 
         const data = await res.json();
@@ -101,15 +131,6 @@ export async function getDealerConfig(): Promise<DealerConfig> {
         };
     } catch (err) {
         console.error("API Fetch Error:", err);
-        if (err instanceof TypeError) {
-            console.error("Likely network issue. API_BASE:", API_BASE);
-        }
-        // Fallback for demo if backend is down or no tenant context
-        return {
-            name: 'Demo Dealer',
-            slug: 'demo',
-            modules: { ari: true, pos: 'ideal' },
-            theme: { primaryColor: '#DC2626' } // Red
-        };
+        return UNREACHABLE_BACKEND_FALLBACK;
     }
 }
