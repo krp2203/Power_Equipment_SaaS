@@ -69,7 +69,15 @@ def create_app(config_name=None):
 
         # 1. Resolve Tenant via Subdomain FIRST (Source of Truth for the URL)
         tenant = None
-        
+        # Precise "is this actually our known main/marketing host" flag - only
+        # true for the bare root domain or one of the reserved marketing
+        # subdomains, never for the permissive "unmapped external domain,
+        # default to Master org" fallback below. Signup-abuse guard
+        # (auth.routes.signup) relies on this being narrow: that fallback
+        # exists so a stray/unmapped Host header still renders *something*
+        # sane, not so the signup form becomes reachable from anywhere.
+        g.is_main_domain = False
+
         # Check Headers first (Nginx or Dev Proxy)
         header_host = request.headers.get('X-Forwarded-Host', request.host)
 
@@ -92,14 +100,17 @@ def create_app(config_name=None):
                 if potential_slug in ['www', 'app', 'saas', 'mail', 'api', 'admin']:
                     print(f"DEBUG: Master subdomain detected: {potential_slug}", flush=True)
                     tenant = Organization.query.get(1)
+                    g.is_main_domain = True
                 else:
                     tenant = Organization.query.filter_by(slug=potential_slug).first()
             else:
                 # Bare bentcrankshaft.com/.local root domain
                 tenant = Organization.query.get(1)
+                g.is_main_domain = True
         elif 'localhost' in header_host or '127.0.0.1' in header_host:
              # Localhost Development: Default to Master Org if no subdomain
              tenant = Organization.query.get(1)
+             g.is_main_domain = True
         else:
             # External custom domain (e.g., ncpowerequipment.com, www.walllawnmower.com)
             tenant = Organization.query.filter_by(custom_domain=header_host).first()
